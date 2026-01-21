@@ -5,7 +5,6 @@
 [![Issues](https://img.shields.io/github/issues/bquery/bquery?style=flat&logo=github)](https://github.com/bquery/bquery/issues)
 [![License](https://img.shields.io/github/license/bquery/bquery?style=flat)](https://github.com/bquery/bquery/blob/main/LICENSE.md)
 [![npm](https://img.shields.io/npm/v/bquery)](https://www.npmjs.com/package/bquery)
-[![Bundle Size](https://img.shields.io/bundlephobia/minzip/bquery)](https://bundlephobia.com/package/bquery)
 
 **The jQuery for the modern Web Platform.**
 
