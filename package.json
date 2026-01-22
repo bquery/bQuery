@@ -95,6 +95,10 @@
   "bugs": {
     "url": "https://github.com/bquery/bquery/issues"
   },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
   "engines": {
     "node": ">=18.0.0"
   },
