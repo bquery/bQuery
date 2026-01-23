@@ -108,8 +108,24 @@ $('#save').on('click', (event) => {
   console.log('Saved', event.type);
 });
 
+// Event delegation for dynamic content
+$('#list').delegate('click', '.item', (event, target) => {
+  console.log('Item clicked', target.textContent);
+});
+
 // Method chaining
 $('#box').addClass('active').css({ opacity: '0.8' }).attr('data-state', 'ready');
+
+// DOM manipulation
+$('#content').wrap('<div class="wrapper"></div>');
+$('#wrapper').unwrap(); // Remove parent wrapper
+
+// Smooth scrolling
+$('#section').scrollTo({ behavior: 'smooth' });
+
+// Form serialization
+const formData = $('form').serialize(); // Returns object
+const queryString = $('form').serializeString(); // Returns URL-encoded string
 
 // Collections
 $$('.items').addClass('highlight');
@@ -118,7 +134,7 @@ $$('.items').addClass('highlight');
 ### Reactive – signals
 
 ```ts
-import { signal, computed, effect, batch } from '@bquery/bquery/reactive';
+import { signal, computed, effect, batch, watch, readonly } from '@bquery/bquery/reactive';
 
 const count = signal(0);
 const doubled = computed(() => count.value * 2);
@@ -126,6 +142,14 @@ const doubled = computed(() => count.value * 2);
 effect(() => {
   console.log('Count changed', count.value);
 });
+
+// Watch with cleanup support
+const stop = watch(count, (newVal, oldVal) => {
+  console.log(`Changed from ${oldVal} to ${newVal}`);
+});
+
+// Read-only signal wrapper
+const readOnlyCount = readonly(count);
 
 // Batch updates for performance
 batch(() => {
@@ -142,6 +166,21 @@ import { component, html } from '@bquery/bquery/component';
 component('user-card', {
   props: {
     username: { type: String, required: true },
+    age: { type: Number, validator: (v) => v >= 0 && v <= 150 },
+  },
+  // Extended lifecycle hooks
+  beforeMount() {
+    console.log('About to mount');
+  },
+  connected() {
+    console.log('Mounted');
+  },
+  beforeUpdate(props) {
+    // Return false to prevent update
+    return props.username !== '';
+  },
+  onError(error) {
+    console.error('Component error:', error);
   },
   render({ props }) {
     return html`<div>Hello ${props.username}</div>`;
@@ -172,8 +211,14 @@ await x.to(100);
 ```ts
 import { sanitize, escapeHtml } from '@bquery/bquery/security';
 
-// Sanitize HTML (removes dangerous elements)
+// Sanitize HTML (removes dangerous elements like script, iframe, svg)
 const safeHtml = sanitize(userInput);
+
+// DOM clobbering protection (reserved IDs are blocked)
+const safe = sanitize('<form id="cookie">...</form>'); // id stripped
+
+// Unicode bypass protection in URLs
+const urlSafe = sanitize('<a href="java\u200Bscript:alert(1)">click</a>');
 
 // Escape for text display
 const escaped = escapeHtml('<script>alert(1)</script>');

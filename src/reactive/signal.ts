@@ -37,20 +37,24 @@ export type Observer = () => void;
 export type CleanupFn = () => void;
 
 // Internal state for tracking the current observer context
-let observerStack: Observer[] = [];
+const observerStack: Observer[] = [];
 let batchDepth = 0;
 const pendingObservers = new Set<Observer>();
 
+// Flag to disable tracking temporarily (for untrack)
+let trackingEnabled = true;
+
 /**
  * Tracks dependencies during a function execution.
+ * Uses direct push/pop for O(1) operations instead of array copying.
  * @internal
  */
 const track = <T>(observer: Observer, fn: () => T): T => {
-  observerStack = [...observerStack, observer];
+  observerStack.push(observer);
   try {
     return fn();
   } finally {
-    observerStack = observerStack.slice(0, -1);
+    observerStack.pop();
   }
 };
 
@@ -106,11 +110,14 @@ export class Signal<T> {
 
   /**
    * Gets the current value and tracks the read if inside an observer.
+   * Respects the global tracking state (disabled during untrack calls).
    */
   get value(): T {
-    const current = observerStack[observerStack.length - 1];
-    if (current) {
-      this.subscribers.add(current);
+    if (trackingEnabled) {
+      const current = observerStack[observerStack.length - 1];
+      if (current) {
+        this.subscribers.add(current);
+      }
     }
     return this._value;
   }
@@ -345,3 +352,155 @@ export const persistedSignal = <T>(key: string, initialValue: T): Signal<T> => {
 
   return sig;
 };
+
+// ============================================================================
+// Extended Reactive Utilities
+// ============================================================================
+
+/**
+ * A readonly wrapper around a signal that prevents writes.
+ * Provides read-only access to a signal's value while maintaining reactivity.
+ *
+ * @template T - The type of the wrapped value
+ */
+export interface ReadonlySignal<T> {
+  /** Gets the current value with dependency tracking. */
+  readonly value: T;
+  /** Gets the current value without dependency tracking. */
+  peek(): T;
+}
+
+/**
+ * Creates a read-only view of a signal.
+ * Useful for exposing reactive state without allowing modifications.
+ *
+ * @template T - The type of the signal value
+ * @param sig - The signal to wrap
+ * @returns A readonly signal wrapper
+ *
+ * @example
+ * ```ts
+ * const _count = signal(0);
+ * const count = readonly(_count); // Expose read-only version
+ *
+ * console.log(count.value); // 0
+ * count.value = 1; // TypeScript error: Cannot assign to 'value'
+ * ```
+ */
+export const readonly = <T>(sig: Signal<T>): ReadonlySignal<T> => ({
+  get value(): T {
+    return sig.value;
+  },
+  peek(): T {
+    return sig.peek();
+  },
+});
+
+/**
+ * Watches a signal or computed value and calls a callback with old and new values.
+ * Unlike effect, watch provides access to the previous value.
+ *
+ * @template T - The type of the watched value
+ * @param source - The signal or computed to watch
+ * @param callback - Function called with (newValue, oldValue) on changes
+ * @param options - Watch options
+ * @returns A cleanup function to stop watching
+ *
+ * @example
+ * ```ts
+ * const count = signal(0);
+ *
+ * const cleanup = watch(count, (newVal, oldVal) => {
+ *   console.log(`Changed from ${oldVal} to ${newVal}`);
+ * });
+ *
+ * count.value = 5; // Logs: "Changed from 0 to 5"
+ * cleanup();
+ * ```
+ */
+export const watch = <T>(
+  source: Signal<T> | Computed<T>,
+  callback: (newValue: T, oldValue: T | undefined) => void,
+  options: { immediate?: boolean } = {}
+): CleanupFn => {
+  let oldValue: T | undefined;
+  let isFirst = true;
+
+  return effect(() => {
+    const newValue = source.value;
+
+    if (isFirst) {
+      isFirst = false;
+      oldValue = newValue;
+      if (options.immediate) {
+        callback(newValue, undefined);
+      }
+      return;
+    }
+
+    callback(newValue, oldValue);
+    oldValue = newValue;
+  });
+};
+
+/**
+ * Executes a function without tracking any signal dependencies.
+ * Useful when reading a signal value without creating a reactive dependency.
+ *
+ * @template T - The return type of the function
+ * @param fn - The function to execute without tracking
+ * @returns The result of the function
+ *
+ * @example
+ * ```ts
+ * const count = signal(0);
+ *
+ * effect(() => {
+ *   // This creates a dependency
+ *   console.log('Tracked:', count.value);
+ *
+ *   // This does NOT create a dependency
+ *   const untracked = untrack(() => otherSignal.value);
+ * });
+ * ```
+ */
+export const untrack = <T>(fn: () => T): T => {
+  const prevTracking = trackingEnabled;
+  trackingEnabled = false;
+  try {
+    return fn();
+  } finally {
+    trackingEnabled = prevTracking;
+  }
+};
+
+/**
+ * Type guard to check if a value is a Signal instance.
+ *
+ * @param value - The value to check
+ * @returns True if the value is a Signal
+ *
+ * @example
+ * ```ts
+ * const count = signal(0);
+ * const num = 42;
+ *
+ * isSignal(count); // true
+ * isSignal(num);   // false
+ * ```
+ */
+export const isSignal = (value: unknown): value is Signal<unknown> => value instanceof Signal;
+
+/**
+ * Type guard to check if a value is a Computed instance.
+ *
+ * @param value - The value to check
+ * @returns True if the value is a Computed
+ *
+ * @example
+ * ```ts
+ * const doubled = computed(() => count.value * 2);
+ * isComputed(doubled); // true
+ * ```
+ */
+export const isComputed = (value: unknown): value is Computed<unknown> => value instanceof Computed;

@@ -3,13 +3,28 @@
 The reactive module provides fine‑grained reactivity with minimal primitives.
 
 ```ts
-import { signal, computed, effect, batch } from '@bquery/bquery/reactive';
+import {
+  signal,
+  computed,
+  effect,
+  batch,
+  watch,
+  readonly,
+  untrack,
+  isSignal,
+  isComputed,
+} from '@bquery/bquery/reactive';
 
 const count = signal(0);
 const doubled = computed(() => count.value * 2);
 
 effect(() => {
   console.log('Count changed', count.value);
+});
+
+// Watch with value comparison
+watch(count, (newVal, oldVal) => {
+  console.log(`Changed from ${oldVal} to ${newVal}`);
 });
 
 batch(() => {
@@ -76,4 +91,64 @@ import { persistedSignal } from '@bquery/bquery/reactive';
 
 const theme = persistedSignal('theme', 'light');
 theme.value = 'dark';
+```
+
+## Watch
+
+Watch observes a signal and calls a callback with old and new values:
+
+```ts
+import { watch } from '@bquery/bquery/reactive';
+
+const count = signal(0);
+const stop = watch(count, (newVal, oldVal) => {
+  console.log(`Changed: ${oldVal} → ${newVal}`);
+});
+
+count.value = 5; // logs: "Changed: 0 → 5"
+stop(); // Stop watching
+```
+
+## Readonly
+
+Create a read-only view of a signal:
+
+```ts
+import { readonly } from '@bquery/bquery/reactive';
+
+const count = signal(0);
+const readOnlyCount = readonly(count);
+
+console.log(readOnlyCount.value); // 0
+// readOnlyCount.value = 1; // TypeScript error!
+```
+
+## Untrack
+
+Read signals without creating dependencies:
+
+```ts
+import { untrack } from '@bquery/bquery/reactive';
+
+effect(() => {
+  // This will NOT re-run when `other` changes
+  const val = untrack(() => other.value);
+  console.log(count.value, val);
+});
+```
+
+## Type Guards
+
+Check if a value is a signal or computed:
+
+```ts
+import { isSignal, isComputed } from '@bquery/bquery/reactive';
+
+const count = signal(0);
+const doubled = computed(() => count.value * 2);
+
+isSignal(count); // true
+isSignal(doubled); // false
+isComputed(doubled); // true
+isComputed(count); // false
 ```

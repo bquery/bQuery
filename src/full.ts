@@ -49,10 +49,15 @@ export {
   batch,
   computed,
   effect,
+  isComputed,
+  isSignal,
   persistedSignal,
+  readonly,
   signal,
+  untrack,
+  watch,
 } from './reactive/index';
-export type { CleanupFn, Observer } from './reactive/index';
+export type { CleanupFn, Observer, ReadonlySignal } from './reactive/index';
 
 // ============================================================================
 // Component Module: Web Components helper with Shadow DOM

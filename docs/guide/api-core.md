@@ -71,6 +71,18 @@ All mutating methods are chainable and return `this`.
 - `once(event, handler)`
 - `off(event, handler)`
 - `trigger(event, detail?)`
+- `delegate(event, selector, handler)` – event delegation for dynamic content
+
+### Event Delegation
+
+Event delegation allows handling events on dynamically added elements:
+
+```ts
+// Handle clicks on .item elements, even if added later
+$('#list').delegate('click', '.item', (event, target) => {
+  console.log('Clicked:', target.textContent);
+});
+```
 
 ### Traversal & utilities
 
@@ -89,6 +101,42 @@ All mutating methods are chainable and return `this`.
 - `offset()`
 - `focus()` / `blur()`
 - `raw` (getter) / `node` (getter)
+
+### DOM Manipulation
+
+- `wrap(wrapper)` – wrap element with new parent
+- `unwrap()` – remove parent, keeping element
+- `replaceWith(content)` – replace element with new content
+- `scrollTo(options?)` – scroll element into view
+
+```ts
+// Wrap element
+$('#content').wrap('<div class="wrapper"></div>');
+
+// Unwrap (remove parent)
+$('#content').unwrap();
+
+// Replace element
+$('#old').replaceWith('<div id="new">New content</div>');
+
+// Smooth scroll to element
+$('#section').scrollTo({ behavior: 'smooth', block: 'center' });
+```
+
+### Form Serialization
+
+- `serialize()` – returns form data as object
+- `serializeString()` – returns URL-encoded string
+
+```ts
+// Get form data as object
+const data = $('form').serialize();
+// { name: 'John', email: 'john@example.com' }
+
+// Get as query string
+const query = $('form').serializeString();
+// 'name=John&email=john%40example.com'
+```
 
 ## BQueryCollection (multi-element wrapper)
 
@@ -128,6 +176,7 @@ All mutating methods are chainable and apply to every element. Getter methods re
 - `once(event, handler)`
 - `off(event, handler)`
 - `trigger(event, detail?)`
+- `delegate(event, selector, handler)` – event delegation
 
 ## Utilities
 

@@ -180,3 +180,37 @@ describe('utils/clone', () => {
     expect(cloned.nested).not.toBe(original.nested);
   });
 });
+
+describe('utils/security', () => {
+  it('isPrototypePollutionKey identifies dangerous keys', () => {
+    expect(utils.isPrototypePollutionKey('__proto__')).toBe(true);
+    expect(utils.isPrototypePollutionKey('constructor')).toBe(true);
+    expect(utils.isPrototypePollutionKey('prototype')).toBe(true);
+    expect(utils.isPrototypePollutionKey('normalKey')).toBe(false);
+  });
+
+  it('merge ignores prototype pollution keys', () => {
+    const malicious = JSON.parse('{"__proto__": {"polluted": true}}');
+    const result = utils.merge({}, malicious);
+
+    // Should not pollute Object prototype
+    expect(({} as Record<string, unknown>).polluted).toBeUndefined();
+    // The key should not be an own property of the result
+    expect(Object.hasOwn(result, '__proto__')).toBe(false);
+  });
+
+  it('merge ignores constructor pollution', () => {
+    const malicious = JSON.parse('{"constructor": {"polluted": true}}');
+    const result = utils.merge({}, malicious);
+
+    // Constructor should not be an own property with polluted value
+    expect(Object.hasOwn(result, 'constructor')).toBe(false);
+  });
+
+  it('merge ignores prototype key', () => {
+    const malicious = JSON.parse('{"prototype": {"polluted": true}}');
+    const result = utils.merge({}, malicious);
+
+    expect(Object.hasOwn(result, 'prototype')).toBe(false);
+  });
+});

@@ -181,6 +181,48 @@ const DEFAULT_ALLOWED_TAGS = new Set([
 ]);
 
 /**
+ * Explicitly dangerous tags that should never be allowed.
+ * These are checked even if somehow added to allowTags.
+ */
+const DANGEROUS_TAGS = new Set([
+  'script',
+  'iframe',
+  'object',
+  'embed',
+  'link',
+  'meta',
+  'style',
+  'base',
+  'template',
+  'math',
+  'svg',
+  'foreignobject',
+  'noscript',
+]);
+
+/**
+ * Reserved IDs that could cause DOM clobbering attacks.
+ * These are prevented to avoid overwriting global browser objects.
+ */
+const RESERVED_IDS = new Set([
+  'document',
+  'window',
+  'location',
+  'top',
+  'self',
+  'parent',
+  'frames',
+  'history',
+  'navigator',
+  'screen',
+  'alert',
+  'confirm',
+  'prompt',
+  'eval',
+  'Function',
+]);
+
+/**
  * Default allowed attributes considered safe.
  */
 const DEFAULT_ALLOWED_ATTRIBUTES = new Set([
@@ -208,12 +250,12 @@ const DEFAULT_ALLOWED_ATTRIBUTES = new Set([
 /**
  * Dangerous attribute prefixes to always remove.
  */
-const DANGEROUS_ATTR_PREFIXES = ['on', 'formaction'];
+const DANGEROUS_ATTR_PREFIXES = ['on', 'formaction', 'xlink:', 'xmlns'];
 
 /**
  * Dangerous URL protocols to block.
  */
-const DANGEROUS_PROTOCOLS = ['javascript:', 'data:', 'vbscript:'];
+const DANGEROUS_PROTOCOLS = ['javascript:', 'data:', 'vbscript:', 'file:'];
 
 // ============================================================================
 // Core Sanitization
@@ -221,6 +263,7 @@ const DANGEROUS_PROTOCOLS = ['javascript:', 'data:', 'vbscript:'];
 
 /**
  * Check if an attribute name is allowed.
+ * @internal
  */
 const isAllowedAttribute = (
   name: string,
@@ -245,13 +288,35 @@ const isAllowedAttribute = (
 };
 
 /**
- * Normalize URL by removing control characters and whitespace.
+ * Check if an ID/name value could cause DOM clobbering.
+ * @internal
+ */
+const isSafeIdOrName = (value: string): boolean => {
+  const lowerValue = value.toLowerCase().trim();
+  return !RESERVED_IDS.has(lowerValue);
+};
+
+/**
+ * Normalize URL by removing control characters, whitespace, and Unicode tricks.
+ * Enhanced to prevent various bypass techniques.
+ * @internal
  */
 const normalizeUrl = (value: string): string =>
-  value.replace(/[\u0000-\u001F\u007F\s]+/g, '').toLowerCase();
+  value
+    // Remove null bytes and control characters
+    .replace(/[\u0000-\u001F\u007F]+/g, '')
+    // Remove zero-width characters that could hide malicious content
+    .replace(/[\u200B-\u200D\uFEFF\u2028\u2029]+/g, '')
+    // Remove escaped Unicode sequences
+    .replace(/\\u[\da-fA-F]{4}/g, '')
+    // Remove whitespace
+    .replace(/\s+/g, '')
+    // Normalize case
+    .toLowerCase();
 
 /**
  * Check if a URL value is safe.
+ * @internal
  */
 const isSafeUrl = (value: string): boolean => {
   const normalized = normalizeUrl(value);
@@ -263,6 +328,7 @@ const isSafeUrl = (value: string): boolean => {
 
 /**
  * Core sanitization logic (without Trusted Types wrapper).
+ * @internal
  */
 const sanitizeHtmlCore = (html: string, options: SanitizeOptions = {}): string => {
   const {
@@ -272,8 +338,12 @@ const sanitizeHtmlCore = (html: string, options: SanitizeOptions = {}): string =
     stripAllTags = false,
   } = options;
 
-  // Build combined allow sets
-  const allowedTags = new Set([...DEFAULT_ALLOWED_TAGS, ...allowTags.map((t) => t.toLowerCase())]);
+  // Build combined allow sets (excluding dangerous tags even if specified)
+  const allowedTags = new Set(
+    [...DEFAULT_ALLOWED_TAGS, ...allowTags.map((t) => t.toLowerCase())].filter(
+      (tag) => !DANGEROUS_TAGS.has(tag)
+    )
+  );
   const allowedAttrs = new Set([
     ...DEFAULT_ALLOWED_ATTRIBUTES,
     ...allowAttributes.map((a) => a.toLowerCase()),
@@ -296,6 +366,12 @@ const sanitizeHtmlCore = (html: string, options: SanitizeOptions = {}): string =
     const el = walker.currentNode as Element;
     const tagName = el.tagName.toLowerCase();
 
+    // Remove explicitly dangerous tags even if in allow list
+    if (DANGEROUS_TAGS.has(tagName)) {
+      toRemove.push(el);
+      continue;
+    }
+
     // Remove disallowed tags entirely
     if (!allowedTags.has(tagName)) {
       toRemove.push(el);
@@ -309,6 +385,12 @@ const sanitizeHtmlCore = (html: string, options: SanitizeOptions = {}): string =
 
       // Check if attribute is allowed
       if (!isAllowedAttribute(attrName, allowedAttrs, allowDataAttributes)) {
+        attrsToRemove.push(attr.name);
+        continue;
+      }
+
+      // Check for DOM clobbering on id and name attributes
+      if ((attrName === 'id' || attrName === 'name') && !isSafeIdOrName(attr.value)) {
         attrsToRemove.push(attr.name);
         continue;
       }

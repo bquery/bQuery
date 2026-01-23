@@ -36,15 +36,36 @@ component('user-card', {
 
 ## Props
 
-Props are defined with a `type` and optional `required`/`default`.
+Props are defined with a `type` and optional `required`/`default`/`validator`.
 
 ```ts
 props: {
   count: { type: Number, default: 0 },
   enabled: { type: Boolean, default: true },
   meta: { type: Object, default: {} },
+  age: {
+    type: Number,
+    default: 0,
+    validator: (v) => v >= 0 && v <= 150
+  },
 }
 ```
+
+### Prop validation
+
+Add a `validator` function to validate prop values:
+
+```ts
+props: {
+  email: {
+    type: String,
+    required: true,
+    validator: (v) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v),
+  },
+}
+```
+
+If validation fails, the component throws an error (caught by `onError` if defined).
 
 ### Prop coercion
 
@@ -70,9 +91,40 @@ el.setState('clicks', 1);
 
 ## Lifecycle hooks
 
+- `beforeMount()` – runs before the element renders (can modify initial state)
 - `connected()` – runs when the element mounts
-- `disconnected()` – runs on teardown
+- `beforeUpdate(props)` – runs before re-render; return `false` to prevent update
 - `updated()` – runs after re-render on prop changes
+- `disconnected()` – runs on teardown
+- `onError(error)` – handles errors during lifecycle/render
+
+```ts
+component('my-element', {
+  props: { count: { type: Number, default: 0 } },
+  beforeMount() {
+    console.log('About to mount');
+  },
+  connected() {
+    console.log('Mounted');
+  },
+  beforeUpdate(props) {
+    // Prevent update if count is negative
+    if (props.count < 0) return false;
+  },
+  updated() {
+    console.log('Updated');
+  },
+  disconnected() {
+    console.log('Disconnected');
+  },
+  onError(error) {
+    console.error('Error:', error);
+  },
+  render({ props }) {
+    return html`<div>Count: ${props.count}</div>`;
+  },
+});
+```
 
 ## Rendering helpers
 

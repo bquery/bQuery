@@ -316,6 +316,38 @@ export class BQueryCollection {
   }
 
   /**
+   * Adds a delegated event listener to all elements.
+   * Events are delegated to matching descendants.
+   *
+   * @param event - Event type to listen for
+   * @param selector - CSS selector to match against event targets
+   * @param handler - Event handler function
+   * @returns The instance for method chaining
+   *
+   * @example
+   * ```ts
+   * $$('.container').delegate('click', '.item', (e, target) => {
+   *   console.log('Clicked:', target.textContent);
+   * });
+   * ```
+   */
+  delegate(
+    event: string,
+    selector: string,
+    handler: (event: Event, target: Element) => void
+  ): this {
+    applyAll(this.elements, (el) => {
+      el.addEventListener(event, (e: Event) => {
+        const target = (e.target as Element).closest(selector);
+        if (target && el.contains(target)) {
+          handler(e, target);
+        }
+      });
+    });
+    return this;
+  }
+
+  /**
    * Removes all elements from the DOM.
    *
    * @returns The instance for method chaining

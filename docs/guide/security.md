@@ -20,6 +20,41 @@ import { sanitize } from '@bquery/bquery/security';
 const safe = sanitize('<div onclick="alert(1)">Hello</div>');
 ```
 
+### Dangerous Elements
+
+The following elements are **always removed**:
+
+- `script`, `style`, `iframe`, `frame`, `frameset`
+- `object`, `embed`, `applet`
+- `svg`, `math` (due to XSS vectors)
+- `template`, `slot`
+- `base`, `meta`, `link`, `noscript`
+
+### DOM Clobbering Protection
+
+Reserved IDs and names are stripped to prevent DOM clobbering attacks:
+
+- `document`, `window`, `location`, `navigator`
+- `cookie`, `domain`, `referrer`
+- `body`, `head`, `forms`, `images`, `links`, `scripts`
+- `children`, `parentNode`, `firstChild`, `lastChild`
+- `innerHTML`, `outerHTML`, `textContent`
+
+```ts
+// The id attribute is stripped
+sanitize('<form id="cookie">...</form>');
+```
+
+### Unicode Bypass Protection
+
+Zero-width Unicode characters are stripped from URLs to prevent bypass attacks:
+
+```ts
+// Zero-width characters in "javascript:" are stripped
+sanitize('<a href="java\u200Bscript:alert(1)">click</a>');
+// Result: <a>click</a>
+```
+
 ### Options
 
 - `allowTags?: string[]`

@@ -208,6 +208,88 @@ export class BQueryElement {
   }
 
   /**
+   * Wraps the element with the specified wrapper element or tag.
+   *
+   * @param wrapper - Tag name string or Element to wrap with
+   * @returns The instance for method chaining
+   *
+   * @example
+   * ```ts
+   * $('#content').wrap('div'); // Wraps with <div>
+   * $('#content').wrap(document.createElement('section'));
+   * ```
+   */
+  wrap(wrapper: string | Element): this {
+    const wrapperEl = typeof wrapper === 'string' ? document.createElement(wrapper) : wrapper;
+    this.element.parentNode?.insertBefore(wrapperEl, this.element);
+    wrapperEl.appendChild(this.element);
+    return this;
+  }
+
+  /**
+   * Removes the parent element, keeping this element in its place.
+   * Essentially the opposite of wrap().
+   *
+   * @returns The instance for method chaining
+   *
+   * @example
+   * ```ts
+   * // Before: <div><span id="text">Hello</span></div>
+   * $('#text').unwrap();
+   * // After: <span id="text">Hello</span>
+   * ```
+   */
+  unwrap(): this {
+    const parent = this.element.parentElement;
+    if (parent && parent.parentNode) {
+      parent.parentNode.insertBefore(this.element, parent);
+      parent.remove();
+    }
+    return this;
+  }
+
+  /**
+   * Replaces this element with new content.
+   *
+   * @param content - HTML string (sanitized) or Element to replace with
+   * @returns A new BQueryElement wrapping the replacement element
+   *
+   * @example
+   * ```ts
+   * const newEl = $('#old').replaceWith('<div id="new">Replaced</div>');
+   * ```
+   */
+  replaceWith(content: string | Element): BQueryElement {
+    let newEl: Element;
+    if (typeof content === 'string') {
+      const template = document.createElement('template');
+      template.innerHTML = sanitizeHtml(content);
+      newEl = template.content.firstElementChild ?? document.createElement('div');
+    } else {
+      newEl = content;
+    }
+    this.element.replaceWith(newEl);
+    return new BQueryElement(newEl);
+  }
+
+  /**
+   * Scrolls the element into view with configurable behavior.
+   *
+   * @param options - ScrollIntoView options or boolean for legacy behavior
+   * @returns The instance for method chaining
+   *
+   * @example
+   * ```ts
+   * $('#section').scrollTo(); // Smooth scroll
+   * $('#section').scrollTo({ behavior: 'instant', block: 'start' });
+   * ```
+   */
+  scrollTo(options: ScrollIntoViewOptions | boolean = { behavior: 'smooth' }): this {
+    this.element.scrollIntoView(options);
+    return this;
+  }
+
+  /**
    * Removes the element from the DOM.
    *
    * @returns The instance for method chaining (though element is now detached)
@@ -363,6 +445,37 @@ export class BQueryElement {
   }
 
   /**
+   * Adds a delegated event listener that only triggers for matching descendants.
+   * More efficient than adding listeners to many elements individually.
+   *
+   * @param event - Event type to listen for
+   * @param selector - CSS selector to match against event targets
+   * @param handler - Event handler function, receives the matched element as context
+   * @returns The instance for method chaining
+   *
+   * @example
+   * ```ts
+   * // Instead of adding listeners to each button:
+   * $('#list').delegate('click', '.item', (e, target) => {
+   *   console.log('Clicked item:', target.textContent);
+   * });
+   * ```
+   */
+  delegate(
+    event: string,
+    selector: string,
+    handler: (event: Event, target: Element) => void
+  ): this {
+    this.element.addEventListener(event, (e: Event) => {
+      const target = (e.target as Element).closest(selector);
+      if (target && this.element.contains(target)) {
+        handler(e, target);
+      }
+    });
+    return this;
+  }
+
+  /**
    * Checks if the element matches a CSS selector.
    *
    * @param selector - CSS selector to match against
@@ -449,6 +562,76 @@ export class BQueryElement {
     }
     input.value = newValue;
     return this;
+  }
+
+  /**
+   * Serializes form data to a plain object.
+   * Only works on form elements; returns empty object for non-forms.
+   *
+   * @returns Object with form field names as keys and values
+   *
+   * @example
+   * ```ts
+   * // For a form with <input name="email" value="test@example.com">
+   * const data = $('#myForm').serialize();
+   * // { email: 'test@example.com' }
+   * ```
+   */
+  serialize(): Record<string, string | string[]> {
+    const form = this.element as HTMLFormElement;
+    if (form.tagName.toLowerCase() !== 'form') {
+      return {};
+    }
+
+    const result: Record<string, string | string[]> = {};
+    const formData = new FormData(form);
+
+    for (const [key, value] of formData.entries()) {
+      if (typeof value !== 'string') continue; // Skip File objects
+
+      if (key in result) {
+        // Handle multiple values (e.g., checkboxes)
+        const existing = result[key];
+        if (Array.isArray(existing)) {
+          existing.push(value);
+        } else {
+          result[key] = [existing, value];
+        }
+      } else {
+        result[key] = value;
+      }
+    }
+
+    return result;
+  }
+
+  /**
+   * Serializes form data to a URL-encoded query string.
+   *
+   * @returns URL-encoded string suitable for form submission
+   *
+   * @example
+   * ```ts
+   * const queryString = $('#myForm').serializeString();
+   * // 'email=test%40example.com&name=John'
+   * ```
+   */
+  serializeString(): string {
+    const form = this.element as HTMLFormElement;
+    if (form.tagName.toLowerCase() !== 'form') {
+      return '';
+    }
+
+    const formData = new FormData(form);
+    const params = new URLSearchParams();
+
+    for (const [key, value] of formData.entries()) {
+      if (typeof value === 'string') {
+        params.append(key, value);
+      }
+    }
+
+    return params.toString();
   }
 
   /**

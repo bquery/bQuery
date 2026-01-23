@@ -63,6 +63,8 @@ export type PropDefinition<T = unknown> = {
   required?: boolean;
   /** Default value when prop is not provided */
   default?: T;
+  /** Optional validator function to validate prop values */
+  validator?: (value: T) => boolean;
 };
 
 /**
@@ -78,12 +80,18 @@ export type ComponentDefinition<TProps extends Record<string, unknown> = Record<
     state?: Record<string, unknown>;
     /** CSS styles scoped to the component's shadow DOM */
     styles?: string;
+    /** Lifecycle hook called before the component mounts (before first render) */
+    beforeMount?: () => void;
     /** Lifecycle hook called when component is added to DOM */
     connected?: () => void;
     /** Lifecycle hook called when component is removed from DOM */
     disconnected?: () => void;
+    /** Lifecycle hook called before an update render; return false to prevent */
+    beforeUpdate?: () => boolean | void;
     /** Lifecycle hook called after reactive updates trigger a render */
     updated?: () => void;
+    /** Error handler for errors during rendering or lifecycle */
+    onError?: (error: Error) => void;
     /** Render function returning HTML string */
     render: (context: {
       props: TProps;
@@ -263,23 +271,48 @@ export const component = <TProps extends Record<string, unknown>>(
      * Called when the element is added to the DOM.
      */
     connectedCallback(): void {
-      definition.connected?.call(this);
-      this.render();
+      try {
+        definition.beforeMount?.call(this);
+        definition.connected?.call(this);
+        this.render();
+      } catch (error) {
+        this.handleError(error as Error);
+      }
     }
 
     /**
      * Called when the element is removed from the DOM.
      */
     disconnectedCallback(): void {
-      definition.disconnected?.call(this);
+      try {
+        definition.disconnected?.call(this);
+      } catch (error) {
+        this.handleError(error as Error);
+      }
     }
 
     /**
      * Called when an observed attribute changes.
      */
     attributeChangedCallback(): void {
-      this.syncProps();
-      this.render(true);
+      try {
+        this.syncProps();
+        this.render(true);
+      } catch (error) {
+        this.handleError(error as Error);
+      }
+    }
+
+    /**
+     * Handles errors during component lifecycle.
+     * @internal
+     */
+    private handleError(error: Error): void {
+      if (definition.onError) {
+        definition.onError.call(this, error);
+      } else {
+        console.error(`bQuery component error in <${tagName}>:`, error);
+      }
     }
 
     /**
@@ -330,26 +363,36 @@ export const component = <TProps extends Record<string, unknown>>(
      * @internal
      */
     private render(triggerUpdated = false): void {
-      /**
-       * Emits a custom event from the component.
-       */
-      const emit = (event: string, detail?: unknown): void => {
-        this.dispatchEvent(new CustomEvent(event, { detail, bubbles: true, composed: true }));
-      };
+      try {
+        // Check beforeUpdate hook if this is an update
+        if (triggerUpdated && definition.beforeUpdate) {
+          const shouldUpdate = definition.beforeUpdate.call(this);
+          if (shouldUpdate === false) return;
+        }
 
-      if (!this.shadowRoot) return;
+        /**
+         * Emits a custom event from the component.
+         */
+        const emit = (event: string, detail?: unknown): void => {
+          this.dispatchEvent(new CustomEvent(event, { detail, bubbles: true, composed: true }));
+        };
 
-      const markup = definition.render({
-        props: this.props,
-        state: this.state,
-        emit,
-      });
+        if (!this.shadowRoot) return;
 
-      const styles = definition.styles ? `<style>${definition.styles}</style>` : '';
-      this.shadowRoot.innerHTML = `${styles}${markup}`;
+        const markup = definition.render({
+          props: this.props,
+          state: this.state,
+          emit,
+        });
 
-      if (triggerUpdated) {
-        definition.updated?.call(this);
+        const styles = definition.styles ? `<style>${definition.styles}</style>` : '';
+        this.shadowRoot.innerHTML = `${styles}${markup}`;
+
+        if (triggerUpdated) {
+          definition.updated?.call(this);
+        }
+      } catch (error) {
+        this.handleError(error as Error);
       }
     }
   }
