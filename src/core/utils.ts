@@ -49,11 +49,17 @@ export const utils = {
    * );
    * // Result: { a: 1, b: 2, nested: { x: 1, y: 2 } }
    * ```
+   *
+   * @security This method is protected against prototype pollution attacks.
+   * Keys like `__proto__`, `constructor`, and `prototype` are ignored.
    */
   merge<T extends Record<string, unknown>>(...sources: T[]): T {
     const result: Record<string, unknown> = {};
     for (const source of sources) {
       for (const [key, value] of Object.entries(source)) {
+        // Prevent prototype pollution attacks
+        if (utils.isPrototypePollutionKey(key)) continue;
+
         if (utils.isPlainObject(value) && utils.isPlainObject(result[key])) {
           result[key] = utils.merge(
             result[key] as Record<string, unknown>,
@@ -65,6 +71,19 @@ export const utils = {
       }
     }
     return result as T;
+  },
+
+  /**
+   * Checks if a key could cause prototype pollution.
+   * These keys are dangerous when used in object merging operations.
+   *
+   * @param key - The key to check
+   * @returns True if the key is a prototype pollution vector
+   *
+   * @internal
+   */
+  isPrototypePollutionKey(key: string): boolean {
+    return key === '__proto__' || key === 'constructor' || key === 'prototype';
   },
 
   /**

@@ -182,3 +182,130 @@ describe('batch', () => {
     expect(runs).toBe(2);
   });
 });
+
+describe('watch', () => {
+  it('tracks old and new values', async () => {
+    const { watch, signal } = await import('../src/reactive/signal');
+    const count = signal(0);
+    const changes: [number, number | undefined][] = [];
+
+    watch(count, (newVal, oldVal) => {
+      changes.push([newVal, oldVal]);
+    });
+
+    count.value = 1;
+    count.value = 2;
+
+    expect(changes).toEqual([
+      [1, 0],
+      [2, 1],
+    ]);
+  });
+
+  it('supports immediate option', async () => {
+    const { watch, signal } = await import('../src/reactive/signal');
+    const count = signal(5);
+    let called = false;
+
+    watch(
+      count,
+      (newVal, oldVal) => {
+        called = true;
+        expect(newVal).toBe(5);
+        expect(oldVal).toBe(undefined);
+      },
+      { immediate: true }
+    );
+
+    expect(called).toBe(true);
+  });
+
+  it('returns cleanup function', async () => {
+    const { watch, signal } = await import('../src/reactive/signal');
+    const count = signal(0);
+    let callCount = 0;
+
+    const cleanup = watch(count, () => {
+      callCount++;
+    });
+
+    count.value = 1;
+    expect(callCount).toBe(1);
+
+    cleanup();
+    count.value = 2;
+    expect(callCount).toBe(1);
+  });
+});
+
+describe('readonly', () => {
+  it('creates read-only wrapper', async () => {
+    const { readonly, signal } = await import('../src/reactive/signal');
+    const _count = signal(0);
+    const count = readonly(_count);
+
+    expect(count.value).toBe(0);
+
+    // Original can still be modified
+    _count.value = 5;
+    expect(count.value).toBe(5);
+  });
+
+  it('provides peek method', async () => {
+    const { readonly, signal } = await import('../src/reactive/signal');
+    const _count = signal(10);
+    const count = readonly(_count);
+
+    expect(count.peek()).toBe(10);
+  });
+});
+
+describe('untrack', () => {
+  it('prevents dependency tracking', async () => {
+    const { untrack, signal, effect } = await import('../src/reactive/signal');
+    const tracked = signal(0);
+    const untracked = signal(0);
+    let runs = 0;
+
+    effect(() => {
+      // This creates a dependency
+      void tracked.value;
+      // This does NOT create a dependency
+      untrack(() => untracked.value);
+      runs++;
+    });
+
+    expect(runs).toBe(1);
+
+    // Changes to tracked signal trigger effect
+    tracked.value = 1;
+    expect(runs).toBe(2);
+
+    // Changes to untracked signal do NOT trigger effect
+    untracked.value = 1;
+    expect(runs).toBe(2);
+  });
+});
+
+describe('isSignal / isComputed', () => {
+  it('identifies signals correctly', async () => {
+    const { isSignal, signal, computed } = await import('../src/reactive/signal');
+    const sig = signal(0);
+    const comp = computed(() => sig.value * 2);
+
+    expect(isSignal(sig)).toBe(true);
+    expect(isSignal(comp)).toBe(false);
+    expect(isSignal(42)).toBe(false);
+    expect(isSignal(null)).toBe(false);
+  });
+
+  it('identifies computed correctly', async () => {
+    const { isComputed, signal, computed } = await import('../src/reactive/signal');
+    const sig = signal(0);
+    const comp = computed(() => sig.value * 2);
+
+    expect(isComputed(comp)).toBe(true);
+    expect(isComputed(sig)).toBe(false);
+    expect(isComputed({})).toBe(false);
+  });
+});

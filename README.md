@@ -1,12 +1,19 @@
-# bQuery.js
+<p align="center">
+  <img src="assets/bquerry-logo.svg" alt="bQuery.js Logo" width="120" />
+</p>
 
-[![Repo](https://img.shields.io/badge/github-bquery%2Fbquery-24292f?logo=github)](https://github.com/bquery/bquery)
-[![Stars](https://img.shields.io/github/stars/bquery/bquery?style=flat&logo=github)](https://github.com/bquery/bquery/stargazers)
-[![Issues](https://img.shields.io/github/issues/bquery/bquery?style=flat&logo=github)](https://github.com/bquery/bquery/issues)
-[![License](https://img.shields.io/github/license/bquery/bquery?style=flat)](https://github.com/bquery/bquery/blob/main/LICENSE.md)
+<h1 align="center">bQuery.js</h1>
+
+<p align="center">
+
+[![Repo](https://img.shields.io/badge/github-bquery%2Fbquery-24292f?logo=github)](https://github.com/bQuery/bQuery)
+[![Stars](https://img.shields.io/github/stars/bquery/bquery?style=flat&logo=github)](https://github.com/bQuery/bQuery/stargazers)
+[![Issues](https://img.shields.io/github/issues/bquery/bquery?style=flat&logo=github)](https://github.com/bQuery/bQuery/issues)
+[![License](https://img.shields.io/github/license/bquery/bquery?style=flat)](https://github.com/bQuery/bQuery/blob/main/LICENSE.md)
 [![npm](https://img.shields.io/npm/v/@bquery/bquery)](https://www.npmjs.com/package/@bquery/bquery)
 [![Bundle Size](https://img.shields.io/bundlephobia/minzip/@bquery/bquery)](https://bundlephobia.com/package/@bquery/bquery)
 [![unpkg](https://img.shields.io/badge/unpkg-browse-blue?logo=unpkg)](https://unpkg.com/@bquery/bquery)
+[![CodeFactor](https://www.codefactor.io/repository/github/bquery/bquery/badge)](https://www.codefactor.io/repository/github/bquery/bquery)
 
 **The jQuery for the modern Web Platform.**
 
@@ -108,8 +115,24 @@ $('#save').on('click', (event) => {
   console.log('Saved', event.type);
 });
 
+// Event delegation for dynamic content
+$('#list').delegate('click', '.item', (event, target) => {
+  console.log('Item clicked', target.textContent);
+});
+
 // Method chaining
 $('#box').addClass('active').css({ opacity: '0.8' }).attr('data-state', 'ready');
+
+// DOM manipulation
+$('#content').wrap('<div class="wrapper"></div>');
+$('#wrapper').unwrap(); // Remove parent wrapper
+
+// Smooth scrolling
+$('#section').scrollTo({ behavior: 'smooth' });
+
+// Form serialization
+const formData = $('form').serialize(); // Returns object
+const queryString = $('form').serializeString(); // Returns URL-encoded string
 
 // Collections
 $$('.items').addClass('highlight');
@@ -118,7 +141,7 @@ $$('.items').addClass('highlight');
 ### Reactive – signals
 
 ```ts
-import { signal, computed, effect, batch } from '@bquery/bquery/reactive';
+import { signal, computed, effect, batch, watch, readonly } from '@bquery/bquery/reactive';
 
 const count = signal(0);
 const doubled = computed(() => count.value * 2);
@@ -126,6 +149,14 @@ const doubled = computed(() => count.value * 2);
 effect(() => {
   console.log('Count changed', count.value);
 });
+
+// Watch with cleanup support
+const stop = watch(count, (newVal, oldVal) => {
+  console.log(`Changed from ${oldVal} to ${newVal}`);
+});
+
+// Read-only signal wrapper
+const readOnlyCount = readonly(count);
 
 // Batch updates for performance
 batch(() => {
@@ -142,6 +173,21 @@ import { component, html } from '@bquery/bquery/component';
 component('user-card', {
   props: {
     username: { type: String, required: true },
+    age: { type: Number, validator: (v) => v >= 0 && v <= 150 },
+  },
+  // Extended lifecycle hooks
+  beforeMount() {
+    console.log('About to mount');
+  },
+  connected() {
+    console.log('Mounted');
+  },
+  beforeUpdate(props) {
+    // Return false to prevent update
+    return props.username !== '';
+  },
+  onError(error) {
+    console.error('Component error:', error);
   },
   render({ props }) {
     return html`<div>Hello ${props.username}</div>`;
@@ -172,8 +218,14 @@ await x.to(100);
 ```ts
 import { sanitize, escapeHtml } from '@bquery/bquery/security';
 
-// Sanitize HTML (removes dangerous elements)
+// Sanitize HTML (removes dangerous elements like script, iframe, svg)
 const safeHtml = sanitize(userInput);
+
+// DOM clobbering protection (reserved IDs are blocked)
+const safe = sanitize('<form id="cookie">...</form>'); // id stripped
+
+// Unicode bypass protection in URLs
+const urlSafe = sanitize('<a href="java\u200Bscript:alert(1)">click</a>');
 
 // Escape for text display
 const escaped = escapeHtml('<script>alert(1)</script>');
@@ -213,10 +265,12 @@ if (permission === 'granted') {
 
 - **Getting Started**: [docs/guide/getting-started.md](docs/guide/getting-started.md)
 - **Core API**: [docs/guide/api-core.md](docs/guide/api-core.md)
+- **Agents**: [docs/guide/agents.md](docs/guide/agents.md)
 - **Components**: [docs/guide/components.md](docs/guide/components.md)
 - **Reactivity**: [docs/guide/reactive.md](docs/guide/reactive.md)
 - **Motion**: [docs/guide/motion.md](docs/guide/motion.md)
 - **Security**: [docs/guide/security.md](docs/guide/security.md)
+- **Platform**: [docs/guide/platform.md](docs/guide/platform.md)
 
 ## Local Development
 

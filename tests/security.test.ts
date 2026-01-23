@@ -170,3 +170,60 @@ describe('security/isTrustedTypesSupported', () => {
     expect(typeof result).toBe('boolean');
   });
 });
+
+describe('security/enhanced protections', () => {
+  it('removes dangerous tags even if explicitly allowed', () => {
+    // Try to allow dangerous tags - they should still be blocked
+    const result = sanitizeHtml('<script>alert(1)</script>', {
+      allowTags: ['script'],
+    });
+    expect(result).not.toContain('<script>');
+  });
+
+  it('blocks iframe tags', () => {
+    const result = sanitizeHtml('<iframe src="evil.com"></iframe>');
+    expect(result).not.toContain('<iframe');
+  });
+
+  it('blocks object/embed tags', () => {
+    const result = sanitizeHtml('<object data="x"></object><embed src="y">');
+    expect(result).not.toContain('<object');
+    expect(result).not.toContain('<embed');
+  });
+
+  it('blocks template tags', () => {
+    const result = sanitizeHtml('<template><script>alert(1)</script></template>');
+    expect(result).not.toContain('<template');
+  });
+
+  it('blocks svg tags', () => {
+    const result = sanitizeHtml('<svg onload="alert(1)"></svg>');
+    expect(result).not.toContain('<svg');
+  });
+
+  it('removes xlink: attributes', () => {
+    const result = sanitizeHtml('<a xlink:href="javascript:alert(1)">Link</a>');
+    expect(result).not.toContain('xlink:');
+  });
+
+  it('removes file: protocol URLs', () => {
+    const result = sanitizeHtml('<a href="file:///etc/passwd">File</a>');
+    expect(result).not.toContain('file:');
+  });
+
+  it('prevents DOM clobbering via reserved IDs', () => {
+    const result = sanitizeHtml('<div id="document">Test</div>');
+    expect(result).not.toContain('id="document"');
+  });
+
+  it('prevents DOM clobbering via reserved names', () => {
+    const result = sanitizeHtml('<input name="location">');
+    expect(result).not.toContain('name="location"');
+  });
+
+  it('handles Unicode bypass attempts', () => {
+    // Zero-width characters shouldn't bypass protocol check
+    const result = sanitizeHtml('<a href="java\u200Bscript:alert(1)">Link</a>');
+    expect(result).not.toContain('javascript:');
+  });
+});
