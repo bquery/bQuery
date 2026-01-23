@@ -632,4 +632,91 @@ describe('core/BQueryElement - new methods', () => {
     const str = wrapped.serializeString();
     expect(str).toBe('');
   });
+
+  it('undelegate removes delegated event listener', () => {
+    const container = document.createElement('div');
+    container.innerHTML = '<button class="btn">Click</button>';
+    document.body.appendChild(container);
+
+    const wrapped = new BQueryElement(container);
+    let clickCount = 0;
+
+    const handler = (_e: Event, _target: Element) => {
+      clickCount++;
+    };
+
+    wrapped.delegate('click', '.btn', handler);
+
+    const btn = container.querySelector('.btn')!;
+    btn.dispatchEvent(new Event('click', { bubbles: true }));
+    expect(clickCount).toBe(1);
+
+    // Remove the delegated listener
+    wrapped.undelegate('click', '.btn', handler);
+
+    btn.dispatchEvent(new Event('click', { bubbles: true }));
+    expect(clickCount).toBe(1); // Should not increment
+
+    container.remove();
+  });
+});
+
+describe('core/BQueryCollection - delegate/undelegate', () => {
+  it('delegate handles delegated events on collection', () => {
+    const container1 = document.createElement('div');
+    container1.innerHTML = '<button class="btn">Click 1</button>';
+    const container2 = document.createElement('div');
+    container2.innerHTML = '<button class="btn">Click 2</button>';
+    document.body.appendChild(container1);
+    document.body.appendChild(container2);
+
+    const collection = new BQueryCollection([container1, container2]);
+    const clickedTargets: Element[] = [];
+
+    collection.delegate('click', '.btn', (_e, target) => {
+      clickedTargets.push(target);
+    });
+
+    container1.querySelector('.btn')!.dispatchEvent(new Event('click', { bubbles: true }));
+    container2.querySelector('.btn')!.dispatchEvent(new Event('click', { bubbles: true }));
+
+    expect(clickedTargets.length).toBe(2);
+    expect(clickedTargets[0]).toBe(container1.querySelector('.btn'));
+    expect(clickedTargets[1]).toBe(container2.querySelector('.btn'));
+
+    container1.remove();
+    container2.remove();
+  });
+
+  it('undelegate removes delegated event listener from collection', () => {
+    const container1 = document.createElement('div');
+    container1.innerHTML = '<button class="btn">Click 1</button>';
+    const container2 = document.createElement('div');
+    container2.innerHTML = '<button class="btn">Click 2</button>';
+    document.body.appendChild(container1);
+    document.body.appendChild(container2);
+
+    const collection = new BQueryCollection([container1, container2]);
+    let clickCount = 0;
+
+    const handler = (_e: Event, _target: Element) => {
+      clickCount++;
+    };
+
+    collection.delegate('click', '.btn', handler);
+
+    container1.querySelector('.btn')!.dispatchEvent(new Event('click', { bubbles: true }));
+    container2.querySelector('.btn')!.dispatchEvent(new Event('click', { bubbles: true }));
+    expect(clickCount).toBe(2);
+
+    // Remove the delegated listener
+    collection.undelegate('click', '.btn', handler);
+
+    container1.querySelector('.btn')!.dispatchEvent(new Event('click', { bubbles: true }));
+    container2.querySelector('.btn')!.dispatchEvent(new Event('click', { bubbles: true }));
+    expect(clickCount).toBe(2); // Should not increment
+
+    container1.remove();
+    container2.remove();
+  });
 });

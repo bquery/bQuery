@@ -337,4 +337,264 @@ describe('component/component', () => {
 
     el.remove();
   });
+
+  it('calls validator after prop coercion with correct type', () => {
+    const tagName = `test-validator-after-coercion-${Date.now()}`;
+    const receivedValues: unknown[] = [];
+    const receivedTypes: string[] = [];
+
+    component<{ count: number }>(tagName, {
+      props: {
+        count: {
+          type: Number,
+          default: 0,
+          validator: (value) => {
+            receivedValues.push(value);
+            receivedTypes.push(typeof value);
+            return true;
+          },
+        },
+      },
+      render: ({ props }) => html`<div>Count: ${props.count}</div>`,
+    });
+
+    const el = document.createElement(tagName);
+    el.setAttribute('count', '42'); // String "42" should be coerced to number 42
+    document.body.appendChild(el);
+
+    // Validator should receive the coerced number, not the raw string
+    expect(receivedValues).toContain(42);
+    expect(receivedTypes).toContain('number');
+    expect(receivedValues).not.toContain('42');
+    expect(receivedTypes).not.toContain('string');
+
+    el.remove();
+  });
+
+  it('validator receives coerced boolean values', () => {
+    const tagName = `test-validator-boolean-coercion-${Date.now()}`;
+    const receivedValues: unknown[] = [];
+
+    component<{ active: boolean }>(tagName, {
+      props: {
+        active: {
+          type: Boolean,
+          default: false,
+          validator: (value) => {
+            receivedValues.push(value);
+            return typeof value === 'boolean';
+          },
+        },
+      },
+      render: ({ props }) => html`<div>Active: ${props.active}</div>`,
+    });
+
+    const el = document.createElement(tagName);
+    el.setAttribute('active', 'true'); // String "true" should be coerced to boolean true
+    document.body.appendChild(el);
+
+    // Validator should receive boolean true, not string "true"
+    expect(receivedValues).toContain(true);
+    expect(receivedValues).not.toContain('true');
+
+    el.remove();
+  });
+
+  it('validation failure throws error with prop name and value in message', () => {
+    const tagName = `test-validator-error-message-${Date.now()}`;
+    const capturedErrors: Error[] = [];
+
+    component<{ age: number }>(tagName, {
+      props: {
+        age: {
+          type: Number,
+          default: 18, // Valid default to allow initial mount
+          validator: (value) => value >= 18,
+        },
+      },
+      onError(error) {
+        capturedErrors.push(error);
+      },
+      render: ({ props }) => html`<div>Age: ${props.age}</div>`,
+    });
+
+    const el = document.createElement(tagName);
+    document.body.appendChild(el);
+
+    // Now trigger validation failure with an update
+    el.setAttribute('age', '10'); // Invalid: under 18
+
+    expect(capturedErrors).toHaveLength(1);
+    expect(capturedErrors[0].message).toContain('validation failed');
+    expect(capturedErrors[0].message).toContain('age');
+    expect(capturedErrors[0].message).toContain('10');
+
+    el.remove();
+  });
+
+  it('validator is called on attribute updates', () => {
+    const tagName = `test-validator-on-update-${Date.now()}`;
+    let validatorCallCount = 0;
+    const capturedErrors: Error[] = [];
+
+    component<{ count: number }>(tagName, {
+      props: {
+        count: {
+          type: Number,
+          default: 0,
+          validator: (value) => {
+            validatorCallCount++;
+            return value <= 50;
+          },
+        },
+      },
+      onError(error) {
+        capturedErrors.push(error);
+      },
+      render: ({ props }) => html`<div>Count: ${props.count}</div>`,
+    });
+
+    const el = document.createElement(tagName);
+    el.setAttribute('count', '10'); // Valid
+    document.body.appendChild(el);
+
+    const initialCallCount = validatorCallCount;
+    expect(capturedErrors).toHaveLength(0);
+
+    // Update with valid value
+    el.setAttribute('count', '20');
+    expect(validatorCallCount).toBeGreaterThan(initialCallCount);
+    expect(capturedErrors).toHaveLength(0);
+
+    // Update with invalid value
+    el.setAttribute('count', '100');
+    expect(capturedErrors).toHaveLength(1);
+
+    el.remove();
+  });
+
+  it('validator is not called for undefined default values', () => {
+    const tagName = `test-validator-undefined-${Date.now()}`;
+    let validatorCalled = false;
+
+    component<{ optional: string }>(tagName, {
+      props: {
+        optional: {
+          type: String,
+          required: false,
+          // No default, value will be undefined
+          validator: () => {
+            validatorCalled = true;
+            return true;
+          },
+        },
+      },
+      render: () => html`<div>Test</div>`,
+    });
+
+    const el = document.createElement(tagName);
+    document.body.appendChild(el);
+
+    // Validator should not be called when value is undefined
+    expect(validatorCalled).toBe(false);
+
+    el.remove();
+  });
+
+  it('validator is called for default values when provided', () => {
+    const tagName = `test-validator-default-${Date.now()}`;
+    const receivedValues: unknown[] = [];
+
+    component<{ count: number }>(tagName, {
+      props: {
+        count: {
+          type: Number,
+          default: 5,
+          validator: (value) => {
+            receivedValues.push(value);
+            return true;
+          },
+        },
+      },
+      render: ({ props }) => html`<div>Count: ${props.count}</div>`,
+    });
+
+    const el = document.createElement(tagName);
+    // No attribute set, should use default value
+    document.body.appendChild(el);
+
+    // Validator should be called with the default value
+    expect(receivedValues).toContain(5);
+
+    el.remove();
+  });
+
+  it('validation errors are caught by onError handler', () => {
+    const tagName = `test-validator-onerror-${Date.now()}`;
+    const capturedErrors: Error[] = [];
+
+    component<{ email: string }>(tagName, {
+      props: {
+        email: {
+          type: String,
+          default: 'default@example.com', // Valid default to allow initial mount
+          validator: (value) => value.includes('@'),
+        },
+      },
+      onError(error) {
+        capturedErrors.push(error);
+      },
+      render: ({ props }) => html`<div>Email: ${props.email}</div>`,
+    });
+
+    const el = document.createElement(tagName);
+    document.body.appendChild(el);
+
+    // Initial mount should succeed with valid default
+    expect(capturedErrors).toHaveLength(0);
+
+    // Now trigger validation failure with an invalid update
+    el.setAttribute('email', 'invalid-email'); // No @ sign
+
+    expect(capturedErrors).toHaveLength(1);
+    expect(capturedErrors[0]).toBeInstanceOf(Error);
+    expect(capturedErrors[0].message).toContain('validation failed');
+    expect(capturedErrors[0].message).toContain('email');
+
+    el.remove();
+  });
+
+  it('validator with Object prop receives parsed JSON', () => {
+    const tagName = `test-validator-object-${Date.now()}`;
+    const receivedValues: unknown[] = [];
+
+    component<{ config: { enabled: boolean } }>(tagName, {
+      props: {
+        config: {
+          type: Object,
+          default: { enabled: false },
+          validator: (value) => {
+            receivedValues.push(value);
+            return typeof value === 'object' && value !== null;
+          },
+        },
+      },
+      render: () => html`<div>Config</div>`,
+    });
+
+    const el = document.createElement(tagName);
+    el.setAttribute('config', '{"enabled":true}');
+    document.body.appendChild(el);
+
+    // Validator is called for both initial default and attribute value
+    // We check that at least one call received the parsed object
+    const parsedObjectCalls = receivedValues.filter(
+      (v) => typeof v === 'object' && v !== null && (v as { enabled: boolean }).enabled === true
+    );
+    expect(parsedObjectCalls.length).toBeGreaterThanOrEqual(1);
+    // Ensure no raw JSON strings were passed
+    expect(receivedValues).not.toContain('{"enabled":true}');
+
+    el.remove();
+  });
 });

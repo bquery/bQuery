@@ -2,6 +2,9 @@ import { sanitizeHtml } from '../security/sanitize';
 import { BQueryElement } from './element';
 import { applyAll } from './shared';
 
+/** Handler signature for delegated events */
+type DelegatedHandler = (event: Event, target: Element) => void;
+
 /**
  * Wrapper for multiple DOM elements.
  * Provides batch operations on a collection of elements with chainable API.
@@ -20,6 +23,17 @@ import { applyAll } from './shared';
  * ```
  */
 export class BQueryCollection {
+  /**
+   * Stores delegated event handlers for cleanup via undelegate().
+   * Outer map: element -> (key -> (handler -> wrapper))
+   * Key format: `${event}:${selector}`
+   * @internal
+   */
+  private readonly delegatedHandlers = new WeakMap<
+    Element,
+    Map<string, Map<DelegatedHandler, EventListener>>
+  >();
+
   /**
    * Creates a new collection wrapper.
    * @param elements - Array of DOM elements to wrap
@@ -319,6 +333,8 @@ export class BQueryCollection {
    * Adds a delegated event listener to all elements.
    * Events are delegated to matching descendants.
    *
+   * Use `undelegate()` to remove the listener later.
+   *
    * @param event - Event type to listen for
    * @param selector - CSS selector to match against event targets
    * @param handler - Event handler function
@@ -326,9 +342,11 @@ export class BQueryCollection {
    *
    * @example
    * ```ts
-   * $$('.container').delegate('click', '.item', (e, target) => {
-   *   console.log('Clicked:', target.textContent);
-   * });
+   * const handler = (e, target) => console.log('Clicked:', target.textContent);
+   * $$('.container').delegate('click', '.item', handler);
+   *
+   * // Later, remove the delegated listener:
+   * $$('.container').undelegate('click', '.item', handler);
    * ```
    */
   delegate(
@@ -336,14 +354,79 @@ export class BQueryCollection {
     selector: string,
     handler: (event: Event, target: Element) => void
   ): this {
+    const key = `${event}:${selector}`;
+
     applyAll(this.elements, (el) => {
-      el.addEventListener(event, (e: Event) => {
+      const wrapper: EventListener = (e: Event) => {
         const target = (e.target as Element).closest(selector);
         if (target && el.contains(target)) {
           handler(e, target);
         }
-      });
+      };
+
+      // Get or create the handler maps for this element
+      if (!this.delegatedHandlers.has(el)) {
+        this.delegatedHandlers.set(el, new Map());
+      }
+      const elementHandlers = this.delegatedHandlers.get(el)!;
+
+      if (!elementHandlers.has(key)) {
+        elementHandlers.set(key, new Map());
+      }
+      elementHandlers.get(key)!.set(handler, wrapper);
+
+      el.addEventListener(event, wrapper);
     });
+
+    return this;
+  }
+
+  /**
+   * Removes a delegated event listener previously added with `delegate()`.
+   *
+   * @param event - Event type that was registered
+   * @param selector - CSS selector that was used
+   * @param handler - The original handler function passed to delegate()
+   * @returns The instance for method chaining
+   *
+   * @example
+   * ```ts
+   * const handler = (e, target) => console.log('Clicked:', target.textContent);
+   * $$('.container').delegate('click', '.item', handler);
+   *
+   * // Remove the delegated listener:
+   * $$('.container').undelegate('click', '.item', handler);
+   * ```
+   */
+  undelegate(
+    event: string,
+    selector: string,
+    handler: (event: Event, target: Element) => void
+  ): this {
+    const key = `${event}:${selector}`;
+
+    applyAll(this.elements, (el) => {
+      const elementHandlers = this.delegatedHandlers.get(el);
+      if (!elementHandlers) return;
+
+      const handlers = elementHandlers.get(key);
+      if (!handlers) return;
+
+      const wrapper = handlers.get(handler);
+      if (wrapper) {
+        el.removeEventListener(event, wrapper);
+        handlers.delete(handler);
+
+        // Clean up empty maps
+        if (handlers.size === 0) {
+          elementHandlers.delete(key);
+        }
+        if (elementHandlers.size === 0) {
+          this.delegatedHandlers.delete(el);
+        }
+      }
+    });
+
     return this;
   }
 
