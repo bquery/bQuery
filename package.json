@@ -89,11 +89,11 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/bquery/bquery.git"
+    "url": "https://github.com/bQuery/bQuery.git"
   },
-  "homepage": "https://bquery.flausch-code.de",
+  "homepage": "https://bQuery.flausch-code.de",
   "bugs": {
-    "url": "https://github.com/bquery/bquery/issues"
+    "url": "https://github.com/bQuery/bQuery/issues"
   },
   "publishConfig": {
     "access": "public",
