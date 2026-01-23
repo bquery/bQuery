@@ -96,4 +96,245 @@ describe('component/component', () => {
 
     el.remove();
   });
+
+  it('calls beforeMount before the first render', () => {
+    const tagName = `test-before-mount-${Date.now()}`;
+    const callOrder: string[] = [];
+
+    component(tagName, {
+      props: {},
+      beforeMount() {
+        callOrder.push('beforeMount');
+      },
+      connected() {
+        callOrder.push('connected');
+      },
+      render: () => {
+        callOrder.push('render');
+        return html`<div>Test</div>`;
+      },
+    });
+
+    const el = document.createElement(tagName);
+    document.body.appendChild(el);
+
+    expect(callOrder).toEqual(['beforeMount', 'connected', 'render']);
+
+    el.remove();
+  });
+
+  it('calls beforeUpdate before re-renders and receives props', () => {
+    const tagName = `test-before-update-${Date.now()}`;
+    const receivedProps: unknown[] = [];
+    let renderCount = 0;
+
+    component<{ count: number }>(tagName, {
+      props: {
+        count: { type: Number, default: 0 },
+      },
+      beforeUpdate(props) {
+        receivedProps.push({ ...props });
+        return true; // allow update
+      },
+      render: ({ props }) => {
+        renderCount++;
+        return html`<div>Count: ${props.count}</div>`;
+      },
+    });
+
+    const el = document.createElement(tagName);
+    document.body.appendChild(el);
+
+    expect(renderCount).toBe(1);
+    expect(receivedProps).toHaveLength(0); // beforeUpdate not called on initial render
+
+    // Trigger an attribute change after mounting
+    el.setAttribute('count', '10');
+
+    expect(renderCount).toBe(2);
+    expect(receivedProps).toHaveLength(1);
+    expect(receivedProps[0]).toEqual({ count: 10 });
+
+    el.remove();
+  });
+
+  it('beforeUpdate returning false prevents re-render', () => {
+    const tagName = `test-before-update-prevent-${Date.now()}`;
+    let renderCount = 0;
+
+    component<{ count: number }>(tagName, {
+      props: {
+        count: { type: Number, default: 0 },
+      },
+      beforeUpdate(props) {
+        // Prevent update if count is negative
+        if (props.count < 0) return false;
+      },
+      render: ({ props }) => {
+        renderCount++;
+        return html`<div>Count: ${props.count}</div>`;
+      },
+    });
+
+    const el = document.createElement(tagName);
+    document.body.appendChild(el);
+
+    expect(renderCount).toBe(1);
+
+    // Valid update - should render
+    el.setAttribute('count', '10');
+    expect(renderCount).toBe(2);
+
+    // Negative count - should be prevented
+    el.setAttribute('count', '-5');
+    expect(renderCount).toBe(2); // No additional render
+
+    el.remove();
+  });
+
+  it('calls updated after re-renders', () => {
+    const tagName = `test-updated-${Date.now()}`;
+    const callOrder: string[] = [];
+
+    component<{ count: number }>(tagName, {
+      props: {
+        count: { type: Number, default: 0 },
+      },
+      beforeUpdate() {
+        callOrder.push('beforeUpdate');
+        return true;
+      },
+      updated() {
+        callOrder.push('updated');
+      },
+      render: () => {
+        callOrder.push('render');
+        return html`<div>Test</div>`;
+      },
+    });
+
+    const el = document.createElement(tagName);
+    document.body.appendChild(el);
+
+    callOrder.length = 0; // Clear initial render calls
+
+    el.setAttribute('count', '10');
+
+    expect(callOrder).toEqual(['beforeUpdate', 'render', 'updated']);
+
+    el.remove();
+  });
+
+  it('calls onError when lifecycle methods throw', () => {
+    const tagName = `test-on-error-lifecycle-${Date.now()}`;
+    const capturedErrors: Error[] = [];
+
+    component(tagName, {
+      props: {},
+      connected() {
+        throw new Error('Connected error');
+      },
+      onError(error) {
+        capturedErrors.push(error);
+      },
+      render: () => html`<div>Test</div>`,
+    });
+
+    const el = document.createElement(tagName);
+    document.body.appendChild(el);
+
+    expect(capturedErrors).toHaveLength(1);
+    expect(capturedErrors[0].message).toBe('Connected error');
+
+    el.remove();
+  });
+
+  it('calls onError when render throws', () => {
+    const tagName = `test-on-error-render-${Date.now()}`;
+    const capturedErrors: Error[] = [];
+
+    component(tagName, {
+      props: {},
+      onError(error) {
+        capturedErrors.push(error);
+      },
+      render: () => {
+        throw new Error('Render error');
+      },
+    });
+
+    const el = document.createElement(tagName);
+    document.body.appendChild(el);
+
+    expect(capturedErrors).toHaveLength(1);
+    expect(capturedErrors[0].message).toBe('Render error');
+
+    el.remove();
+  });
+
+  it('calls onError when beforeUpdate throws', () => {
+    const tagName = `test-on-error-before-update-${Date.now()}`;
+    const capturedErrors: Error[] = [];
+
+    component<{ count: number }>(tagName, {
+      props: {
+        count: { type: Number, default: 0 },
+      },
+      beforeUpdate() {
+        throw new Error('BeforeUpdate error');
+      },
+      onError(error) {
+        capturedErrors.push(error);
+      },
+      render: ({ props }) => html`<div>Count: ${props.count}</div>`,
+    });
+
+    const el = document.createElement(tagName);
+    document.body.appendChild(el);
+
+    // Initial render should work (beforeUpdate not called)
+    expect(capturedErrors).toHaveLength(0);
+
+    // Trigger an update to invoke beforeUpdate
+    el.setAttribute('count', '10');
+
+    expect(capturedErrors).toHaveLength(1);
+    expect(capturedErrors[0].message).toBe('BeforeUpdate error');
+
+    el.remove();
+  });
+
+  it('validates prop values using validator function', () => {
+    const tagName = `test-prop-validator-${Date.now()}`;
+    const capturedErrors: Error[] = [];
+
+    component<{ count: number }>(tagName, {
+      props: {
+        count: {
+          type: Number,
+          default: 0,
+          validator: (value) => value >= 0 && value <= 100,
+        },
+      },
+      onError(error) {
+        capturedErrors.push(error);
+      },
+      render: ({ props }) => html`<div>Count: ${props.count}</div>`,
+    });
+
+    const el = document.createElement(tagName);
+    el.setAttribute('count', '50'); // Valid value
+    document.body.appendChild(el);
+
+    expect(capturedErrors).toHaveLength(0);
+
+    // Invalid value - should trigger validation error
+    el.setAttribute('count', '150');
+
+    expect(capturedErrors).toHaveLength(1);
+    expect(capturedErrors[0].message).toContain('validation failed');
+    expect(capturedErrors[0].message).toContain('count');
+
+    el.remove();
+  });
 });

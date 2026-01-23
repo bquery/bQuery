@@ -187,13 +187,17 @@ const DEFAULT_ALLOWED_TAGS = new Set([
 const DANGEROUS_TAGS = new Set([
   'script',
   'iframe',
+  'frame',
+  'frameset',
   'object',
   'embed',
+  'applet',
   'link',
   'meta',
   'style',
   'base',
   'template',
+  'slot',
   'math',
   'svg',
   'foreignobject',
@@ -205,6 +209,7 @@ const DANGEROUS_TAGS = new Set([
  * These are prevented to avoid overwriting global browser objects.
  */
 const RESERVED_IDS = new Set([
+  // Global objects
   'document',
   'window',
   'location',
@@ -215,11 +220,31 @@ const RESERVED_IDS = new Set([
   'history',
   'navigator',
   'screen',
+  // Dangerous functions
   'alert',
   'confirm',
   'prompt',
   'eval',
   'Function',
+  // Document properties
+  'cookie',
+  'domain',
+  'referrer',
+  'body',
+  'head',
+  'forms',
+  'images',
+  'links',
+  'scripts',
+  // DOM traversal properties
+  'children',
+  'parentNode',
+  'firstChild',
+  'lastChild',
+  // Content manipulation
+  'innerHTML',
+  'outerHTML',
+  'textContent',
 ]);
 
 /**

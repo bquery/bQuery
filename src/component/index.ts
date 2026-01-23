@@ -87,7 +87,7 @@ export type ComponentDefinition<TProps extends Record<string, unknown> = Record<
     /** Lifecycle hook called when component is removed from DOM */
     disconnected?: () => void;
     /** Lifecycle hook called before an update render; return false to prevent */
-    beforeUpdate?: () => boolean | void;
+    beforeUpdate?: (props: TProps) => boolean | void;
     /** Lifecycle hook called after reactive updates trigger a render */
     updated?: () => void;
     /** Error handler for errors during rendering or lifecycle */
@@ -344,17 +344,28 @@ export const component = <TProps extends Record<string, unknown>>(
       const props = definition.props ?? {};
       for (const [key, config] of Object.entries(props) as [string, PropDefinition][]) {
         const attrValue = this.getAttribute(key);
+        let value: unknown;
+
         if (attrValue == null) {
           if (config.required && config.default === undefined) {
             throw new Error(`bQuery component: missing required prop "${key}"`);
           }
-          (this.props as Record<string, unknown>)[key] = config.default ?? undefined;
-          continue;
+          value = config.default ?? undefined;
+        } else {
+          value = coercePropValue(attrValue, config);
         }
-        (this.props as Record<string, unknown>)[key] = coercePropValue(
-          attrValue,
-          config
-        ) as TProps[keyof TProps];
+
+        // Validate the prop value if a validator is provided
+        if (config.validator && value !== undefined) {
+          const isValid = config.validator(value);
+          if (!isValid) {
+            throw new Error(
+              `bQuery component: validation failed for prop "${key}" with value ${JSON.stringify(value)}`
+            );
+          }
+        }
+
+        (this.props as Record<string, unknown>)[key] = value;
       }
     }
 
@@ -366,7 +377,7 @@ export const component = <TProps extends Record<string, unknown>>(
       try {
         // Check beforeUpdate hook if this is an update
         if (triggerUpdated && definition.beforeUpdate) {
-          const shouldUpdate = definition.beforeUpdate.call(this);
+          const shouldUpdate = definition.beforeUpdate.call(this, this.props);
           if (shouldUpdate === false) return;
         }
 

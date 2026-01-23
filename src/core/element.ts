@@ -23,7 +23,17 @@ import { applyAll, toElementList } from './shared';
  *   .on('click', () => console.log('clicked'));
  * ```
  */
+/** Handler signature for delegated events */
+type DelegatedHandler = (event: Event, target: Element) => void;
+
 export class BQueryElement {
+  /**
+   * Stores delegated event handlers for cleanup via undelegate().
+   * Key format: `${event}:${selector}`
+   * @internal
+   */
+  private readonly delegatedHandlers = new Map<string, Map<DelegatedHandler, EventListener>>();
+
   /**
    * Creates a new BQueryElement wrapper.
    * @param element - The DOM element to wrap
@@ -448,6 +458,8 @@ export class BQueryElement {
    * Adds a delegated event listener that only triggers for matching descendants.
    * More efficient than adding listeners to many elements individually.
    *
+   * Use `undelegate()` to remove the listener later.
+   *
    * @param event - Event type to listen for
    * @param selector - CSS selector to match against event targets
    * @param handler - Event handler function, receives the matched element as context
@@ -456,9 +468,11 @@ export class BQueryElement {
    * @example
    * ```ts
    * // Instead of adding listeners to each button:
-   * $('#list').delegate('click', '.item', (e, target) => {
-   *   console.log('Clicked item:', target.textContent);
-   * });
+   * const handler = (e, target) => console.log('Clicked:', target.textContent);
+   * $('#list').delegate('click', '.item', handler);
+   *
+   * // Later, remove the delegated listener:
+   * $('#list').undelegate('click', '.item', handler);
    * ```
    */
   delegate(
@@ -466,12 +480,62 @@ export class BQueryElement {
     selector: string,
     handler: (event: Event, target: Element) => void
   ): this {
-    this.element.addEventListener(event, (e: Event) => {
+    const key = `${event}:${selector}`;
+    const wrapper: EventListener = (e: Event) => {
       const target = (e.target as Element).closest(selector);
       if (target && this.element.contains(target)) {
         handler(e, target);
       }
-    });
+    };
+
+    // Store the wrapper so it can be removed later
+    if (!this.delegatedHandlers.has(key)) {
+      this.delegatedHandlers.set(key, new Map());
+    }
+    this.delegatedHandlers.get(key)!.set(handler, wrapper);
+
+    this.element.addEventListener(event, wrapper);
+    return this;
+  }
+
+  /**
+   * Removes a delegated event listener previously added with `delegate()`.
+   *
+   * @param event - Event type that was registered
+   * @param selector - CSS selector that was used
+   * @param handler - The original handler function passed to delegate()
+   * @returns The instance for method chaining
+   *
+   * @example
+   * ```ts
+   * const handler = (e, target) => console.log('Clicked:', target.textContent);
+   * $('#list').delegate('click', '.item', handler);
+   *
+   * // Remove the delegated listener:
+   * $('#list').undelegate('click', '.item', handler);
+   * ```
+   */
+  undelegate(
+    event: string,
+    selector: string,
+    handler: (event: Event, target: Element) => void
+  ): this {
+    const key = `${event}:${selector}`;
+    const handlers = this.delegatedHandlers.get(key);
+
+    if (handlers) {
+      const wrapper = handlers.get(handler);
+      if (wrapper) {
+        this.element.removeEventListener(event, wrapper);
+        handlers.delete(handler);
+
+        // Clean up empty maps
+        if (handlers.size === 0) {
+          this.delegatedHandlers.delete(key);
+        }
+      }
+    }
+
     return this;
   }
 
