@@ -88,10 +88,11 @@ $('#el').raw.innerHTML = trustedContent;
 ### Component Definition
 
 ```ts
+// Sanitize untrusted props before interpolating into html templates
 component('my-element', {
   props: { name: { type: String, required: true } },
   styles: `.host { color: blue; }`,
-  render: ({ props }) => html`<span>${props.name}</span>`,
+  render: ({ props }) => html`<span>${sanitizeHtml(String(props.name))}</span>`,
 });
 ```
 
