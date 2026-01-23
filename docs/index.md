@@ -5,6 +5,9 @@ hero:
   name: bQuery.js
   text: The jQuery for the modern Web Platform.
   tagline: Zero build. Secure by default. DOM-first reactivity with modern primitives.
+  image:
+    src: /assets/bquerry-logo.svg
+    alt: bQuery Logo
   actions:
     - theme: brand
       text: Get started
