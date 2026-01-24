@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to Semantic Versioning.
 
+## [1.1.2] - 2026-01-24
+
+### Fixed
+
+- **Docs**: Fixed import paths and added error handling in agents documentation.
+
+### Security
+
+- Added `rel="noopener noreferrer"` to external links for improved security.
+
 ## [1.1.1] - 2026-01-24
 
 ### Fixed
