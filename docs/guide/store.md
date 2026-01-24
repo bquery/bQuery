@@ -55,7 +55,11 @@ counterStore.increment(); // Logs: "Count changed: 1"
 
 ## State
 
-State is defined via a factory function that returns the initial values:
+State is defined via a factory function that returns the initial values.
+
+::: warning Shallow Reactivity
+Store state uses **shallow reactivity**. Only top-level property assignments trigger reactive updates. Mutating nested objects directly (e.g., `store.nested.prop = value`) will NOT notify subscribers. Always replace the entire nested object or use `$patch`.
+:::
 
 ```ts
 const userStore = createStore({
@@ -73,9 +77,19 @@ const userStore = createStore({
 // Read state
 console.log(userStore.name);
 
-// Update state
+// Update state (top-level properties are reactive)
 userStore.name = 'Alice';
-userStore.preferences.theme = 'light';
+
+// ⚠️ Nested mutations do NOT trigger reactive updates:
+// userStore.preferences.theme = 'light'; // Won't notify subscribers!
+
+// ✅ Replace the entire nested object instead:
+userStore.preferences = { ...userStore.preferences, theme: 'light' };
+
+// ✅ Or use $patch for multiple updates:
+userStore.$patch((state) => {
+  state.preferences = { ...state.preferences, theme: 'light' };
+});
 ```
 
 ## Getters
@@ -165,12 +179,19 @@ userStore.$patch({
   email: 'bob@example.com',
 });
 
-// Function syntax
+// Function syntax for nested updates
 userStore.$patch((state) => {
-  state.preferences.theme = 'light';
-  state.preferences.notifications = false;
+  state.preferences = {
+    ...state.preferences,
+    theme: 'light',
+    notifications: false,
+  };
 });
 ```
+
+::: tip Nested Objects in $patch
+Even within `$patch`, you must replace nested objects entirely (using spread or`Object.assign`) to ensure reactive updates. Direct nested mutations like`state.preferences.theme = 'light'` will NOT trigger subscribers.
+:::
 
 ### $subscribe
 

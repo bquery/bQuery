@@ -520,8 +520,6 @@ const handleFor = (prefix: string, sanitize: boolean): DirectiveHandler => {
         childCleanup();
       }
     });
-
-    cleanups.push(cleanup);
   };
 };
 
