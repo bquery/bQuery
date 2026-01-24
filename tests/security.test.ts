@@ -269,4 +269,19 @@ describe('security/enhanced protections', () => {
     const result2 = sanitizeHtml('<a href="?query=value">Link</a>');
     expect(result2).not.toContain('rel=');
   });
+
+  it('treats mailto and tel links as external for security', () => {
+    const mailto = sanitizeHtml('<a href="mailto:test@example.com">Email</a>');
+    expect(mailto).toContain('rel="noopener noreferrer"');
+    
+    const tel = sanitizeHtml('<a href="tel:+1234567890">Call</a>');
+    expect(tel).toContain('rel="noopener noreferrer"');
+  });
+
+  it('handles rel attribute with leading/trailing whitespace', () => {
+    const result = sanitizeHtml('<a href="https://external.com" rel="  author  ">Link</a>');
+    expect(result).toContain('noopener');
+    expect(result).toContain('noreferrer');
+    expect(result).toContain('author');
+  });
 });

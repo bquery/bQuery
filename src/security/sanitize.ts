@@ -364,6 +364,15 @@ const isExternalUrl = (url: string): boolean => {
       return true;
     }
     
+    // Check for non-http(s) protocols which are considered external/special
+    // (mailto:, tel:, ftp:, etc.)
+    const hasProtocol = /^[a-z][a-z0-9+.-]*:/i.test(url);
+    if (hasProtocol && !url.startsWith('http://') && !url.startsWith('https://')) {
+      // These are special protocols, not traditional "external" links
+      // but we treat them as external for security consistency
+      return true;
+    }
+    
     // Relative URLs are not external
     if (!url.startsWith('http://') && !url.startsWith('https://')) {
       return false;
@@ -475,7 +484,9 @@ const sanitizeHtmlCore = (html: string, options: SanitizeOptions = {}): string =
       // Add security attributes to links opening in new window or external links
       if (hasTargetBlank || isExternal) {
         const existingRel = el.getAttribute('rel');
-        const relValues = new Set(existingRel ? existingRel.split(/\s+/) : []);
+        const relValues = new Set(
+          existingRel ? existingRel.split(/\s+/).filter(Boolean) : []
+        );
         
         // Add noopener and noreferrer
         relValues.add('noopener');
