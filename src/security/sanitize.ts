@@ -362,12 +362,11 @@ const isExternalUrl = (url: string): boolean => {
     // Normalize URL by trimming whitespace
     const trimmedUrl = url.trim();
     
-    // Protocol-relative URLs (//example.com) are always external
-    // CRITICAL: This check must happen before the URL constructor call below.
-    // Protocol-relative URLs with window.location.href as base would be
-    // incorrectly resolved (e.g., "//evil.com" + "http://mysite.com" could
-    // resolve unexpectedly). Treating them as external upfront ensures
-    // correct security classification and prevents potential URL parsing issues.
+    // Protocol-relative URLs (//example.com) are always external.
+    // CRITICAL: This check must run before the relative-URL check below;
+    // otherwise, a protocol-relative URL like "//evil.com" would be treated
+    // as a non-http(s) relative URL and incorrectly classified as same-origin.
+    // Handling them up front guarantees correct security classification.
     if (trimmedUrl.startsWith('//')) {
       return true;
     }
