@@ -274,15 +274,17 @@ const router = createRouter({
 });
 
 // Navigation guards
-router.beforeEach((to, from) => {
+router.beforeEach(async (to, from) => {
   if (to.path === '/admin' && !isAuthenticated()) {
-    return '/login'; // Redirect
+    await navigate('/login'); // Redirect
+    return false; // Cancel original navigation
   }
 });
 
 // Navigate programmatically
 await navigate('/user/42');
-await navigate('/search', { query: { q: 'bquery' } });
+await navigate('/search?q=bquery'); // Query params in path
+await navigate('/login', { replace: true }); // Replace history entry
 
 // Reactive current route
 effect(() => {

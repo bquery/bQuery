@@ -320,12 +320,7 @@ describe('Store', () => {
       }
     })();
 
-    it('should create a store with persistence', () => {
-      if (!hasLocalStorage) {
-        expect(true).toBe(true); // Skip
-        return;
-      }
-
+    it.skipIf(!hasLocalStorage)('should create a store with persistence', () => {
       // Clear localStorage
       localStorage.removeItem('bquery-store-settings');
 
@@ -343,12 +338,7 @@ describe('Store', () => {
       expect(saved).toBe('{"theme":"light"}');
     });
 
-    it('should restore from localStorage', () => {
-      if (!hasLocalStorage) {
-        expect(true).toBe(true); // Skip
-        return;
-      }
-
+    it.skipIf(!hasLocalStorage)('should restore from localStorage', () => {
       localStorage.setItem('bquery-store-restored', '{"value":999}');
 
       const store = createPersistedStore({

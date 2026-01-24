@@ -357,3 +357,80 @@ type View = {
   destroy: () => void;
 };
 ```
+
+## Security Considerations
+
+::: danger Expression Evaluation Warning
+The view module uses `new Function()` to evaluate directive expressions at runtime. This is similar to how Vue and Alpine.js work, but carries important security implications.
+:::
+
+### What This Means
+
+When you write:
+
+```html
+<span bq-text="user.name"></span>
+```
+
+The expression `user.name` is evaluated dynamically at runtime using JavaScript's `new Function()` constructor. This is essentially equivalent to `eval()` in terms of security.
+
+### Safe Usage
+
+✅ **DO** use expressions from developer-controlled templates:
+
+```html
+<!-- In your HTML file or template literal -->
+<div bq-if="isLoggedIn" bq-text="username"></div>
+```
+
+✅ **DO** sanitize context values that come from users:
+
+```ts
+const userInput = signal(sanitizeHtml(untrustedInput));
+mount('#app', { userInput });
+```
+
+### Unsafe Usage
+
+❌ **NEVER** use expressions derived from user input:
+
+```ts
+// DANGEROUS! Never do this:
+const userExpression = getUserInput(); // e.g., "alert('hacked')"
+element.setAttribute('bq-text', userExpression);
+mount(element, context);
+```
+
+❌ **NEVER** load templates with bq-\* attributes from untrusted sources:
+
+```ts
+// DANGEROUS! Template could contain malicious expressions:
+const template = await fetch('/api/user-template').then((r) => r.text());
+container.innerHTML = template;
+mount(container, context); // Malicious bq-on:click expressions could execute
+```
+
+### If You Need User-Generated Templates
+
+If your application requires loading templates from external sources:
+
+1. **Validate attribute values** before mounting - strip or escape bq-\* attributes
+2. **Use an allowlist** of permitted expressions
+3. **Consider a sandboxed approach** using iframes for truly untrusted content
+4. **Use static bindings** with sanitized values instead of dynamic expressions:
+
+```ts
+// Instead of allowing bq-text="userExpression"
+// Use a safe static binding:
+element.textContent = sanitizeHtml(userValue);
+```
+
+### Why Not Use a Safer Parser?
+
+A fully sandboxed expression parser would:
+
+- Add significant bundle size
+- Reduce expression flexibility
+- Still require careful security review
+
+The current approach matches industry standards (Vue, Alpine, Angular) while keeping the library lightweight. The key is ensuring expressions come only from trusted sources.

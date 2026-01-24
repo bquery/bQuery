@@ -8,6 +8,7 @@
  * - Lazy route loading
  * - Navigation guards (beforeEach, afterEach)
  * - Reactive current route via signals
+ * - Multi-value query params (e.g., `?tag=a&tag=b` → `{ tag: ['a', 'b'] }`)
  *
  * @module bquery/router
  *
@@ -46,8 +47,14 @@ export type Route = {
   path: string;
   /** Extracted route params (e.g., { id: '42' }) */
   params: Record<string, string>;
-  /** Query string params */
-  query: Record<string, string>;
+  /**
+   * Query string params.
+   * Single values are stored as strings, duplicate keys become arrays.
+   * @example
+   * // ?foo=1 → { foo: '1' }
+   * // ?tag=a&tag=b → { tag: ['a', 'b'] }
+   */
+  query: Record<string, string | string[]>;
   /** The matched route definition */
   matched: RouteDefinition | null;
   /** Hash fragment without # */
@@ -121,12 +128,6 @@ export type Router = {
 let activeRouter: Router | null = null;
 
 /** @internal */
-const beforeGuards: NavigationGuard[] = [];
-
-/** @internal */
-const afterHooks: Array<(to: Route, from: Route) => void> = [];
-
-/** @internal */
 const routeSignal: Signal<Route> = signal<Route>({
   path: '',
   params: {},
@@ -164,11 +165,15 @@ const pathToRegex = (path: string): RegExp => {
     return /^.*$/;
   }
 
-  // Convert :param to named capture groups
-  const pattern = path
-    .replace(/[.*+?^${}()|[\]\\]/g, '\\$&') // Escape special chars first
-    .replace(/\\:([a-zA-Z_][a-zA-Z0-9_]*)/g, '(?<$1>[^/]+)') // :param -> capture group
-    .replace(/\\\*/g, '.*'); // * -> wildcard
+  // Replace :param with capture groups BEFORE escaping special chars
+  // This ensures the colon is properly processed
+  let pattern = path.replace(/:([a-zA-Z_][a-zA-Z0-9_]*)/g, '(?<$1>[^/]+)');
+
+  // Escape forward slashes (the main special char in paths)
+  pattern = pattern.replace(/\//g, '\\/');
+
+  // Handle inline wildcards (e.g., /docs/*)
+  pattern = pattern.replace(/\*/g, '.*');
 
   return new RegExp(`^${pattern}$`);
 };
@@ -217,14 +222,32 @@ const matchRoute = (
 
 /**
  * Parses query string into an object.
+ * Single values are stored as strings, duplicate keys become arrays.
  * @internal
+ *
+ * @example
+ * parseQuery('?foo=1') // { foo: '1' }
+ * parseQuery('?tag=a&tag=b') // { tag: ['a', 'b'] }
+ * parseQuery('?x=1&y=2&x=3') // { x: ['1', '3'], y: '2' }
  */
-const parseQuery = (search: string): Record<string, string> => {
-  const query: Record<string, string> = {};
+const parseQuery = (search: string): Record<string, string | string[]> => {
+  const query: Record<string, string | string[]> = {};
   const params = new URLSearchParams(search);
+
   params.forEach((value, key) => {
-    query[key] = value;
+    const existing = query[key];
+    if (existing === undefined) {
+      // First occurrence: store as string
+      query[key] = value;
+    } else if (Array.isArray(existing)) {
+      // Already an array: append
+      existing.push(value);
+    } else {
+      // Second occurrence: convert to array
+      query[key] = [existing, value];
+    }
   });
+
   return query;
 };
 
@@ -347,7 +370,16 @@ export const forward = (): void => {
  * ```
  */
 export const createRouter = (options: RouterOptions): Router => {
+  // Clean up any existing router to prevent guard leakage
+  if (activeRouter) {
+    activeRouter.destroy();
+  }
+
   const { routes, base = '', hash: useHash = false } = options;
+
+  // Instance-specific guards and hooks (not shared globally)
+  const beforeGuards: NavigationGuard[] = [];
+  const afterHooks: Array<(to: Route, from: Route) => void> = [];
 
   // Flatten nested routes
   const flatRoutes = flattenRoutes(routes, base);
@@ -427,26 +459,20 @@ export const createRouter = (options: RouterOptions): Router => {
   /**
    * Handle popstate events (back/forward).
    */
-  const handlePopState = (): void => {
+  const handlePopState = async (): Promise<void> => {
     const { pathname, search, hash } = getCurrentPath();
     const from = routeSignal.value;
     const to = createRoute(pathname, search, hash, flatRoutes);
 
-    // Run guards synchronously for popstate
-    let cancelled = false;
+    // Run beforeEach guards (supports async guards)
     for (const guard of beforeGuards) {
-      const result = guard(to, from);
+      const result = await guard(to, from);
       if (result === false) {
-        cancelled = true;
-        break;
+        // Restore previous state
+        const restorePath = useHash ? `#${from.path}` : `${base}${from.path}`;
+        history.pushState({}, '', restorePath);
+        return;
       }
-    }
-
-    if (cancelled) {
-      // Restore previous state
-      const restorePath = useHash ? `#${from.path}` : `${base}${from.path}`;
-      history.pushState({}, '', restorePath);
-      return;
     }
 
     syncRoute();

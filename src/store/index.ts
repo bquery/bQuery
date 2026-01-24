@@ -239,16 +239,55 @@ export const createStore = <
   };
 
   /**
-   * Gets the current state as a plain object.
+   * Cached state proxy that lazily reads signal values.
+   * Uses a Proxy to avoid creating new objects on each access.
+   *
+   * **Note:** This returns a shallow snapshot of the state. Nested object
+   * mutations will NOT trigger reactive updates. For nested reactivity,
+   * replace the entire object or use signals for nested properties.
+   *
    * @internal
    */
-  const getCurrentState = (): S => {
-    const state = {} as S;
-    for (const [key, sig] of stateSignals) {
-      state[key] = sig.value as S[typeof key];
-    }
-    return state;
-  };
+  const stateProxy = new Proxy({} as S, {
+    get: (_, prop: string | symbol) => {
+      const key = prop as keyof S;
+      if (stateSignals.has(key)) {
+        return stateSignals.get(key)!.value;
+      }
+      return undefined;
+    },
+    ownKeys: () => Array.from(stateSignals.keys()) as string[],
+    getOwnPropertyDescriptor: (_, prop) => {
+      if (stateSignals.has(prop as keyof S)) {
+        return { enumerable: true, configurable: true };
+      }
+      return undefined;
+    },
+    has: (_, prop) => stateSignals.has(prop as keyof S),
+  });
+
+  /**
+   * Gets the current state.
+   *
+   * For subscriber notifications (where a plain object snapshot is needed),
+   * this creates a shallow copy. For internal reads, use stateProxy directly.
+   *
+   * **Note:** Returns a shallow snapshot. Nested object mutations will NOT
+   * trigger reactive updates. This differs from frameworks like Pinia that
+   * use deep reactivity. To update nested state, replace the entire object:
+   *
+   * @example
+   * ```ts
+   * // ❌ Won't trigger updates
+   * store.user.name = 'New Name';
+   *
+   * // ✅ Will trigger updates
+   * store.user = { ...store.user, name: 'New Name' };
+   * ```
+   *
+   * @internal
+   */
+  const getCurrentState = (): S => ({ ...stateProxy });
 
   // Create computed getters
   const getterComputed = new Map<keyof G, ReadonlySignal<unknown>>();
@@ -273,9 +312,9 @@ export const createStore = <
   for (const key of Object.keys(getters) as Array<keyof G>) {
     const getterFn = getters[key];
 
-    // Create computed that reads from state signals
+    // Create computed that reads from state signals via proxy (more efficient)
     const computedGetter = computed(() => {
-      const state = getCurrentState();
+      const state = stateProxy;
       // For getter dependencies, pass a proxy that reads from computed getters
       const getterProxy = new Proxy({} as G, {
         get: (_, prop: string | symbol) => {

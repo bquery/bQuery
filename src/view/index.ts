@@ -12,6 +12,20 @@
  * - Attribute binding (bq-bind)
  * - Event binding (bq-on)
  *
+ * ## Security Considerations
+ *
+ * **WARNING:** This module uses `new Function()` to evaluate expressions at runtime.
+ * This is similar to Vue/Alpine's approach but carries inherent security risks:
+ *
+ * - **NEVER** use expressions derived from user input or untrusted sources
+ * - Expressions should only come from developer-controlled templates
+ * - The context object should not contain sensitive data that could be exfiltrated
+ * - For user-generated content, use static bindings with sanitized values instead
+ *
+ * Since bQuery is runtime-only (no build-time compilation), expressions are evaluated
+ * dynamically. If your application loads templates from external sources (APIs, databases),
+ * ensure they are trusted and validated before mounting.
+ *
  * @module bquery/view
  *
  * @example
@@ -96,7 +110,14 @@ type DirectiveHandler = (
 // ============================================================================
 
 /**
- * Safely evaluates an expression in the given context.
+ * Evaluates an expression in the given context using `new Function()`.
+ *
+ * @security **WARNING:** This function uses dynamic code execution via `new Function()`.
+ * - NEVER pass expressions derived from user input or untrusted sources
+ * - Expressions should only come from developer-controlled templates
+ * - Malicious expressions can access and exfiltrate context data
+ * - Consider this equivalent to `eval()` in terms of security implications
+ *
  * @internal
  */
 const evaluate = <T = unknown>(expression: string, context: BindingContext): T => {
@@ -123,6 +144,8 @@ const evaluate = <T = unknown>(expression: string, context: BindingContext): T =
 
 /**
  * Evaluates an expression and returns the raw value (for signal access).
+ *
+ * @security **WARNING:** Uses dynamic code execution. See {@link evaluate} for security notes.
  * @internal
  */
 const evaluateRaw = <T = unknown>(expression: string, context: BindingContext): T => {
@@ -438,11 +461,18 @@ const handleFor = (prefix: string, sanitize: boolean): DirectiveHandler => {
     const placeholder = document.createComment(`bq-for: ${expression}`);
     parent.replaceChild(placeholder, el);
 
-    // Track rendered elements
+    // Track rendered elements and their cleanups
     let renderedElements: Element[] = [];
+    let previousChildCleanups: CleanupFn[] = [];
 
     const cleanup = effect(() => {
       const list = evaluate<unknown[]>(listExpression, context);
+
+      // Cleanup previous iteration's effects before removing elements
+      for (const childCleanup of previousChildCleanups) {
+        childCleanup();
+      }
+      previousChildCleanups = [];
 
       // Remove old elements
       for (const oldEl of renderedElements) {
@@ -479,8 +509,16 @@ const handleFor = (prefix: string, sanitize: boolean): DirectiveHandler => {
       // Insert all at once
       placeholder.after(fragment);
 
-      // Register child cleanups
-      cleanups.push(...childCleanups);
+      // Store child cleanups for next iteration (don't add to parent)
+      previousChildCleanups = childCleanups;
+    });
+
+    // When the bq-for itself is cleaned up, also cleanup any remaining children
+    cleanups.push(() => {
+      cleanup();
+      for (const childCleanup of previousChildCleanups) {
+        childCleanup();
+      }
     });
 
     cleanups.push(cleanup);
@@ -596,6 +634,12 @@ const processChildren = (
  * @param context - Binding context with signals, computed, and functions
  * @param options - Mount options
  * @returns The mounted View instance
+ *
+ * @security **WARNING:** Directive expressions (bq-text, bq-if, bq-on, etc.) are evaluated
+ * using `new Function()` at runtime. This means:
+ * - Template attributes must come from trusted sources only
+ * - NEVER load templates containing bq-* attributes from user input or untrusted APIs
+ * - If you must use external templates, validate/sanitize attribute values first
  *
  * @example
  * ```ts
