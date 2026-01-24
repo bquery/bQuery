@@ -26,6 +26,50 @@
  * dynamically. If your application loads templates from external sources (APIs, databases),
  * ensure they are trusted and validated before mounting.
  *
+ * ## Content Security Policy (CSP) Compatibility
+ *
+ * **IMPORTANT:** This module requires `'unsafe-eval'` in your CSP `script-src` directive.
+ * The `new Function()` constructor used for expression evaluation will be blocked by
+ * strict CSP policies that omit `'unsafe-eval'`.
+ *
+ * ### Required CSP Header
+ * ```
+ * Content-Security-Policy: script-src 'self' 'unsafe-eval';
+ * ```
+ *
+ * ### CSP-Strict Alternatives
+ *
+ * If your application requires a strict CSP without `'unsafe-eval'`, consider these alternatives:
+ *
+ * 1. **Use bQuery's core reactive system directly** - Bind signals to DOM elements manually
+ *    using `effect()` without the view module's template directives:
+ *    ```ts
+ *    import { signal, effect } from 'bquery/reactive';
+ *    import { $ } from 'bquery';
+ *
+ *    const count = signal(0);
+ *    effect(() => {
+ *      $('#counter').text(String(count.value));
+ *    });
+ *    ```
+ *
+ * 2. **Use bQuery's component module** - Web Components with typed props don't require
+ *    dynamic expression evaluation:
+ *    ```ts
+ *    import { component } from 'bquery/component';
+ *    component('my-counter', {
+ *      props: { count: { type: Number } },
+ *      render: ({ props }) => `<span>${props.count}</span>`,
+ *    });
+ *    ```
+ *
+ * 3. **Pre-compile templates at build time** - Use a build step to transform bq-* attributes
+ *    into static JavaScript (similar to Svelte/Vue SFC compilation). This is outside bQuery's
+ *    scope but can be achieved with custom Vite/Rollup plugins.
+ *
+ * The view module is designed for rapid prototyping and applications where CSP flexibility
+ * is acceptable. For security-critical applications requiring strict CSP, use the alternatives above.
+ *
  * @module bquery/view
  *
  * @example
@@ -513,7 +557,54 @@ const handleOn = (eventName: string): DirectiveHandler => {
 };
 
 /**
- * Handles bq-for directive - list rendering.
+ * Represents a rendered item in bq-for with its DOM element and associated cleanup functions.
+ * @internal
+ */
+type RenderedItem = {
+  key: unknown;
+  element: Element;
+  cleanups: CleanupFn[];
+  item: unknown;
+  index: number;
+};
+
+/**
+ * Extracts a key from an item using the key expression or falls back to index.
+ * @internal
+ */
+const getItemKey = (
+  item: unknown,
+  index: number,
+  keyExpression: string | null,
+  itemName: string,
+  indexName: string | undefined,
+  context: BindingContext
+): unknown => {
+  if (!keyExpression) {
+    return index; // Fallback to index-based keying
+  }
+
+  const keyContext: BindingContext = {
+    ...context,
+    [itemName]: item,
+  };
+  if (indexName) {
+    keyContext[indexName] = index;
+  }
+
+  return evaluate(keyExpression, keyContext);
+};
+
+/**
+ * Handles bq-for directive - list rendering with keyed reconciliation.
+ *
+ * Supports optional `:key` attribute for efficient DOM reuse:
+ * ```html
+ * <li bq-for="item in items" :key="item.id">...</li>
+ * ```
+ *
+ * Without a key, falls back to index-based tracking (less efficient for reordering).
+ *
  * @internal
  */
 const handleFor = (prefix: string, sanitize: boolean): DirectiveHandler => {
@@ -530,71 +621,159 @@ const handleFor = (prefix: string, sanitize: boolean): DirectiveHandler => {
     }
 
     const [, itemName, indexName, listExpression] = match;
+
+    // Extract :key attribute if present
+    const keyExpression = el.getAttribute(':key') || el.getAttribute(`${prefix}-key`);
+
     const template = el.cloneNode(true) as Element;
     template.removeAttribute(`${prefix}-for`);
+    template.removeAttribute(':key');
+    template.removeAttribute(`${prefix}-key`);
 
     // Create placeholder comment
     const placeholder = document.createComment(`bq-for: ${expression}`);
     parent.replaceChild(placeholder, el);
 
-    // Track rendered elements and their cleanups
-    let renderedElements: Element[] = [];
-    let previousChildCleanups: CleanupFn[] = [];
+    // Track rendered items by key for reconciliation
+    let renderedItemsMap = new Map<unknown, RenderedItem>();
+    let renderedOrder: unknown[] = [];
+
+    /**
+     * Creates a new DOM element for an item.
+     */
+    const createItemElement = (item: unknown, index: number, key: unknown): RenderedItem => {
+      const clone = template.cloneNode(true) as Element;
+      const itemCleanups: CleanupFn[] = [];
+
+      const childContext: BindingContext = {
+        ...context,
+        [itemName]: item,
+      };
+      if (indexName) {
+        childContext[indexName] = index;
+      }
+
+      // Process bindings on the clone
+      processElement(clone, childContext, prefix, sanitize, itemCleanups);
+      processChildren(clone, childContext, prefix, sanitize, itemCleanups);
+
+      return {
+        key,
+        element: clone,
+        cleanups: itemCleanups,
+        item,
+        index,
+      };
+    };
+
+    /**
+     * Removes a rendered item and cleans up its effects.
+     */
+    const removeItem = (rendered: RenderedItem): void => {
+      for (const cleanup of rendered.cleanups) {
+        cleanup();
+      }
+      rendered.element.remove();
+    };
+
+    /**
+     * Updates an existing item's index context if needed.
+     * Note: For deep reactivity, items should use signals internally.
+     */
+    const updateItemIndex = (rendered: RenderedItem, newIndex: number): void => {
+      if (rendered.index !== newIndex && indexName) {
+        // Index changed - we need to re-process bindings for index-dependent expressions
+        // For now, we mark the index as updated (future: could use signals for index)
+        rendered.index = newIndex;
+      }
+    };
 
     const cleanup = effect(() => {
       const list = evaluate<unknown[]>(listExpression, context);
 
-      // Cleanup previous iteration's effects before removing elements
-      for (const childCleanup of previousChildCleanups) {
-        childCleanup();
+      if (!Array.isArray(list)) {
+        // Clear all if list is invalid
+        for (const rendered of renderedItemsMap.values()) {
+          removeItem(rendered);
+        }
+        renderedItemsMap.clear();
+        renderedOrder = [];
+        return;
       }
-      previousChildCleanups = [];
 
-      // Remove old elements
-      for (const oldEl of renderedElements) {
-        oldEl.remove();
-      }
-      renderedElements = [];
-
-      if (!Array.isArray(list)) return;
-
-      // Create new elements
-      const fragment = document.createDocumentFragment();
-      const childCleanups: CleanupFn[] = [];
+      // Build new key order and detect changes
+      const newKeys: unknown[] = [];
+      const newItemsByKey = new Map<unknown, { item: unknown; index: number }>();
 
       list.forEach((item, index) => {
-        const clone = template.cloneNode(true) as Element;
-
-        // Create child context with item and index
-        const childContext: BindingContext = {
-          ...context,
-          [itemName]: item,
-        };
-        if (indexName) {
-          childContext[indexName] = index;
-        }
-
-        // Process bindings on the clone
-        processElement(clone, childContext, prefix, sanitize, childCleanups);
-        processChildren(clone, childContext, prefix, sanitize, childCleanups);
-
-        fragment.appendChild(clone);
-        renderedElements.push(clone);
+        const key = getItemKey(item, index, keyExpression, itemName, indexName, context);
+        newKeys.push(key);
+        newItemsByKey.set(key, { item, index });
       });
 
-      // Insert all at once
-      placeholder.after(fragment);
+      // Identify items to remove (in old but not in new)
+      const keysToRemove: unknown[] = [];
+      for (const key of renderedOrder) {
+        if (!newItemsByKey.has(key)) {
+          keysToRemove.push(key);
+        }
+      }
 
-      // Store child cleanups for next iteration (don't add to parent)
-      previousChildCleanups = childCleanups;
+      // Remove deleted items
+      for (const key of keysToRemove) {
+        const rendered = renderedItemsMap.get(key);
+        if (rendered) {
+          removeItem(rendered);
+          renderedItemsMap.delete(key);
+        }
+      }
+
+      // Process new list: create new items, update indices, reorder
+      const newRenderedMap = new Map<unknown, RenderedItem>();
+      let lastInsertedElement: Element | Comment = placeholder;
+
+      for (let i = 0; i < newKeys.length; i++) {
+        const key = newKeys[i];
+        const { item, index } = newItemsByKey.get(key)!;
+        let rendered = renderedItemsMap.get(key);
+
+        if (rendered) {
+          // Reuse existing element
+          updateItemIndex(rendered, index);
+          newRenderedMap.set(key, rendered);
+
+          // Check if element needs to be moved
+          const currentNext: ChildNode | null = lastInsertedElement.nextSibling;
+          if (currentNext !== rendered.element) {
+            // Move element to correct position
+            lastInsertedElement.after(rendered.element);
+          }
+          lastInsertedElement = rendered.element;
+        } else {
+          // Create new element
+          rendered = createItemElement(item, index, key);
+          newRenderedMap.set(key, rendered);
+
+          // Insert at correct position
+          lastInsertedElement.after(rendered.element);
+          lastInsertedElement = rendered.element;
+        }
+      }
+
+      // Update tracking state
+      renderedItemsMap = newRenderedMap;
+      renderedOrder = newKeys;
     });
 
-    // When the bq-for itself is cleaned up, also cleanup any remaining children
+    // When the bq-for itself is cleaned up, also cleanup all rendered items
     cleanups.push(() => {
       cleanup();
-      for (const childCleanup of previousChildCleanups) {
-        childCleanup();
+      for (const rendered of renderedItemsMap.values()) {
+        for (const itemCleanup of rendered.cleanups) {
+          itemCleanup();
+        }
       }
+      renderedItemsMap.clear();
     });
   };
 };

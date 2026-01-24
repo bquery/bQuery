@@ -107,8 +107,14 @@ export type Store<
     $reset: () => void;
     /** Subscribe to state changes */
     $subscribe: (callback: (state: S) => void) => () => void;
-    /** Patch multiple state properties at once */
+    /** Patch multiple state properties at once (shallow) */
     $patch: (partial: Partial<S> | ((state: S) => void)) => void;
+    /**
+     * Patch with deep reactivity support.
+     * Unlike $patch, this method deep-clones nested objects before mutation,
+     * ensuring that all changes trigger reactive updates.
+     */
+    $patchDeep: (partial: Partial<S> | ((state: S) => void)) => void;
     /** Get raw state object (non-reactive snapshot) */
     $state: S;
   };
@@ -130,6 +136,120 @@ export type StorePlugin<S = unknown> = (context: {
 /** @internal Registry of all stores for devtools */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const storeRegistry = new Map<string, Store<any, any, any>>();
+
+// ============================================================================
+// Internal Utilities
+// ============================================================================
+
+/**
+ * Check if a value is a plain object (not array, null, Date, etc.).
+ * @internal
+ */
+const isPlainObject = (value: unknown): value is Record<string, unknown> => {
+  return (
+    value !== null && typeof value === 'object' && Object.getPrototypeOf(value) === Object.prototype
+  );
+};
+
+/**
+ * Deep clones an object. Used for deep reactivity support.
+ * @internal
+ */
+const deepClone = <T>(obj: T): T => {
+  if (obj === null || typeof obj !== 'object') {
+    return obj;
+  }
+
+  if (Array.isArray(obj)) {
+    return obj.map(deepClone) as T;
+  }
+
+  if (obj instanceof Date) {
+    return new Date(obj.getTime()) as T;
+  }
+
+  if (obj instanceof Map) {
+    return new Map(Array.from(obj.entries()).map(([k, v]) => [k, deepClone(v)])) as T;
+  }
+
+  if (obj instanceof Set) {
+    return new Set(Array.from(obj).map(deepClone)) as T;
+  }
+
+  const cloned = {} as T;
+  for (const key of Object.keys(obj)) {
+    (cloned as Record<string, unknown>)[key] = deepClone((obj as Record<string, unknown>)[key]);
+  }
+  return cloned;
+};
+
+/**
+ * Compares two values for deep equality.
+ * @internal
+ */
+const deepEqual = (a: unknown, b: unknown): boolean => {
+  if (a === b) return true;
+  if (a === null || b === null) return false;
+  if (typeof a !== 'object' || typeof b !== 'object') return false;
+
+  if (Array.isArray(a) && Array.isArray(b)) {
+    if (a.length !== b.length) return false;
+    return a.every((item, i) => deepEqual(item, b[i]));
+  }
+
+  if (Array.isArray(a) !== Array.isArray(b)) return false;
+
+  const keysA = Object.keys(a as object);
+  const keysB = Object.keys(b as object);
+
+  if (keysA.length !== keysB.length) return false;
+
+  return keysA.every((key) =>
+    deepEqual((a as Record<string, unknown>)[key], (b as Record<string, unknown>)[key])
+  );
+};
+
+/**
+ * Detects if nested objects were mutated but the reference stayed the same.
+ * Returns the keys where nested mutations were detected.
+ * @internal
+ */
+const detectNestedMutations = <S extends Record<string, unknown>>(
+  before: S,
+  after: S,
+  signalValues: Map<keyof S, unknown>
+): Array<keyof S> => {
+  const mutatedKeys: Array<keyof S> = [];
+
+  for (const key of Object.keys(after) as Array<keyof S>) {
+    const beforeValue = before[key];
+    const afterValue = after[key];
+    const signalValue = signalValues.get(key);
+
+    // Check if it's the same reference but content changed
+    if (
+      signalValue === afterValue && // Same reference as signal
+      isPlainObject(beforeValue) &&
+      isPlainObject(afterValue) &&
+      !deepEqual(beforeValue, afterValue)
+    ) {
+      mutatedKeys.push(key);
+    }
+  }
+
+  return mutatedKeys;
+};
+
+/** @internal Flag to enable/disable development warnings */
+const __DEV__ = (() => {
+  try {
+    // Check for Node.js environment
+    const globalProcess = (globalThis as { process?: { env?: { NODE_ENV?: string } } }).process;
+    return typeof globalProcess !== 'undefined' && globalProcess.env?.NODE_ENV !== 'production';
+  } catch {
+    return true; // Default to dev mode if detection fails
+  }
+})();
 
 /** @internal Registered plugins */
 const plugins: StorePlugin[] = [];
@@ -400,9 +520,31 @@ export const createStore = <
       value: (partial: Partial<S> | ((state: S) => void)) => {
         batch(() => {
           if (typeof partial === 'function') {
+            // Capture state before mutation for nested mutation detection
+            const stateBefore = __DEV__ ? deepClone(getCurrentState()) : null;
+            const signalValuesBefore = __DEV__
+              ? new Map(Array.from(stateSignals.entries()).map(([k, s]) => [k, s.value]))
+              : null;
+
             // Mutation function
             const state = getCurrentState();
             partial(state);
+
+            // Detect nested mutations in development mode
+            if (__DEV__ && stateBefore && signalValuesBefore) {
+              const mutatedKeys = detectNestedMutations(stateBefore, state, signalValuesBefore);
+              if (mutatedKeys.length > 0) {
+                console.warn(
+                  `[bQuery store "${id}"] Nested mutation detected in $patch() for keys: ${mutatedKeys.map(String).join(', ')}.\n` +
+                    'Nested object mutations do not trigger reactive updates because the store uses shallow reactivity.\n' +
+                    'To fix this, either:\n' +
+                    '  1. Replace the entire object: state.user = { ...state.user, name: "New" }\n' +
+                    '  2. Use $patchDeep() for automatic deep cloning\n' +
+                    'See: https://bquery.dev/guide/store#deep-reactivity'
+                );
+              }
+            }
+
             for (const [key, value] of Object.entries(state) as Array<[keyof S, unknown]>) {
               if (stateSignals.has(key)) {
                 stateSignals.get(key)!.value = value;
@@ -413,6 +555,33 @@ export const createStore = <
             for (const [key, value] of Object.entries(partial) as Array<[keyof S, unknown]>) {
               if (stateSignals.has(key)) {
                 stateSignals.get(key)!.value = value;
+              }
+            }
+          }
+        });
+        notifySubscribers();
+      },
+      writable: false,
+      enumerable: false,
+    },
+    $patchDeep: {
+      value: (partial: Partial<S> | ((state: S) => void)) => {
+        batch(() => {
+          if (typeof partial === 'function') {
+            // Deep clone state before mutation to ensure new references
+            const state = deepClone(getCurrentState());
+            partial(state);
+
+            for (const [key, value] of Object.entries(state) as Array<[keyof S, unknown]>) {
+              if (stateSignals.has(key)) {
+                stateSignals.get(key)!.value = value;
+              }
+            }
+          } else {
+            // Deep clone each value in partial to ensure new references
+            for (const [key, value] of Object.entries(partial) as Array<[keyof S, unknown]>) {
+              if (stateSignals.has(key)) {
+                stateSignals.get(key)!.value = deepClone(value);
               }
             }
           }

@@ -349,4 +349,87 @@ describe('Store', () => {
       expect(store.value).toBe(999);
     });
   });
+
+  describe('$patchDeep', () => {
+    it('should deep clone nested objects for reactivity', () => {
+      const store = createStore({
+        id: 'nested',
+        state: () => ({
+          user: { name: 'Alice', address: { city: 'NYC' } },
+        }),
+      });
+
+      const updates: string[] = [];
+      effect(() => {
+        updates.push((store.user as { name: string }).name);
+      });
+
+      // Use $patchDeep to ensure nested mutation triggers reactivity
+      store.$patchDeep((state) => {
+        (state.user as { name: string; address: { city: string } }).name = 'Bob';
+      });
+
+      expect((store.user as { name: string }).name).toBe('Bob');
+      expect(updates).toEqual(['Alice', 'Bob']);
+    });
+
+    it('should handle partial object patches with deep cloning', () => {
+      const store = createStore({
+        id: 'nested-partial',
+        state: () => ({
+          config: { theme: 'dark', nested: { value: 1 } },
+        }),
+      });
+
+      const originalConfig = store.config;
+
+      store.$patchDeep({
+        config: { theme: 'light', nested: { value: 2 } },
+      });
+
+      // Should be a new reference due to deep cloning
+      expect(store.config).not.toBe(originalConfig);
+      expect((store.config as { theme: string }).theme).toBe('light');
+      expect((store.config as { nested: { value: number } }).nested.value).toBe(2);
+    });
+
+    it('should deep clone arrays', () => {
+      const store = createStore({
+        id: 'array-test',
+        state: () => ({
+          items: [{ id: 1, name: 'Item 1' }],
+        }),
+      });
+
+      const originalItems = store.items;
+
+      store.$patchDeep((state) => {
+        (state.items as Array<{ id: number; name: string }>).push({ id: 2, name: 'Item 2' });
+      });
+
+      // Should be a new reference due to deep cloning
+      expect(store.items).not.toBe(originalItems);
+      expect((store.items as Array<{ id: number }>).length).toBe(2);
+    });
+
+    it('should trigger subscribers after deep patch', () => {
+      const store = createStore({
+        id: 'deep-subscribe',
+        state: () => ({
+          data: { value: 0 },
+        }),
+      });
+
+      const states: number[] = [];
+      store.$subscribe((state) => {
+        states.push((state.data as { value: number }).value);
+      });
+
+      store.$patchDeep((state) => {
+        (state.data as { value: number }).value = 42;
+      });
+
+      expect(states).toEqual([42]);
+    });
+  });
 });

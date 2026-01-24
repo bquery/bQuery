@@ -29,10 +29,12 @@ const TEST_ORIGIN = 'http://localhost';
 
 /**
  * Helper to setup mocked window.location and history for router tests.
+ * Uses property descriptor preservation for reliable cleanup.
  */
 const setupMockHistory = () => {
   const historyStack: { state: unknown; url: string }[] = [{ state: {}, url: '/' }];
   let currentIndex = 0;
+  let isRestored = false;
 
   // Create a mock location object
   const createMockLocation = (url: string) => {
@@ -51,22 +53,26 @@ const setupMockHistory = () => {
     };
   };
 
-  // Store original location
-  const originalLocation = window.location;
+  // Store original location descriptor for reliable restoration
+  const originalLocationDescriptor = Object.getOwnPropertyDescriptor(window, 'location');
+  const originalLocationValue = window.location;
 
-  // Set initial location
+  // Track current mock location to avoid repeated Object.defineProperty calls
+  let currentMockLocation = createMockLocation('/');
+
+  // Set initial location using a getter for more stable mocking
   Object.defineProperty(window, 'location', {
-    value: createMockLocation('/'),
-    writable: true,
+    get: () => currentMockLocation,
+    set: (value) => {
+      currentMockLocation = value;
+    },
     configurable: true,
   });
 
   const updateLocation = (url: string) => {
-    Object.defineProperty(window, 'location', {
-      value: createMockLocation(url),
-      writable: true,
-      configurable: true,
-    });
+    if (!isRestored) {
+      currentMockLocation = createMockLocation(url);
+    }
   };
 
   // Mock pushState
@@ -123,19 +129,32 @@ const setupMockHistory = () => {
     }
   });
 
-  return {
-    restore: () => {
-      pushStateSpy.mockRestore();
-      replaceStateSpy.mockRestore();
-      backSpy.mockRestore();
-      forwardSpy.mockRestore();
-      goSpy.mockRestore();
+  const restore = () => {
+    if (isRestored) return; // Prevent double restoration
+    isRestored = true;
+
+    // Restore spies first
+    pushStateSpy.mockRestore();
+    replaceStateSpy.mockRestore();
+    backSpy.mockRestore();
+    forwardSpy.mockRestore();
+    goSpy.mockRestore();
+
+    // Restore original location using the preserved descriptor
+    if (originalLocationDescriptor) {
+      Object.defineProperty(window, 'location', originalLocationDescriptor);
+    } else {
+      // Fallback: set value directly if descriptor wasn't available
       Object.defineProperty(window, 'location', {
-        value: originalLocation,
+        value: originalLocationValue,
         writable: true,
         configurable: true,
       });
-    },
+    }
+  };
+
+  return {
+    restore,
     getStack: () => historyStack,
     getCurrentIndex: () => currentIndex,
     updateLocation,

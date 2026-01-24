@@ -157,7 +157,7 @@ Access the element with `$el`:
 
 ### bq-for
 
-List rendering:
+List rendering with optional keyed reconciliation for optimal DOM reuse:
 
 ```html
 <!-- Basic -->
@@ -172,6 +172,59 @@ List rendering:
     <span bq-text="item.name"></span>
   </li>
 </ul>
+
+<!-- With key for efficient updates (recommended for dynamic lists) -->
+<ul>
+  <li bq-for="item in items" :key="item.id" bq-text="item.name"></li>
+</ul>
+```
+
+#### Keyed Reconciliation
+
+When items in a list have unique identifiers, use the `:key` attribute to enable efficient DOM updates. This is similar to Vue's `v-for` with `:key` or React's `key` prop.
+
+**Without a key:** Elements are matched by index. If items are reordered, all affected DOM nodes are recreated.
+
+**With a key:** Elements are matched by their unique key. If items are reordered, existing DOM nodes are moved rather than recreated, preserving component state and improving performance.
+
+```html
+<!-- Using :key (preferred shorthand) -->
+<li bq-for="user in users" :key="user.id" bq-text="user.name"></li>
+
+<!-- Alternative: bq-key -->
+<li bq-for="user in users" bq-key="user.id" bq-text="user.name"></li>
+```
+
+::: tip When to Use Keys
+Always use `:key` when:
+
+- List items can be added, removed, or reordered
+- Items have associated state (like form inputs)
+- Items contain expensive child components
+- The list is frequently updated
+
+Keys should be:
+
+- Unique within the list
+- Stable (same item → same key across updates)
+- Not based on array index (defeats the purpose)
+  :::
+
+```ts
+const users = signal([
+  { id: 1, name: 'Alice' },
+  { id: 2, name: 'Bob' },
+  { id: 3, name: 'Charlie' },
+]);
+
+mount('#app', { users });
+
+// Reordering preserves DOM elements:
+users.value = [
+  { id: 3, name: 'Charlie' },
+  { id: 1, name: 'Alice' },
+  { id: 2, name: 'Bob' },
+];
 ```
 
 ### bq-ref
@@ -317,18 +370,25 @@ Use view bindings inside Web Components:
 
 ```ts
 import { component, html } from '@bquery/bquery/component';
-import { mount } from '@bquery/bquery/view';
+import { mount, View } from '@bquery/bquery/view';
 import { signal } from '@bquery/bquery/reactive';
 
 component('counter-app', {
+  view: null as View | null,
+
   connected() {
     const count = signal(0);
 
-    mount(this.shadowRoot!, {
+    this.view = mount(this.shadowRoot!, {
       count,
       increment: () => count.value++,
     });
   },
+
+  disconnected() {
+    this.view?.destroy();
+  },
+
   render() {
     return html`
       <div>

@@ -49,10 +49,12 @@ export type Route = {
   params: Record<string, string>;
   /**
    * Query string params.
-   * Single values are stored as strings, duplicate keys become arrays.
+   * Each key maps to a single string value by default.
+   * Only keys that appear multiple times in the query string become arrays.
    * @example
    * // ?foo=1 → { foo: '1' }
    * // ?tag=a&tag=b → { tag: ['a', 'b'] }
+   * // ?x=1&y=2&x=3 → { x: ['1', '3'], y: '2' }
    */
   query: Record<string, string | string[]>;
   /** The matched route definition */
@@ -185,14 +187,11 @@ const pathToRegex = (path: string): RegExp => {
   // Step 3: Escape ALL regex metacharacters: \ ^ $ . * + ? ( ) [ ] { } |
   pattern = pattern.replace(/[\\^$.*+?()[\]{}|]/g, '\\$&');
 
-  // Step 4: Escape forward slashes (common in paths)
-  pattern = pattern.replace(/\//g, '\\/');
-
-  // Step 5: Restore param capture groups
+  // Step 4: Restore param capture groups
   let paramIdx = 0;
   pattern = pattern.replace(/\u0000P\u0000/g, () => `(?<${paramNames[paramIdx++]}>[^/]+)`);
 
-  // Step 6: Restore wildcards as .*
+  // Step 5: Restore wildcards as .*
   pattern = pattern.replace(/\u0000W\u0000/g, '.*');
 
   return new RegExp(`^${pattern}$`);

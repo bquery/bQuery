@@ -310,6 +310,196 @@ describe('View', () => {
       expect(listItems[1].textContent).toBe('1');
       expect(listItems[2].textContent).toBe('2');
     });
+
+    describe('keyed reconciliation', () => {
+      it('should reuse DOM elements with :key attribute', () => {
+        container.innerHTML =
+          '<ul><li bq-for="item in items" :key="item.id" bq-text="item.name"></li></ul>';
+        const items = signal([
+          { id: 1, name: 'One' },
+          { id: 2, name: 'Two' },
+          { id: 3, name: 'Three' },
+        ]);
+
+        view = mount(container, { items });
+
+        const originalElements = Array.from(container.querySelectorAll('li'));
+        expect(originalElements.length).toBe(3);
+
+        // Update list - reorder items
+        items.value = [
+          { id: 3, name: 'Three' },
+          { id: 1, name: 'One' },
+          { id: 2, name: 'Two' },
+        ];
+
+        const reorderedElements = Array.from(container.querySelectorAll('li'));
+        expect(reorderedElements.length).toBe(3);
+
+        // DOM elements should be reused (same references, different order)
+        expect(reorderedElements[0]).toBe(originalElements[2]); // id=3 was at index 2
+        expect(reorderedElements[1]).toBe(originalElements[0]); // id=1 was at index 0
+        expect(reorderedElements[2]).toBe(originalElements[1]); // id=2 was at index 1
+      });
+
+      it('should support bq-key as alternative to :key', () => {
+        container.innerHTML =
+          '<ul><li bq-for="item in items" bq-key="item.id" bq-text="item.name"></li></ul>';
+        const items = signal([
+          { id: 'a', name: 'Alpha' },
+          { id: 'b', name: 'Beta' },
+        ]);
+
+        view = mount(container, { items });
+
+        const originalElements = Array.from(container.querySelectorAll('li'));
+
+        items.value = [
+          { id: 'b', name: 'Beta Updated' },
+          { id: 'a', name: 'Alpha' },
+        ];
+
+        const reorderedElements = Array.from(container.querySelectorAll('li'));
+
+        // Elements should be reused based on key
+        expect(reorderedElements[0]).toBe(originalElements[1]); // id='b' was at index 1
+        expect(reorderedElements[1]).toBe(originalElements[0]); // id='a' was at index 0
+      });
+
+      it('should only create new elements for new items', () => {
+        container.innerHTML =
+          '<ul><li bq-for="item in items" :key="item.id" bq-text="item.name"></li></ul>';
+        const items = signal([
+          { id: 1, name: 'One' },
+          { id: 2, name: 'Two' },
+        ]);
+
+        view = mount(container, { items });
+
+        const originalElements = Array.from(container.querySelectorAll('li'));
+
+        // Add a new item
+        items.value = [
+          { id: 1, name: 'One' },
+          { id: 3, name: 'Three' }, // New item
+          { id: 2, name: 'Two' },
+        ];
+
+        const updatedElements = Array.from(container.querySelectorAll('li'));
+        expect(updatedElements.length).toBe(3);
+
+        // Original elements should be reused
+        expect(updatedElements[0]).toBe(originalElements[0]); // id=1
+        expect(updatedElements[2]).toBe(originalElements[1]); // id=2
+
+        // New element was created for id=3
+        expect(updatedElements[1]).not.toBe(originalElements[0]);
+        expect(updatedElements[1]).not.toBe(originalElements[1]);
+        expect(updatedElements[1].textContent).toBe('Three');
+      });
+
+      it('should remove elements for deleted items', () => {
+        container.innerHTML =
+          '<ul><li bq-for="item in items" :key="item.id" bq-text="item.name"></li></ul>';
+        const items = signal([
+          { id: 1, name: 'One' },
+          { id: 2, name: 'Two' },
+          { id: 3, name: 'Three' },
+        ]);
+
+        view = mount(container, { items });
+
+        const originalElements = Array.from(container.querySelectorAll('li'));
+        expect(originalElements.length).toBe(3);
+
+        // Remove middle item
+        items.value = [
+          { id: 1, name: 'One' },
+          { id: 3, name: 'Three' },
+        ];
+
+        const updatedElements = Array.from(container.querySelectorAll('li'));
+        expect(updatedElements.length).toBe(2);
+
+        // Remaining elements should be reused
+        expect(updatedElements[0]).toBe(originalElements[0]); // id=1
+        expect(updatedElements[1]).toBe(originalElements[2]); // id=3
+
+        // Deleted element should no longer be in DOM
+        expect(originalElements[1].parentNode).toBeNull();
+      });
+
+      it('should handle complete list replacement', () => {
+        container.innerHTML =
+          '<ul><li bq-for="item in items" :key="item.id" bq-text="item.name"></li></ul>';
+        const items = signal([
+          { id: 1, name: 'One' },
+          { id: 2, name: 'Two' },
+        ]);
+
+        view = mount(container, { items });
+
+        const originalElements = Array.from(container.querySelectorAll('li'));
+
+        // Replace with completely different items
+        items.value = [
+          { id: 4, name: 'Four' },
+          { id: 5, name: 'Five' },
+        ];
+
+        const newElements = Array.from(container.querySelectorAll('li'));
+        expect(newElements.length).toBe(2);
+
+        // All elements should be new
+        expect(newElements[0]).not.toBe(originalElements[0]);
+        expect(newElements[0]).not.toBe(originalElements[1]);
+        expect(newElements[1]).not.toBe(originalElements[0]);
+        expect(newElements[1]).not.toBe(originalElements[1]);
+
+        // Old elements should be removed
+        expect(originalElements[0].parentNode).toBeNull();
+        expect(originalElements[1].parentNode).toBeNull();
+      });
+
+      it('should fallback to index-based keying without :key', () => {
+        container.innerHTML = '<ul><li bq-for="item in items" bq-text="item.name"></li></ul>';
+        const items = signal([{ name: 'One' }, { name: 'Two' }]);
+
+        view = mount(container, { items });
+
+        const originalElements = Array.from(container.querySelectorAll('li'));
+
+        // Reorder - without keys, elements at same indices are reused
+        items.value = [{ name: 'Two' }, { name: 'One' }];
+
+        const updatedElements = Array.from(container.querySelectorAll('li'));
+
+        // Elements at same indices are reused (index-based keying)
+        expect(updatedElements[0]).toBe(originalElements[0]);
+        expect(updatedElements[1]).toBe(originalElements[1]);
+      });
+
+      it('should handle empty list', () => {
+        container.innerHTML =
+          '<ul><li bq-for="item in items" :key="item.id" bq-text="item.name"></li></ul>';
+        const items = signal([
+          { id: 1, name: 'One' },
+          { id: 2, name: 'Two' },
+        ]);
+
+        view = mount(container, { items });
+
+        expect(container.querySelectorAll('li').length).toBe(2);
+
+        items.value = [];
+        expect(container.querySelectorAll('li').length).toBe(0);
+
+        // Re-add items
+        items.value = [{ id: 3, name: 'Three' }];
+        expect(container.querySelectorAll('li').length).toBe(1);
+        expect(container.querySelector('li')?.textContent).toBe('Three');
+      });
+    });
   });
 
   describe('bq-ref', () => {

@@ -191,6 +191,29 @@ userStore.$patch((state) => {
 
 ::: tip Nested Objects in $patch
 Even within `$patch`, you must replace nested objects entirely (using spread or`Object.assign`) to ensure reactive updates. Direct nested mutations like`state.preferences.theme = 'light'` will NOT trigger subscribers.
+
+In development mode, bQuery will warn you if it detects nested mutations that won't trigger reactive updates.
+:::
+
+### $patchDeep {#deep-reactivity}
+
+For scenarios where you need deep reactivity without manually replacing objects, use `$patchDeep`. This method deep-clones the state before mutation, ensuring all changes trigger reactive updates:
+
+```ts
+// ✅ Nested mutations work with $patchDeep
+userStore.$patchDeep((state) => {
+  state.preferences.theme = 'light'; // Works!
+  state.preferences.notifications = false; // Works!
+});
+
+// Also works with partial objects
+userStore.$patchDeep({
+  preferences: { theme: 'dark', notifications: true },
+});
+```
+
+::: warning Performance
+`$patchDeep` creates deep copies of your state, which has a performance cost for large objects or frequent updates. Use `$patch` with manual object replacement for performance-critical code.
 :::
 
 ### $subscribe
