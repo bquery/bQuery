@@ -359,22 +359,28 @@ const isSafeUrl = (value: string): boolean => {
  */
 const isExternalUrl = (url: string): boolean => {
   try {
+    // Normalize URL by trimming whitespace
+    const trimmedUrl = url.trim();
+    
     // Protocol-relative URLs (//example.com) are always external
-    if (url.startsWith('//')) {
+    if (trimmedUrl.startsWith('//')) {
       return true;
     }
     
+    // Normalize URL for case-insensitive protocol checks
+    const lowerUrl = trimmedUrl.toLowerCase();
+    
     // Check for non-http(s) protocols which are considered external/special
     // (mailto:, tel:, ftp:, etc.)
-    const hasProtocol = /^[a-z][a-z0-9+.-]*:/i.test(url);
-    if (hasProtocol && !url.startsWith('http://') && !url.startsWith('https://')) {
+    const hasProtocol = /^[a-z][a-z0-9+.-]*:/i.test(trimmedUrl);
+    if (hasProtocol && !lowerUrl.startsWith('http://') && !lowerUrl.startsWith('https://')) {
       // These are special protocols, not traditional "external" links
       // but we treat them as external for security consistency
       return true;
     }
     
     // Relative URLs are not external
-    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+    if (!lowerUrl.startsWith('http://') && !lowerUrl.startsWith('https://')) {
       return false;
     }
     
@@ -383,7 +389,7 @@ const isExternalUrl = (url: string): boolean => {
       return true;
     }
     
-    const urlObj = new URL(url, window.location.href);
+    const urlObj = new URL(trimmedUrl, window.location.href);
     return urlObj.origin !== window.location.origin;
   } catch {
     // If URL parsing fails, treat as potentially external for safety
@@ -478,7 +484,7 @@ const sanitizeHtmlCore = (html: string, options: SanitizeOptions = {}): string =
     if (tagName === 'a') {
       const href = el.getAttribute('href');
       const target = el.getAttribute('target');
-      const hasTargetBlank = target === '_blank';
+      const hasTargetBlank = target?.toLowerCase() === '_blank';
       const isExternal = href && isExternalUrl(href);
 
       // Add security attributes to links opening in new window or external links

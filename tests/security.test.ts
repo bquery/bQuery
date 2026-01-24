@@ -284,4 +284,48 @@ describe('security/enhanced protections', () => {
     expect(result).toContain('noreferrer');
     expect(result).toContain('author');
   });
+
+  it('handles URLs with uppercase protocols', () => {
+    const result1 = sanitizeHtml('<a href="HTTP://external.com">Link</a>');
+    expect(result1).toContain('rel="noopener noreferrer"');
+    
+    const result2 = sanitizeHtml('<a href="HTTPS://external.com">Link</a>');
+    expect(result2).toContain('rel="noopener noreferrer"');
+    
+    const result3 = sanitizeHtml('<a href="MAILTO:test@example.com">Email</a>');
+    expect(result3).toContain('rel="noopener noreferrer"');
+  });
+
+  it('handles URLs with leading/trailing whitespace', () => {
+    const result = sanitizeHtml('<a href="  https://external.com  ">Link</a>');
+    expect(result).toContain('rel="noopener noreferrer"');
+  });
+
+  it('handles case-insensitive target="_blank"', () => {
+    const result1 = sanitizeHtml('<a href="/page" target="_BLANK">Link</a>');
+    expect(result1).toContain('rel="noopener noreferrer"');
+    
+    const result2 = sanitizeHtml('<a href="/page" target="_Blank">Link</a>');
+    expect(result2).toContain('rel="noopener noreferrer"');
+    
+    const result3 = sanitizeHtml('<a href="/page" target="_blank">Link</a>');
+    expect(result3).toContain('rel="noopener noreferrer"');
+  });
+
+  it('treats absolute URLs as external in SSR/Node.js environments', () => {
+    // Save the original window object
+    const originalWindow = globalThis.window;
+    
+    try {
+      // Simulate SSR environment by temporarily removing window
+      // @ts-expect-error - Intentionally setting to undefined for testing
+      globalThis.window = undefined;
+      
+      const result = sanitizeHtml('<a href="https://external.com">Link</a>');
+      expect(result).toContain('rel="noopener noreferrer"');
+    } finally {
+      // Restore the original window object
+      globalThis.window = originalWindow;
+    }
+  });
 });
