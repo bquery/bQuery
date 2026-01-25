@@ -67,7 +67,7 @@ All mutating methods are chainable and return `this`.
 - `hide()`
 - `toggle(force?)`
 
-### Events (Collection)
+### Events (Element)
 
 - `on(event, handler)`
 - `once(event, handler)`

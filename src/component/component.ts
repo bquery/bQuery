@@ -4,6 +4,7 @@
  * @module bquery/component
  */
 
+import { sanitizeHtml } from '../security/sanitize';
 import { coercePropValue } from './props';
 import type { ComponentDefinition, PropDefinition } from './types';
 
@@ -169,7 +170,8 @@ export const defineComponent = <TProps extends Record<string, unknown>>(
         });
 
         const styles = definition.styles ? `<style>${definition.styles}</style>` : '';
-        this.shadowRoot.innerHTML = `${styles}${markup}`;
+        const sanitizedMarkup = sanitizeHtml(markup);
+        this.shadowRoot.innerHTML = `${styles}${sanitizedMarkup}`;
 
         if (triggerUpdated) {
           definition.updated?.call(this);
