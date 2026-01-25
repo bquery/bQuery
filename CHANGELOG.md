@@ -39,6 +39,11 @@ and this project adheres to Semantic Versioning.
 ### Changed (Unreleased)
 
 - **Security**: Internals modularized (sanitize core, Trusted Types, CSP helpers, constants/types) with no API changes.
+- **Router**: Internals modularized into focused submodules with no public API changes.
+
+### Fixed (Unreleased)
+
+- **Security**: `security/sanitize` now re-exports `generateNonce()` and `isTrustedTypesSupported()` for legacy deep imports.
 
 ## [1.2.0] - 2026-01-24
 

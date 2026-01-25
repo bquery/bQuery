@@ -7,6 +7,8 @@
 
 import { sanitizeHtmlCore } from './sanitize-core';
 import type { SanitizeOptions } from './types';
+export { generateNonce } from './csp';
+export { isTrustedTypesSupported } from './trusted-types';
 
 /**
  * Sanitize HTML string, removing dangerous elements and attributes.

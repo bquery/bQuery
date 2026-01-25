@@ -227,7 +227,7 @@ await x.to(100);
 
 ### Security – sanitizing
 
-Internally modularized (sanitize core, Trusted Types, CSP helpers) — the public API remains unchanged.
+Internally modularized (sanitize core, Trusted Types, CSP helpers) — the public API remains unchanged. For legacy deep imports, `@bquery/bquery/security/sanitize` also re-exports `generateNonce()` and `isTrustedTypesSupported()`.
 
 ```ts
 import { sanitize, escapeHtml } from '@bquery/bquery/security';
@@ -268,6 +268,8 @@ if (permission === 'granted') {
 ```
 
 ### Router – SPA navigation
+
+Internally, the router has been split into focused submodules (matching, navigation, state, links, utilities) with no public API changes.
 
 ```ts
 import { createRouter, navigate, currentRoute } from '@bquery/bquery/router';
