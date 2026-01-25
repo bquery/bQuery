@@ -393,6 +393,8 @@ watchStore(
 
 ### View – declarative bindings
 
+Internally modularized into focused submodules; the public API remains unchanged.
+
 ```ts
 import { mount, createTemplate } from '@bquery/bquery/view';
 import { signal } from '@bquery/bquery/reactive';

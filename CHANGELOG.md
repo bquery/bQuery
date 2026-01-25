@@ -46,6 +46,7 @@ and this project adheres to Semantic Versioning.
 - **Component**: Internals modularized into focused submodules with no public API changes.
 - **Reactive**: Internals modularized into focused submodules with no public API changes.
 - **Store**: Internals modularized into focused submodules (types, registry, plugins, helpers) with no public API breaks.
+- **View**: Internals modularized into focused submodules with no public API changes.
 
 ### Fixed (Unreleased)
 
