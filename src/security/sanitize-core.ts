@@ -237,5 +237,13 @@ export const sanitizeHtmlCore = (html: string, options: SanitizeOptions = {}): s
     el.remove();
   }
 
-  return template.innerHTML;
+  // Double-parse to prevent mutation XSS (mXSS).
+  // Browsers may normalize HTML during serialization in ways that could create
+  // new dangerous content when re-parsed. By re-parsing the sanitized output,
+  // we ensure the final HTML is stable and safe.
+  const sanitizedHtml = template.innerHTML;
+  const verifyTemplate = document.createElement('template');
+  verifyTemplate.innerHTML = sanitizedHtml;
+
+  return verifyTemplate.innerHTML;
 };

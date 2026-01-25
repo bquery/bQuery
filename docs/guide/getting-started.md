@@ -91,6 +91,20 @@ import { sanitize, escapeHtml } from '@bquery/bquery/security';
 import { storage, cache, notifications, buckets } from '@bquery/bquery/platform';
 ```
 
+## Modules at a glance
+
+| Module        | Description                                        | Size (gzip) |
+| ------------- | -------------------------------------------------- | ----------- |
+| **Core**      | Selectors, DOM manipulation, events, utilities     | ~8.1 KB     |
+| **Reactive**  | `signal`, `computed`, `effect`, `batch`            | ~0.4 KB     |
+| **Component** | Lightweight Web Components with props              | ~1.6 KB     |
+| **Motion**    | View transitions, FLIP, timelines, scroll, springs | ~3.5 KB     |
+| **Security**  | HTML sanitizing, Trusted Types, CSP                | ~0.6 KB     |
+| **Platform**  | Storage, cache, notifications, buckets             | ~1.6 KB     |
+| **Router**    | SPA routing, navigation guards, history API        | ~2.0 KB     |
+| **Store**     | Signal-based state management, persistence         | ~0.4 KB     |
+| **View**      | Declarative DOM bindings, directives               | ~3.3 KB     |
+
 ## Quick Examples
 
 ### DOM Manipulation
