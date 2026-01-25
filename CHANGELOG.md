@@ -32,6 +32,7 @@ and this project adheres to Semantic Versioning.
 ### Added (Unreleased)
 
 - **Core**: Added attribute helpers `removeAttr()` and `toggleAttr()`, plus collection DOM helpers `append()`, `prepend()`, `before()`, `after()`, `wrap()`, `unwrap()`, and `replaceWith()`.
+- **Core**: Expanded utilities with new array, function, number, and string helpers (e.g. `ensureArray()`, `unique()`, `chunk()`, `compact()`, `flatten()`, `once()`, `noop()`, `inRange()`, `toNumber()`, `truncate()`, `slugify()`, `escapeRegExp()`, `hasOwn()`, `isDate()`, `isPromise()`, `isObject()`).
 - **Motion**: Modularized motion utilities with new single-purpose helpers and presets.
   - New helpers: `animate`, `sequence`, `timeline`, `scrollAnimate`, `stagger`, `flipElements`.
   - New presets: `easingPresets`, `keyframePresets`, plus individual easing exports.
@@ -43,6 +44,7 @@ and this project adheres to Semantic Versioning.
 ### Changed (Unreleased)
 
 - **Core**: Internal DOM helpers extracted into focused utilities to improve core modularity (no breaking API changes).
+- **Core**: Utilities modularized into focused helper modules and re-exported as named exports from `@bquery/bquery/core` (the `utils` namespace remains for compatibility).
 - **Security**: Internals modularized (sanitize core, Trusted Types, CSP helpers, constants/types) with no API changes.
 - **Router**: Internals modularized into focused submodules with no public API changes.
 - **Component**: Internals modularized into focused submodules with no public API changes.

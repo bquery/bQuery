@@ -191,18 +191,25 @@ All mutating methods are chainable and apply to every element. Getter methods re
 ## Utilities
 
 ```ts
-import { utils } from '@bquery/bquery/core';
+import { debounce, merge, uid, utils } from '@bquery/bquery/core';
 
-const id = utils.uid();
-const merged = utils.merge({ a: 1 }, { b: 2 });
+const id = uid();
+const merged = merge({ a: 1 }, { b: 2 });
+const delayed = debounce(() => console.log('Saved'), 200);
+const legacyId = utils.uid();
 ```
 
 ### Utility list
 
 - `clone(value)`
 - `merge(...sources)`
+- `pick(obj, keys)`
+- `omit(obj, keys)`
+- `hasOwn(obj, key)`
 - `debounce(fn, delayMs)`
 - `throttle(fn, intervalMs)`
+- `once(fn)`
+- `noop()`
 - `uid(prefix?)`
 - `isElement(value)`
 - `isCollection(value)`
@@ -213,12 +220,23 @@ const merged = utils.merge({ a: 1 }, { b: 2 });
 - `isNumber(value)`
 - `isBoolean(value)`
 - `isArray(value)`
+- `isDate(value)`
+- `isPromise(value)`
+- `isObject(value)`
 - `parseJson(json, fallback)`
-- `pick(obj, keys)`
-- `omit(obj, keys)`
 - `sleep(ms)`
 - `randomInt(min, max)`
 - `clamp(value, min, max)`
+- `inRange(value, min, max, inclusive?)`
+- `toNumber(value, fallback?)`
 - `capitalize(str)`
 - `toKebabCase(str)`
 - `toCamelCase(str)`
+- `truncate(str, maxLength, suffix?)`
+- `slugify(str)`
+- `escapeRegExp(str)`
+- `ensureArray(value)`
+- `unique(items)`
+- `chunk(items, size)`
+- `compact(items)`
+- `flatten(items)`

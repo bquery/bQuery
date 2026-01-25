@@ -72,6 +72,9 @@ import { $, signal, component, transition, sanitize, storage } from '@bquery/bqu
 // Core only (selectors, DOM, events)
 import { $, $$, utils } from '@bquery/bquery/core';
 
+// Core utilities as named exports
+import { debounce, merge, uid } from '@bquery/bquery/core';
+
 // Reactive only (signals, computed, effects)
 import { signal, computed, effect, batch } from '@bquery/bquery/reactive';
 

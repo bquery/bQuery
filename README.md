@@ -84,6 +84,9 @@ import { $, signal, component } from '@bquery/bquery';
 // Core only
 import { $, $$ } from '@bquery/bquery/core';
 
+// Core utilities (named exports, tree-shakeable)
+import { debounce, merge, uid, utils } from '@bquery/bquery/core';
+
 // À la carte (individual modules)
 import { signal, computed, effect } from '@bquery/bquery/reactive';
 import { component, html } from '@bquery/bquery/component';
