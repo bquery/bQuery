@@ -7,7 +7,6 @@ import type { DirectiveHandler } from '../types';
  * @internal
  */
 export const handleIf: DirectiveHandler = (el, expression, context, cleanups) => {
-  const parent = el.parentNode;
   const placeholder = document.createComment(`bq-if: ${expression}`);
 
   // Store original element state
@@ -17,12 +16,12 @@ export const handleIf: DirectiveHandler = (el, expression, context, cleanups) =>
     const condition = evaluate<boolean>(expression, context);
 
     if (condition && !isInserted) {
-      // Insert element
-      parent?.replaceChild(el, placeholder);
+      // Insert element using replaceWith to handle moved elements
+      placeholder.replaceWith(el);
       isInserted = true;
     } else if (!condition && isInserted) {
-      // Remove element
-      parent?.replaceChild(placeholder, el);
+      // Remove element using replaceWith to handle moved elements
+      el.replaceWith(placeholder);
       isInserted = false;
     }
   });

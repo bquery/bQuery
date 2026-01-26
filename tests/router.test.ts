@@ -1263,7 +1263,7 @@ describe('Router', () => {
       expect(stack[stack.length - 1].url).toBe('/app/page');
     });
 
-    it('should flatten nested routes with base path', () => {
+    it('should flatten nested routes without including base path', () => {
       router = createRouter({
         routes: [
           {
@@ -1276,7 +1276,8 @@ describe('Router', () => {
       });
 
       expect(router.routes).toHaveLength(2);
-      expect(router.routes[1].path).toBe('/app/parent/child');
+      // Routes should not include base - base is only for browser history
+      expect(router.routes[1].path).toBe('/parent/child');
     });
   });
 
