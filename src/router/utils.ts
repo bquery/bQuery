@@ -13,13 +13,14 @@ import type { RouteDefinition } from './types';
 
 /**
  * Flattens nested routes into a single array with full paths.
+ * Does NOT include the router base - base is only for browser history.
  * @internal
  */
-export const flattenRoutes = (routes: RouteDefinition[], base = ''): RouteDefinition[] => {
+export const flattenRoutes = (routes: RouteDefinition[], parentPath = ''): RouteDefinition[] => {
   const result: RouteDefinition[] = [];
 
   for (const route of routes) {
-    const fullPath = route.path === '*' ? '*' : `${base}${route.path}`.replace(/\/+/g, '/');
+    const fullPath = route.path === '*' ? '*' : `${parentPath}${route.path}`.replace(/\/+/g, '/');
 
     result.push({
       ...route,

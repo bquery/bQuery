@@ -14,20 +14,20 @@ and this project adheres to Semantic Versioning.
     - [Fixed (1.3.0)](#fixed-130)
   - [[1.2.0] - 2026-01-24](#120---2026-01-24)
     - [Added (1.2.0)](#added-120)
-  - [(1.1.2) - 2026-01-24](#112---2026-01-24)
+  - [[1.1.2] - 2026-01-24](#112---2026-01-24)
     - [Fixed (1.1.2)](#fixed-112)
     - [Security (1.1.2)](#security-112)
-  - [(1.1.1) - 2026-01-24](#111---2026-01-24)
+  - [[1.1.1] - 2026-01-24](#111---2026-01-24)
     - [Fixed (1.1.1)](#fixed-111)
-  - [(1.1.0) - 2026-01-23](#110---2026-01-23)
+  - [[1.1.0] - 2026-01-23](#110---2026-01-23)
     - [Added (1.1.0)](#added-110)
     - [Changed (1.1.0)](#changed-110)
     - [Security (1.1.0)](#security-110)
-  - [(1.0.2) - 2026-01-23](#102---2026-01-23)
+  - [[1.0.2] - 2026-01-23](#102---2026-01-23)
     - [Fixed (1.0.2)](#fixed-102)
-  - [(1.0.1) - 2026-01-23](#101---2026-01-23)
+  - [[1.0.1] - 2026-01-23](#101---2026-01-23)
     - [Fixed (1.0.1)](#fixed-101)
-  - [(1.0.0) - 2026-01-21](#100---2026-01-21)
+  - [[1.0.0] - 2026-01-21](#100---2026-01-21)
     - [Added (1.0.0)](#added-100)
 
 ## [1.3.0] - 2026-01-26
@@ -98,7 +98,7 @@ and this project adheres to Semantic Versioning.
   - Custom directive prefix support.
   - Automatic HTML sanitization for security.
 
-## (1.1.2) - 2026-01-24
+## [1.1.2] - 2026-01-24
 
 ### Fixed (1.1.2)
 
@@ -108,13 +108,13 @@ and this project adheres to Semantic Versioning.
 
 - Added `rel="noopener noreferrer"` to external links for improved security.
 
-## (1.1.1) - 2026-01-24
+## [1.1.1] - 2026-01-24
 
 ### Fixed (1.1.1)
 
-- Fixed a possibly dangrous html handling in the playground examples.
+- Fixed a possibly dangerous html handling in the playground examples.
 
-## (1.1.0) - 2026-01-23
+## [1.1.0] - 2026-01-23
 
 ### Added (1.1.0)
 
@@ -152,13 +152,13 @@ and this project adheres to Semantic Versioning.
 - Added protection against DOM clobbering attacks by preventing reserved IDs like `document`, `cookie`, `location`.
 - Improved URL sanitization to prevent Unicode bypass attacks using zero-width characters.
 
-## (1.0.2) - 2026-01-23
+## [1.0.2] - 2026-01-23
 
 ### Fixed (1.0.2)
 
-- Fixed brodken documentation links in README.md.
+- Fixed broken documentation links in README.md.
 
-## (1.0.1) - 2026-01-23
+## [1.0.1] - 2026-01-23
 
 ### Fixed (1.0.1)
 
@@ -167,7 +167,7 @@ and this project adheres to Semantic Versioning.
 - Revised the homepage URL in `package.json` to point to the official bQuery website.
 - Added publish configuration in `package.json` to ensure public accessibility on npm registry.
 
-## (1.0.0) - 2026-01-21
+## [1.0.0] - 2026-01-21
 
 ### Added (1.0.0)
 

@@ -52,8 +52,8 @@ export const createRouter = (options: RouterOptions): Router => {
   const beforeGuards: NavigationGuard[] = [];
   const afterHooks: Array<(to: Route, from: Route) => void> = [];
 
-  // Flatten nested routes
-  const flatRoutes = flattenRoutes(routes, base);
+  // Flatten nested routes (base-relative, not including the base path)
+  const flatRoutes = flattenRoutes(routes);
 
   /**
    * Gets the current path from the URL.
