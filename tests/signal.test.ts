@@ -467,5 +467,43 @@ describe('persistedSignal', () => {
     // Clean up
     localStorage.removeItem(key);
   });
+
+  it('handles Safari private mode SecurityError gracefully', async () => {
+    // Simulate Safari private mode where accessing localStorage or calling methods throws
+    const originalLocalStorage = globalThis.localStorage;
+    const mockStorage = {
+      getItem: () => {
+        throw new DOMException('SecurityError', 'SecurityError');
+      },
+      setItem: () => {
+        throw new DOMException('SecurityError', 'SecurityError');
+      },
+      removeItem: () => {},
+      clear: () => {},
+      key: () => null,
+      length: 0,
+    };
+
+    Object.defineProperty(globalThis, 'localStorage', {
+      configurable: true,
+      get: () => mockStorage,
+    });
+
+    const { persistedSignal } = await import('../src/reactive/persisted');
+    const count = persistedSignal('test-safari-private', 100);
+    
+    // Should still work as a normal signal despite localStorage throwing
+    expect(count.value).toBe(100);
+    
+    // Should be updatable
+    count.value = 200;
+    expect(count.value).toBe(200);
+    
+    // Restore localStorage
+    Object.defineProperty(globalThis, 'localStorage', {
+      configurable: true,
+      value: originalLocalStorage,
+    });
+  });
 });
 

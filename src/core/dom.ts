@@ -26,7 +26,16 @@ export const insertContent = (
   }
 
   const elements = toElementList(content);
-  applyAll(elements, (el) => {
+  
+  // For positions that insert at the start of a container or immediately after
+  // the target, reverse the array to maintain the caller's order, since each
+  // insertAdjacentElement call is relative to the target element.
+  const orderedElements =
+    position === 'afterbegin' || position === 'afterend'
+      ? elements.slice().reverse()
+      : elements;
+
+  applyAll(orderedElements, (el) => {
     target.insertAdjacentElement(position, el);
   });
 };
