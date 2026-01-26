@@ -228,6 +228,40 @@ describe('Store', () => {
 
       expect(states).toEqual([1]);
     });
+
+    it('should not create reactive dependencies when subscription is inside effect', () => {
+      const store = createStore({
+        id: 'counter',
+        state: () => ({ count: 0 }),
+      });
+
+      let effectRunCount = 0;
+      const subscriptionStates: number[] = [];
+
+      // Create subscription inside an effect
+      effect(() => {
+        effectRunCount++;
+        
+        // Subscribe to store inside effect - this should NOT create a dependency
+        // on all store signals due to untrack() wrapping getCurrentState()
+        store.$subscribe((state) => {
+          subscriptionStates.push(state.count as number);
+        });
+      });
+
+      // Effect should run once on creation
+      expect(effectRunCount).toBe(1);
+
+      // Mutate store state
+      store.count = 1;
+      store.count = 2;
+
+      // Subscription should receive updates
+      expect(subscriptionStates).toEqual([1, 2]);
+
+      // Effect should NOT re-run due to store changes (no reactive dependency created)
+      expect(effectRunCount).toBe(1);
+    });
   });
 
   describe('$state', () => {
