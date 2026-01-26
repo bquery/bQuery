@@ -158,6 +158,7 @@ describe('Store', () => {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             (this as any).tempVar = 'temporary';
             (this as { count: number }).count += 1;
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             return (this as any).tempVar;
           },
         },
