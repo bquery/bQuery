@@ -82,7 +82,8 @@ export const createStore = <
   const notifySubscribers = (): void => {
     // Early return if no subscribers and no devtools hook
     const hasDevtools =
-      typeof window !== 'undefined' && window.__BQUERY_DEVTOOLS__?.onStateChange;
+      typeof window !== 'undefined' &&
+      typeof window.__BQUERY_DEVTOOLS__?.onStateChange === 'function';
     if (subscribers.length === 0 && !hasDevtools) {
       return;
     }
