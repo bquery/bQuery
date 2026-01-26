@@ -60,7 +60,13 @@ export const interceptLinks = (container: Element = document.body): (() => void)
     const target = e.target as HTMLElement;
     const anchor = target.closest('a');
 
-    if (!anchor || !(anchor instanceof HTMLAnchorElement)) return;
+    if (!anchor) return;
+    
+    // Cross-realm compatible anchor check: use owner document's constructor if available
+    const anchorWindow = anchor.ownerDocument.defaultView;
+    const AnchorConstructor = anchorWindow?.HTMLAnchorElement ?? HTMLAnchorElement;
+    if (!(anchor instanceof AnchorConstructor)) return;
+    
     if (anchor.target) return; // Has target attribute
     if (anchor.hasAttribute('download')) return;
     if (anchor.origin !== window.location.origin) return; // External link
