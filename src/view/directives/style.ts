@@ -8,7 +8,7 @@ import type { DirectiveHandler } from '../types';
  */
 export const handleStyle: DirectiveHandler = (el, expression, context, cleanups) => {
   const htmlEl = el as HTMLElement;
-  const appliedStyles = new Set<string>();
+  let appliedStyles: Set<string> = new Set();
 
   const cleanup = effect(() => {
     const newStyles = new Set<string>();
