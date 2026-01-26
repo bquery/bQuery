@@ -1198,7 +1198,7 @@ describe('Router', () => {
       // Test link with base path and query string
       container.innerHTML = '<a href="/app/contact?foo=bar">Contact</a>';
       const anchor2 = container.querySelector('a')!;
-      
+
       const event2 = new MouseEvent('click', { bubbles: true, cancelable: true });
       anchor2.dispatchEvent(event2);
 

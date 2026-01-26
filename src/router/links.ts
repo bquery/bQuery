@@ -77,7 +77,8 @@ export const interceptLinks = (container?: Element): (() => void) => {
     
     if (anchor.target) return; // Has target attribute
     if (anchor.hasAttribute('download')) return;
-    if (typeof window === 'undefined' || anchor.origin !== window.location.origin) return; // External link or non-window environment
+    if (typeof window === 'undefined') return; // Non-window environment
+    if (anchor.origin !== window.location.origin) return; // External link
 
     // Get active router config to handle base paths correctly.
     // If no router is active, proceed with no base/hash; navigate() will throw a
