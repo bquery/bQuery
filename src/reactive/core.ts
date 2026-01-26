@@ -2,7 +2,7 @@
  * Core reactive signals.
  */
 
-import { getCurrentObserver, isTrackingEnabled, scheduleObserver, registerDependency } from './internals';
+import { getCurrentObserver, isTrackingEnabled, scheduleObserver, registerDependency, type ReactiveSource } from './internals';
 
 /**
  * A reactive value container that notifies subscribers on change.
@@ -13,7 +13,7 @@ import { getCurrentObserver, isTrackingEnabled, scheduleObserver, registerDepend
  *
  * @template T - The type of the stored value
  */
-export class Signal<T> {
+export class Signal<T> implements ReactiveSource {
   private subscribers = new Set<() => void>();
 
   /**
