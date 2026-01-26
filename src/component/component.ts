@@ -137,11 +137,13 @@ export const defineComponent = <TProps extends Record<string, unknown>>(
             this.missingRequiredProps.add(key);
             value = undefined;
           } else {
-            this.missingRequiredProps.delete(key);
             value = config.default ?? undefined;
           }
         } else {
-          this.missingRequiredProps.delete(key);
+          // Attribute is present, remove from missing set if it was there
+          if (this.missingRequiredProps.has(key)) {
+            this.missingRequiredProps.delete(key);
+          }
           value = coercePropValue(attrValue, config);
         }
 

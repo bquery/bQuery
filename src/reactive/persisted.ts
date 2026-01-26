@@ -15,7 +15,7 @@ import { effect } from './effect';
  */
 export const persistedSignal = <T>(key: string, initialValue: T): Signal<T> => {
   // Check if localStorage is available
-  const hasLocalStorage = typeof localStorage !== 'undefined' && typeof window !== 'undefined';
+  const hasLocalStorage = typeof localStorage !== 'undefined';
   
   let stored: T = initialValue;
 
