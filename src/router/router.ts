@@ -61,7 +61,8 @@ export const createRouter = (options: RouterOptions): Router => {
   const getCurrentPath = (): { pathname: string; search: string; hash: string } => {
     if (useHash) {
       const hashPath = window.location.hash.slice(1) || '/';
-      // Extract hash fragment first (it comes after #)
+      // In hash routing, URL structure is #/path?query#fragment
+      // Extract hash fragment first (after the second #)
       const [pathWithQuery, hashPart = ''] = hashPath.split('#');
       // Then extract query from the path
       const [pathname, search = ''] = pathWithQuery.split('?');

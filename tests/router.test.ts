@@ -1361,7 +1361,7 @@ describe('Router', () => {
       expect(currentRoute.value.path).toBe('/page');
       expect(currentRoute.value.hash).toBe('section');
 
-      // Verify the URL includes both hashes
+      // Verify the URL includes hash routing prefix (#) and hash fragment
       const stack = mockHistory.getStack();
       expect(stack[stack.length - 1].url).toBe('#/page#section');
     });
