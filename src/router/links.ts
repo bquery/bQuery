@@ -3,6 +3,7 @@
  * @module bquery/router
  */
 
+import { getActiveRouter } from './state';
 import { navigate } from './navigation';
 
 // ============================================================================
@@ -53,10 +54,17 @@ export const link = (path: string, options: { replace?: boolean } = {}): ((e: Ev
  * cleanup();
  * ```
  */
-export const interceptLinks = (container: Element = document.body): (() => void) => {
+export const interceptLinks = (container?: Element): (() => void) => {
+  // Provide safe default in DOM environments only
+  const targetContainer = container ?? (typeof document !== 'undefined' ? document.body : null);
+  if (!targetContainer) {
+    // No container available (SSR or invalid input)
+    return () => undefined;
+  }
+
   const handler = (e: Event) => {
-    // Guard against non-Element targets (Text nodes, etc.)
-    if (!(e.target instanceof Element)) return;
+    // Guard against non-Element targets and non-DOM environments
+    if (typeof Element === 'undefined' || !(e.target instanceof Element)) return;
     const target = e.target as HTMLElement;
     const anchor = target.closest('a');
 
@@ -69,18 +77,40 @@ export const interceptLinks = (container: Element = document.body): (() => void)
     
     if (anchor.target) return; // Has target attribute
     if (anchor.hasAttribute('download')) return;
+    if (typeof window === 'undefined') return; // Non-window environment
     if (anchor.origin !== window.location.origin) return; // External link
+
+    // Get active router config to handle base paths correctly.
+    // If no router is active, proceed with no base/hash; navigate() will throw a
+    // "No router initialized" error, which is caught and logged below.
+    const router = getActiveRouter();
+    if (!router) {
+      // No active router - trigger navigate(), allowing its error to be logged here
+      e.preventDefault();
+      void navigate(anchor.pathname + anchor.search + anchor.hash).catch((err) => {
+        console.error('Navigation failed:', err);
+      });
+      return;
+    }
+
+    const base = router.base;
+    const useHash = router.hash;
 
     // Detect hash-routing mode: links written as href="#/page"
     // In this case, anchor.hash contains the route path
     let path: string;
-    if (anchor.hash && anchor.hash.startsWith('#/')) {
+    if (useHash && anchor.hash && anchor.hash.startsWith('#/')) {
       // Hash-routing mode: extract path from the hash
       // e.g., href="#/page?foo=bar" → path = "/page?foo=bar"
       path = anchor.hash.slice(1); // Remove leading #
     } else {
-      // History mode or regular anchor: use pathname + search + hash
-      path = anchor.pathname + anchor.search + anchor.hash;
+      // History mode: use pathname + search + hash
+      // Strip base from pathname to avoid duplication (router.push() re-adds it)
+      let pathname = anchor.pathname;
+      if (base && base !== '/' && pathname.startsWith(base)) {
+        pathname = pathname.slice(base.length) || '/';
+      }
+      path = pathname + anchor.search + anchor.hash;
     }
 
     e.preventDefault();
@@ -89,6 +119,6 @@ export const interceptLinks = (container: Element = document.body): (() => void)
     });
   };
 
-  container.addEventListener('click', handler);
-  return () => container.removeEventListener('click', handler);
+  targetContainer.addEventListener('click', handler);
+  return () => targetContainer.removeEventListener('click', handler);
 };
