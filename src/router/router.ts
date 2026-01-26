@@ -103,8 +103,7 @@ export const createRouter = (options: RouterOptions): Router => {
 
     // Parse the target path
     const url = new URL(path, window.location.origin);
-    const toPath = useHash ? path : url.pathname;
-    const to = createRoute(toPath, url.search, url.hash, flatRoutes);
+    const to = createRoute(url.pathname, url.search, url.hash, flatRoutes);
 
     // Run beforeEach guards
     for (const guard of beforeGuards) {
