@@ -40,8 +40,7 @@ export const handleStyle: DirectiveHandler = (el, expression, context, cleanups)
     }
 
     // Update the set of applied styles
-    appliedStyles.clear();
-    newStyles.forEach((prop) => appliedStyles.add(prop));
+    appliedStyles = newStyles;
   });
 
   cleanups.push(cleanup);
