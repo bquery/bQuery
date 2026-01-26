@@ -61,8 +61,11 @@ export const createRouter = (options: RouterOptions): Router => {
   const getCurrentPath = (): { pathname: string; search: string; hash: string } => {
     if (useHash) {
       const hashPath = window.location.hash.slice(1) || '/';
-      const [pathname, rest = ''] = hashPath.split('?');
-      const [search, hashPart = ''] = rest.split('#');
+      // In hash routing, URL structure is #/path?query#fragment
+      // Extract hash fragment first (after the second #)
+      const [pathWithQuery, hashPart = ''] = hashPath.split('#');
+      // Then extract query from the path
+      const [pathname, search = ''] = pathWithQuery.split('?');
       return {
         pathname,
         search: search ? `?${search}` : '',
@@ -103,8 +106,7 @@ export const createRouter = (options: RouterOptions): Router => {
 
     // Parse the target path
     const url = new URL(path, window.location.origin);
-    const toPath = useHash ? path : url.pathname;
-    const to = createRoute(toPath, url.search, url.hash, flatRoutes);
+    const to = createRoute(url.pathname, url.search, url.hash, flatRoutes);
 
     // Run beforeEach guards
     for (const guard of beforeGuards) {
