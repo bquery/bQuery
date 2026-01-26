@@ -213,12 +213,22 @@ export const defineComponent = <TProps extends Record<string, unknown>>(
  *   `,
  *   connected() {
  *     // Use event delegation on shadow root so handler survives re-renders
- *     this.shadowRoot?.addEventListener('click', (event) => {
+ *     const handleClick = (event: Event) => {
  *       const target = event.target as HTMLElement | null;
  *       if (target?.matches('button')) {
  *         this.setState('count', (this.getState('count') as number) + 1);
  *       }
- *     });
+ *     };
+ *     this.shadowRoot?.addEventListener('click', handleClick);
+ *     // Store handler for cleanup
+ *     (this as any)._handleClick = handleClick;
+ *   },
+ *   disconnected() {
+ *     // Clean up event listener to prevent memory leaks
+ *     const handleClick = (this as any)._handleClick;
+ *     if (handleClick) {
+ *       this.shadowRoot?.removeEventListener('click', handleClick);
+ *     }
  *   },
  *   render({ props, state }) {
  *     return html`
