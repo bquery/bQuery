@@ -840,3 +840,97 @@ describe('core/BQueryCollection - delegate/undelegate', () => {
     container2.remove();
   });
 });
+
+describe('core/DOM insertion order', () => {
+  it('append maintains correct order for multiple elements', () => {
+    const container = document.createElement('div');
+    const wrapped = new BQueryElement(container);
+
+    const el1 = document.createElement('span');
+    el1.textContent = 'A';
+    const el2 = document.createElement('span');
+    el2.textContent = 'B';
+    const el3 = document.createElement('span');
+    el3.textContent = 'C';
+
+    wrapped.append([el1, el2, el3]);
+
+    const children = Array.from(container.children);
+    expect(children.length).toBe(3);
+    expect(children[0].textContent).toBe('A');
+    expect(children[1].textContent).toBe('B');
+    expect(children[2].textContent).toBe('C');
+  });
+
+  it('prepend maintains correct order for multiple elements', () => {
+    const container = document.createElement('div');
+    const existing = document.createElement('span');
+    existing.textContent = 'EXISTING';
+    container.appendChild(existing);
+    const wrapped = new BQueryElement(container);
+
+    const el1 = document.createElement('span');
+    el1.textContent = 'A';
+    const el2 = document.createElement('span');
+    el2.textContent = 'B';
+    const el3 = document.createElement('span');
+    el3.textContent = 'C';
+
+    wrapped.prepend([el1, el2, el3]);
+
+    const children = Array.from(container.children);
+    expect(children.length).toBe(4);
+    expect(children[0].textContent).toBe('A');
+    expect(children[1].textContent).toBe('B');
+    expect(children[2].textContent).toBe('C');
+    expect(children[3].textContent).toBe('EXISTING');
+  });
+
+  it('before maintains correct order for multiple elements', () => {
+    const container = document.createElement('div');
+    const target = document.createElement('span');
+    target.textContent = 'TARGET';
+    container.appendChild(target);
+    const wrapped = new BQueryElement(target);
+
+    const el1 = document.createElement('span');
+    el1.textContent = 'A';
+    const el2 = document.createElement('span');
+    el2.textContent = 'B';
+    const el3 = document.createElement('span');
+    el3.textContent = 'C';
+
+    wrapped.before([el1, el2, el3]);
+
+    const children = Array.from(container.children);
+    expect(children.length).toBe(4);
+    expect(children[0].textContent).toBe('A');
+    expect(children[1].textContent).toBe('B');
+    expect(children[2].textContent).toBe('C');
+    expect(children[3].textContent).toBe('TARGET');
+  });
+
+  it('after maintains correct order for multiple elements', () => {
+    const container = document.createElement('div');
+    const target = document.createElement('span');
+    target.textContent = 'TARGET';
+    container.appendChild(target);
+    const wrapped = new BQueryElement(target);
+
+    const el1 = document.createElement('span');
+    el1.textContent = 'A';
+    const el2 = document.createElement('span');
+    el2.textContent = 'B';
+    const el3 = document.createElement('span');
+    el3.textContent = 'C';
+
+    wrapped.after([el1, el2, el3]);
+
+    const children = Array.from(container.children);
+    expect(children.length).toBe(4);
+    expect(children[0].textContent).toBe('TARGET');
+    expect(children[1].textContent).toBe('A');
+    expect(children[2].textContent).toBe('B');
+    expect(children[3].textContent).toBe('C');
+  });
+});

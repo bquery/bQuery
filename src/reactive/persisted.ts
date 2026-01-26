@@ -23,8 +23,20 @@ export const persistedSignal = <T>(key: string, initialValue: T): Signal<T> => {
     storage = globalThis.localStorage;
     if (storage) {
       // Test actual access to ensure it's not just present but usable
-      storage.getItem('__bquery_test__');
-      hasLocalStorage = true;
+      const testKey = '__bquery_test__';
+      const testValue = '__bquery_test__';
+      try {
+        storage.setItem(testKey, testValue);
+        storage.getItem(testKey);
+        hasLocalStorage = true;
+      } finally {
+        // Ensure we don't leave any test data behind
+        try {
+          storage.removeItem(testKey);
+        } catch {
+          // Ignore cleanup errors (e.g., storage becoming unavailable)
+        }
+      }
     }
   } catch {
     // localStorage unavailable or access denied (Safari private mode, sandboxed iframes, etc.)
