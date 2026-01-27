@@ -50,18 +50,30 @@ export const defineComponent = <TProps extends Record<string, unknown>>(
      */
     connectedCallback(): void {
       try {
-        // Validate required props before mounting
+        // Defer initial render until all required props are present
+        // This allows attributes to be set after element creation
         if (this.missingRequiredProps.size > 0) {
-          const missing = Array.from(this.missingRequiredProps).join(', ');
-          throw new Error(`bQuery component: missing required props: ${missing}`);
+          // Component will mount once all required props are satisfied
+          // via attributeChangedCallback
+          return;
         }
-        definition.beforeMount?.call(this);
-        definition.connected?.call(this);
-        this.render();
-        this.hasMounted = true;
+        this.mount();
       } catch (error) {
         this.handleError(error as Error);
       }
+    }
+
+    /**
+     * Performs the initial mount of the component.
+     * Called when the element is connected and all required props are present.
+     * @internal
+     */
+    private mount(): void {
+      if (this.hasMounted) return;
+      definition.beforeMount?.call(this);
+      definition.connected?.call(this);
+      this.render();
+      this.hasMounted = true;
     }
 
     /**
@@ -85,10 +97,14 @@ export const defineComponent = <TProps extends Record<string, unknown>>(
     ): void {
       try {
         this.syncProps();
-        // Only re-render if the component has completed its initial mount
-        // This prevents pre-mount renders when attributes are set during element upgrade
+
         if (this.hasMounted) {
+          // Component already mounted - trigger update render
           this.render(true);
+        } else if (this.isConnected && this.missingRequiredProps.size === 0) {
+          // All required props are now satisfied and element is connected
+          // Trigger the deferred initial mount
+          this.mount();
         }
       } catch (error) {
         this.handleError(error as Error);

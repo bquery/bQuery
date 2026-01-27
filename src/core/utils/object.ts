@@ -67,9 +67,16 @@ export function clone<T>(value: T): T {
  * Later sources override earlier ones for primitive values.
  * Objects are recursively merged.
  *
- * @template T - The type of the merged object
  * @param sources - Objects to merge
- * @returns A new object with all sources merged
+ * @returns A new object with all sources merged as an intersection type
+ *
+ * @remarks
+ * This function uses overloads to provide accurate intersection types for up to 5 sources.
+ * For more than 5 sources, the return type falls back to `Record<string, unknown>`.
+ *
+ * Note that deep merging creates a shallow intersection at the type level. Nested objects
+ * are merged at runtime, but TypeScript sees them as intersected types which may not
+ * perfectly represent the merged structure for deeply nested conflicting types.
  *
  * @example
  * ```ts
@@ -78,12 +85,37 @@ export function clone<T>(value: T): T {
  *   { b: 2, nested: { y: 2 } }
  * );
  * // Result: { a: 1, b: 2, nested: { x: 1, y: 2 } }
+ * // Type: { a: number; nested: { x: number } } & { b: number; nested: { y: number } }
  * ```
  *
  * @security This method is protected against prototype pollution attacks.
  * Keys like `__proto__`, `constructor`, and `prototype` are ignored.
  */
-export function merge<T extends Record<string, unknown>>(...sources: T[]): T {
+export function merge<T1 extends Record<string, unknown>>(source1: T1): T1;
+export function merge<T1 extends Record<string, unknown>, T2 extends Record<string, unknown>>(
+  source1: T1,
+  source2: T2
+): T1 & T2;
+export function merge<
+  T1 extends Record<string, unknown>,
+  T2 extends Record<string, unknown>,
+  T3 extends Record<string, unknown>,
+>(source1: T1, source2: T2, source3: T3): T1 & T2 & T3;
+export function merge<
+  T1 extends Record<string, unknown>,
+  T2 extends Record<string, unknown>,
+  T3 extends Record<string, unknown>,
+  T4 extends Record<string, unknown>,
+>(source1: T1, source2: T2, source3: T3, source4: T4): T1 & T2 & T3 & T4;
+export function merge<
+  T1 extends Record<string, unknown>,
+  T2 extends Record<string, unknown>,
+  T3 extends Record<string, unknown>,
+  T4 extends Record<string, unknown>,
+  T5 extends Record<string, unknown>,
+>(source1: T1, source2: T2, source3: T3, source4: T4, source5: T5): T1 & T2 & T3 & T4 & T5;
+export function merge(...sources: Record<string, unknown>[]): Record<string, unknown>;
+export function merge(...sources: Record<string, unknown>[]): Record<string, unknown> {
   const result: Record<string, unknown> = {};
   for (const source of sources) {
     for (const [key, value] of Object.entries(source)) {
@@ -99,7 +131,7 @@ export function merge<T extends Record<string, unknown>>(...sources: T[]): T {
       }
     }
   }
-  return result as T;
+  return result;
 }
 
 /**
