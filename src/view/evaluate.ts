@@ -2,7 +2,31 @@ import { isComputed, isSignal, type Signal } from '../reactive/index';
 import type { BindingContext } from './types';
 
 /**
+ * Creates a proxy that lazily unwraps signals/computed only when accessed.
+ * This avoids subscribing to signals that aren't referenced in the expression.
+ * @internal
+ */
+const createLazyContext = (context: BindingContext): BindingContext =>
+  new Proxy(context, {
+    get(target, prop: string) {
+      const value = target[prop];
+      // Auto-unwrap signals/computed only when actually accessed
+      if (isSignal(value) || isComputed(value)) {
+        return (value as Signal<unknown>).value;
+      }
+      return value;
+    },
+    has(target, prop: string) {
+      // Required for `with` statement to resolve identifiers correctly
+      return prop in target;
+    },
+  });
+
+/**
  * Evaluates an expression in the given context using `new Function()`.
+ *
+ * Signals and computed values in the context are lazily unwrapped only when
+ * accessed by the expression, avoiding unnecessary subscriptions to unused values.
  *
  * @security **WARNING:** This function uses dynamic code execution via `new Function()`.
  * - NEVER pass expressions derived from user input or untrusted sources
@@ -14,20 +38,13 @@ import type { BindingContext } from './types';
  */
 export const evaluate = <T = unknown>(expression: string, context: BindingContext): T => {
   try {
-    // Build context keys for function scope
-    const keys = Object.keys(context);
-    const values = keys.map((key) => {
-      const value = context[key];
-      // Auto-unwrap signals/computed
-      if (isSignal(value) || isComputed(value)) {
-        return (value as Signal<unknown>).value;
-      }
-      return value;
-    });
+    // Create a proxy that lazily unwraps signals/computed on access
+    const lazyContext = createLazyContext(context);
 
-    // Create function with context variables in scope
-    const fn = new Function(...keys, `return (${expression})`);
-    return fn(...values) as T;
+    // Use `with` to enable direct property access from proxy scope.
+    // Note: `new Function()` runs in non-strict mode, so `with` is allowed.
+    const fn = new Function('$ctx', `with($ctx) { return (${expression}); }`);
+    return fn(lazyContext) as T;
   } catch (error) {
     console.error(`bQuery view: Error evaluating "${expression}"`, error);
     return undefined as T;
