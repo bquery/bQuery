@@ -168,6 +168,12 @@ export const RESERVED_IDS = new Set([
 
 /**
  * Default allowed attributes considered safe.
+ * Note: 'style' is excluded by default because inline CSS can be abused for:
+ * - UI redressing attacks
+ * - Data exfiltration via url() in CSS
+ * - CSS injection vectors
+ * If you need to allow inline styles, add 'style' to allowAttributes in your
+ * sanitizeHtml options, but ensure you implement proper CSS value validation.
  */
 export const DEFAULT_ALLOWED_ATTRIBUTES = new Set([
   'alt',
@@ -184,7 +190,6 @@ export const DEFAULT_ALLOWED_ATTRIBUTES = new Set([
   'role',
   'src',
   'srcset',
-  'style',
   'tabindex',
   'target',
   'title',
