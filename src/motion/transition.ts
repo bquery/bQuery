@@ -34,6 +34,12 @@ export const transition = async (
 ): Promise<void> => {
   const update = typeof updateOrOptions === 'function' ? updateOrOptions : updateOrOptions.update;
 
+  // SSR/non-DOM environment fallback
+  if (typeof document === 'undefined') {
+    update();
+    return;
+  }
+
   const doc = document as DocumentWithTransition;
 
   if (doc.startViewTransition) {

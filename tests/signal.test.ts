@@ -477,28 +477,31 @@ describe('persistedSignal', () => {
   });
 
   it('falls back to in-memory signal when localStorage is unavailable', async () => {
-    // Temporarily hide localStorage to simulate SSR/unavailable environment
-    const originalLocalStorage = globalThis.localStorage;
-    Object.defineProperty(globalThis, 'localStorage', {
-      configurable: true,
-      get: () => undefined,
-    });
+    // Capture original property descriptor to restore properly
+    const originalDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
 
-    const { persistedSignal } = await import('../src/reactive/persisted');
-    const count = persistedSignal('test-fallback', 10);
+    try {
+      // Temporarily hide localStorage to simulate SSR/unavailable environment
+      Object.defineProperty(globalThis, 'localStorage', {
+        configurable: true,
+        get: () => undefined,
+      });
 
-    // Should still work as a normal signal
-    expect(count.value).toBe(10);
+      const { persistedSignal } = await import('../src/reactive/persisted');
+      const count = persistedSignal('test-fallback', 10);
 
-    // Should be updatable
-    count.value = 20;
-    expect(count.value).toBe(20);
+      // Should still work as a normal signal
+      expect(count.value).toBe(10);
 
-    // Restore localStorage
-    Object.defineProperty(globalThis, 'localStorage', {
-      configurable: true,
-      value: originalLocalStorage,
-    });
+      // Should be updatable
+      count.value = 20;
+      expect(count.value).toBe(20);
+    } finally {
+      // Restore localStorage with original descriptor
+      if (originalDescriptor) {
+        Object.defineProperty(globalThis, 'localStorage', originalDescriptor);
+      }
+    }
   });
 
   it('handles JSON parse errors gracefully', async () => {
@@ -517,40 +520,43 @@ describe('persistedSignal', () => {
   });
 
   it('handles Safari private mode SecurityError gracefully', async () => {
-    // Simulate Safari private mode where accessing localStorage or calling methods throws
-    const originalLocalStorage = globalThis.localStorage;
-    const mockStorage = {
-      getItem: () => {
-        throw new DOMException('SecurityError', 'SecurityError');
-      },
-      setItem: () => {
-        throw new DOMException('SecurityError', 'SecurityError');
-      },
-      removeItem: () => {},
-      clear: () => {},
-      key: () => null,
-      length: 0,
-    };
+    // Capture original property descriptor to restore properly
+    const originalDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
 
-    Object.defineProperty(globalThis, 'localStorage', {
-      configurable: true,
-      get: () => mockStorage,
-    });
+    try {
+      // Simulate Safari private mode where accessing localStorage or calling methods throws
+      const mockStorage = {
+        getItem: () => {
+          throw new DOMException('SecurityError', 'SecurityError');
+        },
+        setItem: () => {
+          throw new DOMException('SecurityError', 'SecurityError');
+        },
+        removeItem: () => {},
+        clear: () => {},
+        key: () => null,
+        length: 0,
+      };
 
-    const { persistedSignal } = await import('../src/reactive/persisted');
-    const count = persistedSignal('test-safari-private', 100);
+      Object.defineProperty(globalThis, 'localStorage', {
+        configurable: true,
+        get: () => mockStorage,
+      });
 
-    // Should still work as a normal signal despite localStorage throwing
-    expect(count.value).toBe(100);
+      const { persistedSignal } = await import('../src/reactive/persisted');
+      const count = persistedSignal('test-safari-private', 100);
 
-    // Should be updatable
-    count.value = 200;
-    expect(count.value).toBe(200);
+      // Should still work as a normal signal despite localStorage throwing
+      expect(count.value).toBe(100);
 
-    // Restore localStorage
-    Object.defineProperty(globalThis, 'localStorage', {
-      configurable: true,
-      value: originalLocalStorage,
-    });
+      // Should be updatable
+      count.value = 200;
+      expect(count.value).toBe(200);
+    } finally {
+      // Restore localStorage with original descriptor
+      if (originalDescriptor) {
+        Object.defineProperty(globalThis, 'localStorage', originalDescriptor);
+      }
+    }
   });
 });
