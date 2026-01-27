@@ -14,7 +14,11 @@ const evaluateRawCache = new Map<string, (ctx: BindingContext) => unknown>();
  */
 const createLazyContext = (context: BindingContext): BindingContext =>
   new Proxy(context, {
-    get(target, prop: string) {
+    get(target, prop: string | symbol) {
+      // Only handle string keys for BindingContext indexing
+      if (typeof prop !== 'string') {
+        return Reflect.get(target, prop);
+      }
       const value = target[prop];
       // Auto-unwrap signals/computed only when actually accessed
       if (isSignal(value) || isComputed(value)) {
@@ -22,8 +26,11 @@ const createLazyContext = (context: BindingContext): BindingContext =>
       }
       return value;
     },
-    has(target, prop: string) {
+    has(target, prop: string | symbol) {
       // Required for `with` statement to resolve identifiers correctly
+      if (typeof prop !== 'string') {
+        return Reflect.has(target, prop);
+      }
       return prop in target;
     },
   });

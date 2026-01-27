@@ -68,6 +68,12 @@ export const flip = (
 
   const htmlElement = element as HTMLElement;
 
+  // Feature check: fallback if Web Animations API is unavailable
+  if (typeof htmlElement.animate !== 'function') {
+    onComplete?.();
+    return Promise.resolve();
+  }
+
   // Apply inverted transform
   htmlElement.style.transform = `translate(${deltaX}px, ${deltaY}px) scale(${deltaW}, ${deltaH})`;
   htmlElement.style.transformOrigin = 'top left';
@@ -87,12 +93,21 @@ export const flip = (
       { duration, easing, fill: 'forwards' }
     );
 
-    animation.onfinish = () => {
+    let finalized = false;
+    const finalize = () => {
+      if (finalized) return;
+      finalized = true;
       htmlElement.style.transform = '';
       htmlElement.style.transformOrigin = '';
       onComplete?.();
       resolve();
     };
+
+    animation.onfinish = finalize;
+    // Handle cancel/rejection via the finished promise
+    if (animation.finished) {
+      animation.finished.then(finalize).catch(finalize);
+    }
   });
 };
 

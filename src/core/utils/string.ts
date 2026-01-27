@@ -65,7 +65,7 @@ export function toCamelCase(str: string): string {
  *
  * @example
  * ```ts
- * truncate('Hello world', 8); // 'Hello…'
+ * truncate('Hello world', 8); // 'Hello w…'
  * ```
  */
 export function truncate(str: string, maxLength: number, suffix = '…'): string {
