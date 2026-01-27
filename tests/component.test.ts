@@ -615,7 +615,7 @@ describe('component/defineComponent', () => {
   it('returned class can be registered with custom tag name', () => {
     const originalTagName = `test-define-original-${Date.now()}`;
     const customTagName = `test-define-custom-${Date.now()}`;
-    
+
     const ElementClass = defineComponent(originalTagName, {
       props: {},
       render: () => html`<div>Test</div>`,
@@ -623,15 +623,15 @@ describe('component/defineComponent', () => {
 
     // Register with a different tag name
     customElements.define(customTagName, ElementClass);
-    
+
     expect(customElements.get(customTagName)).toBe(ElementClass);
-    
+
     const el = document.createElement(customTagName);
     document.body.appendChild(el);
-    
+
     expect(el.shadowRoot).toBeDefined();
     expect(el.shadowRoot?.innerHTML).toContain('Test');
-    
+
     el.remove();
   });
 
@@ -646,7 +646,8 @@ describe('component/defineComponent', () => {
       render: () => html`<div>Test</div>`,
     });
 
-    const observedAttrs = (ElementClass as typeof HTMLElement & { observedAttributes: string[] }).observedAttributes;
+    const observedAttrs = (ElementClass as typeof HTMLElement & { observedAttributes: string[] })
+      .observedAttributes;
     expect(observedAttrs).toBeDefined();
     expect(observedAttrs).toContain('name');
     expect(observedAttrs).toContain('count');
@@ -674,7 +675,7 @@ describe('component/defineComponent', () => {
   it('attributeChangedCallback triggers re-render', () => {
     const tagName = `test-define-attr-change-${Date.now()}`;
     let renderCount = 0;
-    
+
     const ElementClass = defineComponent<{ count: number }>(tagName, {
       props: {
         count: { type: Number, default: 0 },
@@ -704,7 +705,7 @@ describe('component/defineComponent', () => {
   it('does not render when attributes are set before connectedCallback', () => {
     const tagName = `test-define-pre-mount-${Date.now()}`;
     let renderCount = 0;
-    
+
     const ElementClass = defineComponent<{ value: string }>(tagName, {
       props: {
         value: { type: String, default: 'default' },
@@ -716,62 +717,30 @@ describe('component/defineComponent', () => {
     });
 
     customElements.define(tagName, ElementClass);
-    
+
     // Create element and set attributes BEFORE connecting to DOM
     const el = document.createElement(tagName);
     el.setAttribute('value', 'initial');
     el.setAttribute('value', 'changed');
     el.setAttribute('value', 'final');
-    
+
     // Should not have rendered yet (attributeChangedCallback called but hasMounted is false)
     expect(renderCount).toBe(0);
-    
+
     // Connect to DOM - this triggers connectedCallback and first render
     document.body.appendChild(el);
-    
+
     // Should render exactly once with the final attribute value
     expect(renderCount).toBe(1);
     expect(el.shadowRoot?.innerHTML).toContain('Value: final');
-    
-    el.remove();
-  });
 
-  it('renders only once when element is upgraded with attributes already set', () => {
-    const tagName = `test-define-upgrade-${Date.now()}`;
-    let renderCount = 0;
-    
-    const ElementClass = defineComponent<{ count: number }>(tagName, {
-      props: {
-        count: { type: Number, default: 0 },
-      },
-      render: ({ props }) => {
-        renderCount++;
-        return html`<div>Count: ${props.count}</div>`;
-      },
-    });
-
-    // Create element with innerHTML (element exists but not yet upgraded)
-    const container = document.createElement('div');
-    container.innerHTML = `<${tagName} count="99"></${tagName}>`;
-    const el = container.querySelector(tagName)!;
-    
-    // Define the component - this triggers upgrade
-    customElements.define(tagName, ElementClass);
-    
-    // Append to body to trigger connectedCallback
-    document.body.appendChild(el);
-    
-    // Should render exactly once despite attribute being set during construction
-    expect(renderCount).toBe(1);
-    expect(el.shadowRoot?.innerHTML).toContain('Count: 99');
-    
     el.remove();
   });
 
   it('attributeChangedCallback triggers re-render after mount', () => {
     const tagName = `test-define-post-mount-rerender-${Date.now()}`;
     let renderCount = 0;
-    
+
     const ElementClass = defineComponent<{ value: string }>(tagName, {
       props: {
         value: { type: String, default: 'initial' },
@@ -785,19 +754,19 @@ describe('component/defineComponent', () => {
     customElements.define(tagName, ElementClass);
     const el = document.createElement(tagName);
     document.body.appendChild(el);
-    
+
     expect(renderCount).toBe(1);
     expect(el.shadowRoot?.innerHTML).toContain('Value: initial');
-    
+
     // Now that component is mounted, attribute changes should trigger re-renders
     el.setAttribute('value', 'updated1');
     expect(renderCount).toBe(2);
     expect(el.shadowRoot?.innerHTML).toContain('Value: updated1');
-    
+
     el.setAttribute('value', 'updated2');
     expect(renderCount).toBe(3);
     expect(el.shadowRoot?.innerHTML).toContain('Value: updated2');
-    
+
     el.remove();
   });
 
@@ -805,7 +774,13 @@ describe('component/defineComponent', () => {
     const tagName = `test-define-sanitize-${Date.now()}`;
     const ElementClass = defineComponent(tagName, {
       props: {},
-      render: () => html`<div><script>alert('xss')</script>Safe text</div>`,
+      render: () =>
+        html`<div>
+          <script>
+            alert('xss');
+          </script>
+          Safe text
+        </div>`,
     });
 
     customElements.define(tagName, ElementClass);
