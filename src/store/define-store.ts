@@ -6,7 +6,11 @@ import { createStore } from './create-store';
 import type { Store, StoreDefinition } from './types';
 
 /**
- * Creates a store factory that lazily instantiates a store on first call.
+ * Creates a store factory that returns the store instance.
+ *
+ * The store is lazily created on first call and cached in the global store
+ * registry. Subsequent calls return the same instance. After calling
+ * `destroyStore(id)`, the next factory call will create a fresh store.
  *
  * @param id - Store identifier
  * @param definition - Store definition without id
@@ -31,12 +35,8 @@ export const defineStore = <
   id: string,
   definition: Omit<StoreDefinition<S, G, A>, 'id'>
 ): (() => Store<S, G, A>) => {
-  let cachedStore: Store<S, G, A> | null = null;
-  
-  return () => {
-    if (!cachedStore) {
-      cachedStore = createStore({ id, ...definition });
-    }
-    return cachedStore;
-  };
+  // Delegate caching to createStore/registry - no local cache needed.
+  // createStore() returns existing instance if already registered,
+  // or creates a new one if destroyed/not yet created.
+  return () => createStore({ id, ...definition });
 };

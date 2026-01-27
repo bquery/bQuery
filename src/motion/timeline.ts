@@ -140,6 +140,16 @@ export const timeline = (
       return;
     }
 
+    // Check if Web Animations API is available on all targets
+    const animateUnavailable = schedule.some(
+      ({ step }) => typeof (step.target as HTMLElement).animate !== 'function'
+    );
+    if (animateUnavailable) {
+      schedule.forEach(({ step }) => applyFinalKeyframeStyles(step.target, step.keyframes));
+      reducedMotionApplied = true;
+      return;
+    }
+
     reducedMotionApplied = false;
     animations = schedule.map(({ step, start }) => {
       const { delay: _delay, ...options } = step.options ?? {};

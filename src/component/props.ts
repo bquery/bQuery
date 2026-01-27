@@ -48,10 +48,30 @@ export const coercePropValue = <T>(rawValue: string, config: PropDefinition<T>):
   if (typeof type === 'function') {
     const callable = type as (value: unknown) => T;
     const constructable = type as new (value: unknown) => T;
+
+    // Check if type is constructable (has a prototype with properties beyond constructor)
+    const isConstructable =
+      type.prototype !== undefined &&
+      type.prototype !== null &&
+      (Object.getOwnPropertyNames(type.prototype).length > 1 ||
+        type.prototype.constructor !== type);
+
     try {
       return callable(rawValue);
-    } catch {
-      return new constructable(rawValue);
+    } catch (error) {
+      // Only fall back to constructor if:
+      // 1. The type is actually constructable (class-like), OR
+      // 2. The error explicitly indicates 'new' is required
+      const isNewRequired =
+        error instanceof TypeError &&
+        /cannot be invoked without 'new'|is not a function/i.test(error.message);
+
+      if (isConstructable || isNewRequired) {
+        return new constructable(rawValue);
+      }
+
+      // Rethrow original error for non-constructable converters (arrow functions, etc.)
+      throw error;
     }
   }
 

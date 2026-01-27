@@ -263,7 +263,7 @@ describe('Store', () => {
       // Without untrack(), this would register the effect as dependent on all store signals
       effect(() => {
         effectRunCount++;
-        
+
         // Reading $state calls getCurrentState() which is wrapped in untrack()
         // This should NOT create a dependency on store signals
         const snapshot = store.$state;
@@ -332,6 +332,31 @@ describe('Store', () => {
 
       destroyStore('temp');
       expect(listStores()).not.toContain('temp');
+    });
+
+    it('should allow defineStore factory to create fresh instance after destroy', () => {
+      const useStore = defineStore('destroy-test', {
+        state: () => ({ value: 0 }),
+        actions: {
+          setValue(val: number) {
+            (this as { value: number }).value = val;
+          },
+        },
+      });
+
+      // Create and mutate the first instance
+      const instance1 = useStore();
+      instance1.setValue(100);
+      expect(instance1.value).toBe(100);
+
+      // Destroy the store
+      destroyStore('destroy-test');
+      expect(listStores()).not.toContain('destroy-test');
+
+      // Factory should create a fresh instance with initial state
+      const instance2 = useStore();
+      expect(instance2.value).toBe(0); // Fresh initial state
+      expect(instance1).not.toBe(instance2); // Different instance
     });
   });
 
