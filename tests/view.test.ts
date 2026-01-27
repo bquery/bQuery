@@ -39,6 +39,29 @@ describe('View', () => {
     it('should throw for non-existent selector', () => {
       expect(() => mount('#nonexistent', {})).toThrow('not found');
     });
+
+    it('should reject mounting on element with bq-for directive', () => {
+      container.innerHTML = '<div bq-for="item in items" bq-text="item"></div>';
+      const items = signal([1, 2, 3]);
+      const div = container.querySelector('div')!;
+
+      expect(() => mount(div, { items })).toThrow(
+        'Cannot mount on element with bq-for directive'
+      );
+      expect(() => mount(div, { items })).toThrow('Wrap the bq-for element in a container');
+    });
+
+    it('should mount successfully when bq-for is on child element', () => {
+      container.innerHTML = '<div><ul><li bq-for="item in items" bq-text="item"></li></ul></div>';
+      const items = signal([1, 2, 3]);
+
+      // Should not throw when mounting on container
+      view = mount(container, { items });
+
+      expect(view.el).toBe(container);
+      const listItems = container.querySelectorAll('li');
+      expect(listItems.length).toBe(3);
+    });
   });
 
   describe('bq-text', () => {
@@ -168,6 +191,47 @@ describe('View', () => {
 
       const div = container.querySelector('div')!;
       expect(div.classList.contains('primary')).toBe(true);
+    });
+
+    it('should handle bracket property access correctly', () => {
+      container.innerHTML = '<div bq-class="item[\'className\']"></div>';
+      const item = signal({ className: 'dynamic-class' });
+
+      view = mount(container, { item });
+
+      const div = container.querySelector('div')!;
+      expect(div.classList.contains('dynamic-class')).toBe(true);
+
+      // Update property value
+      item.value = { className: 'new-class' };
+      expect(div.classList.contains('new-class')).toBe(true);
+      expect(div.classList.contains('dynamic-class')).toBe(false);
+    });
+
+    it('should handle array literal syntax correctly', () => {
+      container.innerHTML = '<div bq-class="[\'foo\', \'bar\']"></div>';
+
+      view = mount(container, {});
+
+      const div = container.querySelector('div')!;
+      expect(div.classList.contains('foo')).toBe(true);
+      expect(div.classList.contains('bar')).toBe(true);
+    });
+
+    it('should distinguish bracket access from array literals', () => {
+      // Test that obj['key'] is NOT treated as array literal
+      container.innerHTML = '<div id="test1" bq-class="config[\'activeClass\']"></div>';
+      const config = signal({ activeClass: 'enabled' });
+
+      view = mount(container, { config });
+
+      const div = container.querySelector('#test1')!;
+      expect(div.classList.contains('enabled')).toBe(true);
+      
+      // Verify it's reactive
+      config.value = { activeClass: 'disabled' };
+      expect(div.classList.contains('disabled')).toBe(true);
+      expect(div.classList.contains('enabled')).toBe(false);
     });
   });
 
