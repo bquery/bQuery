@@ -2,7 +2,12 @@
  * Core reactive signals.
  */
 
-import { getCurrentObserver, isTrackingEnabled, scheduleObserver, registerDependency, type ReactiveSource } from './internals';
+import {
+  getCurrentObserver,
+  registerDependency,
+  scheduleObserver,
+  type ReactiveSource,
+} from './internals';
 
 /**
  * A reactive value container that notifies subscribers on change.
@@ -24,15 +29,13 @@ export class Signal<T> implements ReactiveSource {
 
   /**
    * Gets the current value and tracks the read if inside an observer.
-   * Respects the global tracking state (disabled during untrack calls).
+   * During untrack calls, getCurrentObserver returns undefined, preventing dependency tracking.
    */
   get value(): T {
-    if (isTrackingEnabled()) {
-      const current = getCurrentObserver();
-      if (current) {
-        this.subscribers.add(current);
-        registerDependency(current, this);
-      }
+    const current = getCurrentObserver();
+    if (current) {
+      this.subscribers.add(current);
+      registerDependency(current, this);
     }
     return this._value;
   }

@@ -17,7 +17,6 @@ export interface ReactiveSource {
 const observerStack: Observer[] = [];
 let batchDepth = 0;
 const pendingObservers = new Set<Observer>();
-let trackingEnabled = true;
 
 // Track dependencies for each observer to enable cleanup
 const observerDependencies = new WeakMap<Observer, Set<ReactiveSource>>();
@@ -33,6 +32,24 @@ export const track = <T>(observer: Observer, fn: () => T): T => {
 
 export const getCurrentObserver = (): Observer | undefined =>
   observerStack[observerStack.length - 1];
+
+/**
+ * Executes a function without exposing the current observer to dependencies.
+ * Unlike disabling tracking globally, this still allows nested reactive internals
+ * (e.g., computed recomputation) to track their own dependencies.
+ * @internal
+ */
+export const withoutCurrentObserver = <T>(fn: () => T): T => {
+  // Push undefined to temporarily "hide" the current observer
+  // This way, Signal.value reads won't link to the previous observer,
+  // but nested track() calls (e.g., computed recompute) still work normally.
+  observerStack.push(undefined as unknown as Observer);
+  try {
+    return fn();
+  } finally {
+    observerStack.pop();
+  }
+};
 
 export const scheduleObserver = (observer: Observer): void => {
   if (batchDepth > 0) {
@@ -58,12 +75,6 @@ export const endBatch = (): void => {
   if (batchDepth === 0) {
     flushObservers();
   }
-};
-
-export const isTrackingEnabled = (): boolean => trackingEnabled;
-
-export const setTrackingEnabled = (value: boolean): void => {
-  trackingEnabled = value;
 };
 
 /**

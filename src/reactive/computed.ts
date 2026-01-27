@@ -2,7 +2,14 @@
  * Computed reactive values.
  */
 
-import { getCurrentObserver, scheduleObserver, track, clearDependencies, registerDependency, type ReactiveSource } from './internals';
+import {
+  clearDependencies,
+  getCurrentObserver,
+  registerDependency,
+  scheduleObserver,
+  track,
+  type ReactiveSource,
+} from './internals';
 
 /**
  * A computed value that derives from other reactive sources.
@@ -33,6 +40,7 @@ export class Computed<T> implements ReactiveSource {
 
   /**
    * Gets the computed value, recomputing if dependencies changed.
+   * During untrack calls, getCurrentObserver returns undefined, preventing dependency tracking.
    */
   get value(): T {
     const current = getCurrentObserver();
