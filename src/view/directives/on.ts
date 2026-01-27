@@ -12,13 +12,17 @@ export const handleOn = (eventName: string): DirectiveHandler => {
       const eventContext = { ...context, $event: event, $el: el };
 
       // Check if expression contains a function call (has parentheses)
-      // If not, it might be a function reference like "handleClick", "handlers.onClick", or "this.onClick"
+      // If not, it might be a plain function reference like "handleClick"
+      // Note: Method references like "handlers.onClick" will lose their receiver
+      // when auto-invoked. For methods, use explicit calls: "handlers.onClick($event)"
       const containsCall = expression.includes('(');
 
       if (!containsCall) {
         // Evaluate the expression - if it returns a function, invoke it with $event
         const result = evaluateRaw<unknown>(expression, eventContext);
         if (typeof result === 'function') {
+          // Auto-invoke with event. Note: `this` will be undefined for method references.
+          // For proper method binding, use explicit syntax: "obj.method($event)"
           result(event);
           return;
         }
