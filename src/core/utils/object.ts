@@ -34,6 +34,19 @@ export function isPrototypePollutionKey(key: string): boolean {
  * @param value - The value to clone
  * @returns A deep copy of the value
  *
+ * @remarks
+ * When `structuredClone` is available (modern browsers, Node 17+, Bun), this function
+ * provides full deep cloning including circular references, Date, Map, Set, ArrayBuffer, etc.
+ *
+ * **JSON fallback limitations** (older environments without `structuredClone`):
+ * - **Throws** on circular references
+ * - **Drops** functions, `undefined`, and Symbol properties
+ * - **Transforms** Date → ISO string, Map/Set → empty object, BigInt → throws
+ * - **Loses** prototype chains and non-enumerable properties
+ *
+ * For guaranteed safe cloning of arbitrary data, ensure your environment supports
+ * `structuredClone` or pre-validate your data structure.
+ *
  * @example
  * ```ts
  * const original = { nested: { value: 1 } };
