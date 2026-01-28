@@ -7,11 +7,14 @@ import { effect } from '../src/reactive/index';
 import {
   createPersistedStore,
   createStore,
+  defineStore,
   destroyStore,
   getStore,
   listStores,
   mapActions,
+  mapGetters,
   mapState,
+  watchStore,
 } from '../src/store/index';
 
 describe('Store', () => {
@@ -144,6 +147,27 @@ describe('Store', () => {
       await store.fetchData();
       expect(store.data).toBe('loaded');
     });
+
+    it('should allow non-state property assignments in actions without throwing', () => {
+      const store = createStore({
+        id: 'assignment-test',
+        state: () => ({ count: 0 }),
+        actions: {
+          complexOperation() {
+            // This should not throw TypeError in strict mode
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            (this as any).tempVar = 'temporary';
+            (this as { count: number }).count += 1;
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            return (this as any).tempVar;
+          },
+        },
+      });
+
+      // Should not throw
+      expect(() => store.complexOperation()).not.toThrow();
+      expect(store.count).toBe(1);
+    });
   });
 
   describe('$reset', () => {
@@ -225,6 +249,40 @@ describe('Store', () => {
 
       expect(states).toEqual([1]);
     });
+
+    it('should not create reactive dependencies when $state is accessed inside effect', () => {
+      const store = createStore({
+        id: 'counter',
+        state: () => ({ count: 0 }),
+      });
+
+      let effectRunCount = 0;
+      const stateSnapshots: Array<{ count: number }> = [];
+
+      // Access $state inside an effect - this calls getCurrentState()
+      // Without untrack(), this would register the effect as dependent on all store signals
+      effect(() => {
+        effectRunCount++;
+
+        // Reading $state calls getCurrentState() which is wrapped in untrack()
+        // This should NOT create a dependency on store signals
+        const snapshot = store.$state;
+        stateSnapshots.push(snapshot);
+      });
+
+      // Effect should run once on creation
+      expect(effectRunCount).toBe(1);
+      expect(stateSnapshots).toHaveLength(1);
+      expect(stateSnapshots[0]).toEqual({ count: 0 });
+
+      // Mutate store state
+      store.count = 5;
+
+      // Effect should NOT re-run due to store changes (no reactive dependency created)
+      // because getCurrentState() is wrapped in untrack()
+      expect(effectRunCount).toBe(1);
+      expect(stateSnapshots).toHaveLength(1); // No new snapshots captured
+    });
   });
 
   describe('$state', () => {
@@ -275,6 +333,31 @@ describe('Store', () => {
       destroyStore('temp');
       expect(listStores()).not.toContain('temp');
     });
+
+    it('should allow defineStore factory to create fresh instance after destroy', () => {
+      const useStore = defineStore('destroy-test', {
+        state: () => ({ value: 0 }),
+        actions: {
+          setValue(val: number) {
+            (this as { value: number }).value = val;
+          },
+        },
+      });
+
+      // Create and mutate the first instance
+      const instance1 = useStore();
+      instance1.setValue(100);
+      expect(instance1.value).toBe(100);
+
+      // Destroy the store
+      destroyStore('destroy-test');
+      expect(listStores()).not.toContain('destroy-test');
+
+      // Factory should create a fresh instance with initial state
+      const instance2 = useStore();
+      expect(instance2.value).toBe(0); // Fresh initial state
+      expect(instance1).not.toBe(instance2); // Different instance
+    });
   });
 
   describe('mapState', () => {
@@ -289,6 +372,24 @@ describe('Store', () => {
 
       store.count = 10;
       expect(mapped.count).toBe(10);
+    });
+  });
+
+  describe('mapGetters', () => {
+    it('should map getter properties', () => {
+      const store = createStore({
+        id: 'getter-map',
+        state: () => ({ count: 2 }),
+        getters: {
+          doubled: (state) => (state.count as number) * 2,
+        },
+      });
+
+      const mapped = mapGetters(store, ['doubled']);
+      expect(mapped.doubled).toBe(4);
+
+      store.count = 3;
+      expect(mapped.doubled).toBe(6);
     });
   });
 
@@ -307,6 +408,76 @@ describe('Store', () => {
       const { increment } = mapActions(store, ['increment']);
       increment();
       expect(store.count).toBe(1);
+    });
+  });
+
+  describe('watchStore', () => {
+    it('should watch selected state changes', () => {
+      const store = createStore({
+        id: 'watcher',
+        state: () => ({ count: 0 }),
+      });
+
+      const calls: Array<[number, number | undefined]> = [];
+      const stop = watchStore(
+        store,
+        (state) => state.count as number,
+        (value, previous) => {
+          calls.push([value, previous]);
+        },
+        { immediate: true }
+      );
+
+      store.count = 2;
+      stop();
+      store.count = 3;
+
+      expect(calls).toEqual([
+        [0, undefined],
+        [2, 0],
+      ]);
+    });
+  });
+
+  describe('defineStore', () => {
+    it('should create a store factory', () => {
+      const useCounter = defineStore('factory-counter', {
+        state: () => ({ count: 0 }),
+        actions: {
+          increment() {
+            (this as { count: number }).count++;
+          },
+        },
+      });
+
+      const counter = useCounter();
+      counter.increment();
+      expect(counter.count).toBe(1);
+    });
+
+    it('should cache and return the same store instance on multiple calls', () => {
+      const useCachedStore = defineStore('cached-store', {
+        state: () => ({ value: 0 }),
+        actions: {
+          setValue(val: number) {
+            (this as { value: number }).value = val;
+          },
+        },
+      });
+
+      // Call the factory multiple times
+      const instance1 = useCachedStore();
+      const instance2 = useCachedStore();
+      const instance3 = useCachedStore();
+
+      // All should be the same instance
+      expect(instance1).toBe(instance2);
+      expect(instance2).toBe(instance3);
+
+      // Changes to one should affect all (since they're the same instance)
+      instance1.setValue(42);
+      expect(instance2.value).toBe(42);
+      expect(instance3.value).toBe(42);
     });
   });
 

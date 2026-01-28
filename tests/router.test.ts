@@ -801,6 +801,43 @@ describe('Router', () => {
       expect(order).toEqual([1, 2]);
       expect(currentRoute.value.path).toBe('/');
     });
+
+    it('should restore full URL including query and hash when guard cancels popstate navigation', async () => {
+      router = createRouter({
+        routes: [
+          { path: '/page', component: () => null },
+          { path: '/other', component: () => null },
+        ],
+      });
+
+      // Navigate to /page?foo=bar#section
+      await router.push('/page?foo=bar#section');
+      expect(currentRoute.value.path).toBe('/page');
+      expect(currentRoute.value.query.foo).toBe('bar');
+      expect(currentRoute.value.hash).toBe('section');
+
+      // Navigate to /other
+      await router.push('/other');
+      expect(currentRoute.value.path).toBe('/other');
+
+      // Add a guard that blocks navigation
+      router.beforeEach(() => false);
+
+      // Try to navigate back with back() - should be blocked by guard
+      back();
+      await new Promise((r) => setTimeout(r, 0));
+
+      // Should still be on /other
+      expect(currentRoute.value.path).toBe('/other');
+      expect(currentRoute.value.query).toEqual({});
+      expect(currentRoute.value.hash).toBe('');
+
+      // Verify the URL in window.location was restored correctly
+      // (The guard should have used replaceState to restore full URL)
+      expect(window.location.pathname).toBe('/other');
+      expect(window.location.search).toBe('');
+      expect(window.location.hash).toBe('');
+    });
   });
 
   // ============================================================================
@@ -1099,6 +1136,286 @@ describe('Router', () => {
       await new Promise((r) => setTimeout(r, 0));
       expect(currentRoute.value.path).toBe('/'); // Should not navigate after cleanup
     });
+
+    it('should handle hash-routing links with href="#/route"', async () => {
+      router = createRouter({
+        routes: [
+          { path: '/', component: () => null },
+          { path: '/some-route', component: () => null },
+          { path: '/page', component: () => null },
+        ],
+        hash: true,
+      });
+
+      // Test hash-routing link with path only
+      container.innerHTML = '<a href="#/some-route">Hash Link</a>';
+      const anchor = container.querySelector('a')!;
+
+      const cleanup = interceptLinks(container);
+
+      const event = new MouseEvent('click', { bubbles: true, cancelable: true });
+      anchor.dispatchEvent(event);
+
+      await new Promise((r) => setTimeout(r, 0));
+      expect(currentRoute.value.path).toBe('/some-route');
+
+      // Test hash-routing link with query parameters
+      container.innerHTML = '<a href="#/page?foo=bar">Hash Link with Query</a>';
+      const anchor2 = container.querySelector('a')!;
+
+      const event2 = new MouseEvent('click', { bubbles: true, cancelable: true });
+      anchor2.dispatchEvent(event2);
+
+      await new Promise((r) => setTimeout(r, 0));
+      expect(currentRoute.value.path).toBe('/page');
+      expect(currentRoute.value.query).toEqual({ foo: 'bar' });
+
+      cleanup();
+    });
+
+    it('should strip base path from links in history mode', async () => {
+      router = createRouter({
+        routes: [
+          { path: '/', component: () => null },
+          { path: '/about', component: () => null },
+          { path: '/contact', component: () => null },
+        ],
+        base: '/app',
+      });
+
+      // Test link with base path - should strip /app before navigation
+      container.innerHTML = '<a href="/app/about">About</a>';
+      const anchor = container.querySelector('a')!;
+
+      const cleanup = interceptLinks(container);
+
+      const event = new MouseEvent('click', { bubbles: true, cancelable: true });
+      anchor.dispatchEvent(event);
+
+      await new Promise((r) => setTimeout(r, 0));
+      expect(currentRoute.value.path).toBe('/about');
+
+      // Test link with base path and query string
+      container.innerHTML = '<a href="/app/contact?foo=bar">Contact</a>';
+      const anchor2 = container.querySelector('a')!;
+
+      const event2 = new MouseEvent('click', { bubbles: true, cancelable: true });
+      anchor2.dispatchEvent(event2);
+
+      await new Promise((r) => setTimeout(r, 0));
+      expect(currentRoute.value.path).toBe('/contact');
+      expect(currentRoute.value.query).toEqual({ foo: 'bar' });
+
+      cleanup();
+    });
+
+    it('should handle base="/" without breaking navigation', async () => {
+      router = createRouter({
+        routes: [
+          { path: '/', component: () => null },
+          { path: '/page', component: () => null },
+        ],
+        base: '/',
+      });
+
+      container.innerHTML = '<a href="/page">Page</a>';
+      const anchor = container.querySelector('a')!;
+
+      const cleanup = interceptLinks(container);
+
+      const event = new MouseEvent('click', { bubbles: true, cancelable: true });
+      anchor.dispatchEvent(event);
+
+      await new Promise((r) => setTimeout(r, 0));
+      expect(currentRoute.value.path).toBe('/page');
+
+      cleanup();
+    });
+
+    it('should not intercept middle-click (button === 1)', async () => {
+      router = createRouter({
+        routes: [
+          { path: '/', component: () => null },
+          { path: '/page', component: () => null },
+        ],
+      });
+
+      container.innerHTML = '<a href="/page">Page</a>';
+      const anchor = container.querySelector('a')!;
+
+      const cleanup = interceptLinks(container);
+
+      // Middle-click (button 1) should not be intercepted
+      const event = new MouseEvent('click', { bubbles: true, cancelable: true, button: 1 });
+      anchor.dispatchEvent(event);
+
+      await new Promise((r) => setTimeout(r, 0));
+      expect(currentRoute.value.path).toBe('/'); // Should not navigate
+
+      cleanup();
+    });
+
+    it('should not intercept right-click (button === 2)', async () => {
+      router = createRouter({
+        routes: [
+          { path: '/', component: () => null },
+          { path: '/page', component: () => null },
+        ],
+      });
+
+      container.innerHTML = '<a href="/page">Page</a>';
+      const anchor = container.querySelector('a')!;
+
+      const cleanup = interceptLinks(container);
+
+      // Right-click (button 2) should not be intercepted
+      const event = new MouseEvent('click', { bubbles: true, cancelable: true, button: 2 });
+      anchor.dispatchEvent(event);
+
+      await new Promise((r) => setTimeout(r, 0));
+      expect(currentRoute.value.path).toBe('/'); // Should not navigate
+
+      cleanup();
+    });
+
+    it('should not intercept Ctrl+click', async () => {
+      router = createRouter({
+        routes: [
+          { path: '/', component: () => null },
+          { path: '/page', component: () => null },
+        ],
+      });
+
+      container.innerHTML = '<a href="/page">Page</a>';
+      const anchor = container.querySelector('a')!;
+
+      const cleanup = interceptLinks(container);
+
+      // Ctrl+click should not be intercepted (opens in new tab)
+      const event = new MouseEvent('click', {
+        bubbles: true,
+        cancelable: true,
+        ctrlKey: true,
+      });
+      anchor.dispatchEvent(event);
+
+      await new Promise((r) => setTimeout(r, 0));
+      expect(currentRoute.value.path).toBe('/'); // Should not navigate
+
+      cleanup();
+    });
+
+    it('should not intercept Cmd+click (metaKey)', async () => {
+      router = createRouter({
+        routes: [
+          { path: '/', component: () => null },
+          { path: '/page', component: () => null },
+        ],
+      });
+
+      container.innerHTML = '<a href="/page">Page</a>';
+      const anchor = container.querySelector('a')!;
+
+      const cleanup = interceptLinks(container);
+
+      // Cmd+click (metaKey) should not be intercepted (opens in new tab on Mac)
+      const event = new MouseEvent('click', {
+        bubbles: true,
+        cancelable: true,
+        metaKey: true,
+      });
+      anchor.dispatchEvent(event);
+
+      await new Promise((r) => setTimeout(r, 0));
+      expect(currentRoute.value.path).toBe('/'); // Should not navigate
+
+      cleanup();
+    });
+
+    it('should not intercept Shift+click', async () => {
+      router = createRouter({
+        routes: [
+          { path: '/', component: () => null },
+          { path: '/page', component: () => null },
+        ],
+      });
+
+      container.innerHTML = '<a href="/page">Page</a>';
+      const anchor = container.querySelector('a')!;
+
+      const cleanup = interceptLinks(container);
+
+      // Shift+click should not be intercepted (opens in new window)
+      const event = new MouseEvent('click', {
+        bubbles: true,
+        cancelable: true,
+        shiftKey: true,
+      });
+      anchor.dispatchEvent(event);
+
+      await new Promise((r) => setTimeout(r, 0));
+      expect(currentRoute.value.path).toBe('/'); // Should not navigate
+
+      cleanup();
+    });
+
+    it('should not intercept Alt+click', async () => {
+      router = createRouter({
+        routes: [
+          { path: '/', component: () => null },
+          { path: '/page', component: () => null },
+        ],
+      });
+
+      container.innerHTML = '<a href="/page">Page</a>';
+      const anchor = container.querySelector('a')!;
+
+      const cleanup = interceptLinks(container);
+
+      // Alt+click should not be intercepted
+      const event = new MouseEvent('click', {
+        bubbles: true,
+        cancelable: true,
+        altKey: true,
+      });
+      anchor.dispatchEvent(event);
+
+      await new Promise((r) => setTimeout(r, 0));
+      expect(currentRoute.value.path).toBe('/'); // Should not navigate
+
+      cleanup();
+    });
+
+    it('should skip already prevented events', async () => {
+      router = createRouter({
+        routes: [
+          { path: '/', component: () => null },
+          { path: '/page', component: () => null },
+        ],
+      });
+
+      container.innerHTML = '<a href="/page">Page</a>';
+      const anchor = container.querySelector('a')!;
+
+      // Add another listener that prevents default first
+      anchor.addEventListener(
+        'click',
+        (e) => {
+          e.preventDefault();
+        },
+        { capture: true }
+      );
+
+      const cleanup = interceptLinks(container);
+
+      const event = new MouseEvent('click', { bubbles: true, cancelable: true });
+      anchor.dispatchEvent(event);
+
+      await new Promise((r) => setTimeout(r, 0));
+      expect(currentRoute.value.path).toBe('/'); // Should not navigate
+
+      cleanup();
+    });
   });
 
   // ============================================================================
@@ -1226,7 +1543,7 @@ describe('Router', () => {
       expect(stack[stack.length - 1].url).toBe('/app/page');
     });
 
-    it('should flatten nested routes with base path', () => {
+    it('should flatten nested routes without including base path', () => {
       router = createRouter({
         routes: [
           {
@@ -1239,7 +1556,204 @@ describe('Router', () => {
       });
 
       expect(router.routes).toHaveLength(2);
-      expect(router.routes[1].path).toBe('/app/parent/child');
+      // Routes should not include base - base is only for browser history
+      expect(router.routes[1].path).toBe('/parent/child');
+    });
+  });
+
+  // ============================================================================
+  // Hash Routing Tests
+  // ============================================================================
+
+  describe('hash routing mode', () => {
+    let mockHistory: ReturnType<typeof setupMockHistory>;
+    let router: Router;
+
+    beforeEach(() => {
+      mockHistory = setupMockHistory();
+    });
+
+    afterEach(() => {
+      router?.destroy();
+      mockHistory.restore();
+    });
+
+    it('should handle basic hash routing navigation', async () => {
+      router = createRouter({
+        routes: [
+          { path: '/', component: () => null },
+          { path: '/page', component: () => null },
+          { path: '/about', component: () => null },
+        ],
+        hash: true,
+      });
+
+      // Initial route should be /
+      expect(currentRoute.value.path).toBe('/');
+
+      // Navigate to /page
+      await router.push('/page');
+      expect(currentRoute.value.path).toBe('/page');
+
+      // Verify the URL was updated with hash
+      const stack = mockHistory.getStack();
+      expect(stack[stack.length - 1].url).toBe('#/page');
+
+      // Navigate to /about
+      await router.push('/about');
+      expect(currentRoute.value.path).toBe('/about');
+      expect(stack[stack.length - 1].url).toBe('#/about');
+    });
+
+    it('should handle hash routing with query parameters', async () => {
+      router = createRouter({
+        routes: [
+          { path: '/', component: () => null },
+          { path: '/page', component: () => null },
+        ],
+        hash: true,
+      });
+
+      // Navigate to /page with query parameters
+      await router.push('/page?foo=bar&baz=qux');
+
+      // Verify route matching works correctly (pathname should be /page)
+      expect(currentRoute.value.path).toBe('/page');
+      expect(currentRoute.value.query).toEqual({ foo: 'bar', baz: 'qux' });
+
+      // Verify the URL includes the hash with query
+      const stack = mockHistory.getStack();
+      expect(stack[stack.length - 1].url).toBe('#/page?foo=bar&baz=qux');
+    });
+
+    it('should handle hash routing with hash fragments', async () => {
+      router = createRouter({
+        routes: [
+          { path: '/', component: () => null },
+          { path: '/page', component: () => null },
+        ],
+        hash: true,
+      });
+
+      // Navigate to /page with a hash fragment
+      await router.push('/page#section');
+
+      // Verify route matching works correctly (pathname should be /page)
+      expect(currentRoute.value.path).toBe('/page');
+      expect(currentRoute.value.hash).toBe('section');
+
+      // Verify the URL includes hash routing prefix (#) and hash fragment
+      const stack = mockHistory.getStack();
+      expect(stack[stack.length - 1].url).toBe('#/page#section');
+    });
+
+    it('should handle hash routing with both query parameters and hash fragments', async () => {
+      router = createRouter({
+        routes: [
+          { path: '/', component: () => null },
+          { path: '/page', component: () => null },
+          { path: '/user/:id', component: () => null },
+        ],
+        hash: true,
+      });
+
+      // Navigate to /page with both query and hash
+      await router.push('/page?foo=bar&baz=qux#section');
+
+      // Verify route matching works correctly
+      expect(currentRoute.value.path).toBe('/page');
+      expect(currentRoute.value.query).toEqual({ foo: 'bar', baz: 'qux' });
+      expect(currentRoute.value.hash).toBe('section');
+
+      // Verify the URL is correct
+      const stack = mockHistory.getStack();
+      expect(stack[stack.length - 1].url).toBe('#/page?foo=bar&baz=qux#section');
+
+      // Also test with a parameterized route
+      await router.push('/user/123?tab=profile#bio');
+      expect(currentRoute.value.path).toBe('/user/123');
+      expect(currentRoute.value.params).toEqual({ id: '123' });
+      expect(currentRoute.value.query).toEqual({ tab: 'profile' });
+      expect(currentRoute.value.hash).toBe('bio');
+    });
+
+    it('should handle hash routing with route parameters and query strings', async () => {
+      router = createRouter({
+        routes: [
+          { path: '/', component: () => null },
+          { path: '/user/:id', component: () => null },
+          { path: '/product/:category/:id', component: () => null },
+        ],
+        hash: true,
+      });
+
+      // Single parameter with query
+      await router.push('/user/42?tab=posts&page=2');
+      expect(currentRoute.value.path).toBe('/user/42');
+      expect(currentRoute.value.params).toEqual({ id: '42' });
+      expect(currentRoute.value.query).toEqual({ tab: 'posts', page: '2' });
+
+      // Multiple parameters with query and hash
+      await router.push('/product/electronics/456?color=blue&size=large#specs');
+      expect(currentRoute.value.path).toBe('/product/electronics/456');
+      expect(currentRoute.value.params).toEqual({ category: 'electronics', id: '456' });
+      expect(currentRoute.value.query).toEqual({ color: 'blue', size: 'large' });
+      expect(currentRoute.value.hash).toBe('specs');
+    });
+
+    it('should properly handle navigation guards in hash mode with query params', async () => {
+      router = createRouter({
+        routes: [
+          { path: '/', component: () => null },
+          { path: '/page', component: () => null },
+          { path: '/admin', component: () => null },
+        ],
+        hash: true,
+      });
+
+      let guardCalled = false;
+      let guardToRoute = null;
+
+      router.beforeEach((to) => {
+        guardCalled = true;
+        guardToRoute = to;
+        return true;
+      });
+
+      // Navigate with query parameters
+      await router.push('/page?foo=bar#section');
+
+      // Verify guard was called with properly parsed route
+      expect(guardCalled).toBe(true);
+      expect(guardToRoute).not.toBeNull();
+      expect(guardToRoute.path).toBe('/page');
+      expect(guardToRoute.query).toEqual({ foo: 'bar' });
+      expect(guardToRoute.hash).toBe('section');
+    });
+
+    it('should handle replace mode in hash routing', async () => {
+      router = createRouter({
+        routes: [
+          { path: '/', component: () => null },
+          { path: '/page1', component: () => null },
+          { path: '/page2', component: () => null },
+        ],
+        hash: true,
+      });
+
+      await router.push('/page1?test=1');
+      const stackLengthAfterPush = mockHistory.getStack().length;
+
+      await router.replace('/page2?test=2#section');
+      const stackLengthAfterReplace = mockHistory.getStack().length;
+
+      // Replace should not add a new history entry
+      expect(stackLengthAfterReplace).toBe(stackLengthAfterPush);
+
+      // But should update the route correctly
+      expect(currentRoute.value.path).toBe('/page2');
+      expect(currentRoute.value.query).toEqual({ test: '2' });
+      expect(currentRoute.value.hash).toBe('section');
     });
   });
 });

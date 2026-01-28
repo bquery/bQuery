@@ -99,7 +99,7 @@ class BQueryCollection {
 
 - **Single source of truth** for selectors and DOM helpers in `src/core/shared.ts`.
 - **Reusable primitives** (signals/effects) live in `src/reactive/signal.ts`.
-- **Cross-module utilities** only in `src/core/utils.ts` to avoid duplication.
+- **Cross-module utilities** live in `src/core/utils/` as focused helper modules (re-exported from `src/core/utils/index.ts`).
 - **Module boundaries are strict**: no cross-imports that create circular dependencies.
 
 ---
@@ -137,10 +137,11 @@ $('#save').on('click', (event) => {
 #### 3.1.4 Utilities
 
 ```ts
-import { utils } from '@bquery/bquery/core';
+import { merge, uid, utils } from '@bquery/bquery/core';
 
-const id = utils.uid();
-const config = utils.merge({ a: 1 }, { b: 2 });
+const id = uid();
+const config = merge({ a: 1 }, { b: 2 });
+const legacyId = utils.uid();
 ```
 
 #### 3.1.5 In-Code Documentation (TSDoc)

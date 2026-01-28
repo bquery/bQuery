@@ -307,6 +307,44 @@ describe('readonly', () => {
   });
 });
 
+describe('linkedSignal', () => {
+  it('derives value from linked signals', async () => {
+    const { linkedSignal, signal } = await import('../src/reactive/signal');
+    const first = signal('Ada');
+    const last = signal('Lovelace');
+    const fullName = linkedSignal(
+      () => `${first.value} ${last.value}`,
+      (next) => {
+        const [nextFirst, nextLast] = next.split(' ');
+        first.value = nextFirst ?? '';
+        last.value = nextLast ?? '';
+      }
+    );
+
+    expect(fullName.value).toBe('Ada Lovelace');
+    first.value = 'Grace';
+    expect(fullName.value).toBe('Grace Lovelace');
+  });
+
+  it('writes through to source signals', async () => {
+    const { linkedSignal, signal } = await import('../src/reactive/signal');
+    const first = signal('Ada');
+    const last = signal('Lovelace');
+    const fullName = linkedSignal(
+      () => `${first.value} ${last.value}`,
+      (next) => {
+        const [nextFirst, nextLast] = next.split(' ');
+        first.value = nextFirst ?? '';
+        last.value = nextLast ?? '';
+      }
+    );
+
+    fullName.value = 'Grace Hopper';
+    expect(first.value).toBe('Grace');
+    expect(last.value).toBe('Hopper');
+  });
+});
+
 describe('untrack', () => {
   it('prevents dependency tracking', async () => {
     const { untrack, signal, effect } = await import('../src/reactive/signal');
@@ -332,6 +370,54 @@ describe('untrack', () => {
     untracked.value = 1;
     expect(runs).toBe(2);
   });
+
+  it('prevents dependency tracking for computed values', async () => {
+    const { untrack, signal, computed, effect } = await import('../src/reactive/signal');
+    const source = signal(0);
+    const derived = computed(() => source.value * 2);
+    let runs = 0;
+
+    effect(() => {
+      // Reading computed inside untrack should NOT create a dependency
+      untrack(() => derived.value);
+      runs++;
+    });
+
+    expect(runs).toBe(1);
+
+    // Changes to source signal should NOT trigger effect (computed was read via untrack)
+    source.value = 1;
+    expect(runs).toBe(1);
+  });
+
+  it('allows nested computed to still track its own dependencies', async () => {
+    const { untrack, signal, computed } = await import('../src/reactive/signal');
+    const source = signal(1);
+    let computeCount = 0;
+
+    // Create a computed that depends on source
+    const derived = computed(() => {
+      computeCount++;
+      return source.value * 10;
+    });
+
+    // First access inside untrack - should still allow computed to track its deps
+    const result1 = untrack(() => derived.value);
+    expect(result1).toBe(10);
+    expect(computeCount).toBe(1);
+
+    // Change source - computed should know it's dirty because it tracked source
+    source.value = 2;
+
+    // Access again inside untrack - should recompute with new value
+    const result2 = untrack(() => derived.value);
+    expect(result2).toBe(20);
+    expect(computeCount).toBe(2);
+
+    // Access outside untrack - computed should still work normally
+    expect(derived.value).toBe(20);
+    expect(computeCount).toBe(2); // cached, no recompute
+  });
 });
 
 describe('isSignal / isComputed', () => {
@@ -354,5 +440,123 @@ describe('isSignal / isComputed', () => {
     expect(isComputed(comp)).toBe(true);
     expect(isComputed(sig)).toBe(false);
     expect(isComputed({})).toBe(false);
+  });
+});
+
+describe('persistedSignal', () => {
+  it('persists to localStorage when available', async () => {
+    const { persistedSignal } = await import('../src/reactive/signal');
+    const key = 'test-persisted-signal';
+
+    // Clean up any existing value
+    localStorage.removeItem(key);
+
+    const count = persistedSignal(key, 0);
+    expect(count.value).toBe(0);
+
+    // Update should persist
+    count.value = 42;
+    expect(localStorage.getItem(key)).toBe('42');
+
+    // Clean up
+    localStorage.removeItem(key);
+  });
+
+  it('loads initial value from localStorage if exists', async () => {
+    const { persistedSignal } = await import('../src/reactive/signal');
+    const key = 'test-persisted-initial';
+
+    // Pre-populate storage
+    localStorage.setItem(key, JSON.stringify(123));
+
+    const count = persistedSignal(key, 0);
+    expect(count.value).toBe(123);
+
+    // Clean up
+    localStorage.removeItem(key);
+  });
+
+  it('falls back to in-memory signal when localStorage is unavailable', async () => {
+    // Capture original property descriptor to restore properly
+    const originalDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
+
+    try {
+      // Temporarily hide localStorage to simulate SSR/unavailable environment
+      Object.defineProperty(globalThis, 'localStorage', {
+        configurable: true,
+        get: () => undefined,
+      });
+
+      const { persistedSignal } = await import('../src/reactive/persisted');
+      const count = persistedSignal('test-fallback', 10);
+
+      // Should still work as a normal signal
+      expect(count.value).toBe(10);
+
+      // Should be updatable
+      count.value = 20;
+      expect(count.value).toBe(20);
+    } finally {
+      // Restore localStorage with original descriptor
+      if (originalDescriptor) {
+        Object.defineProperty(globalThis, 'localStorage', originalDescriptor);
+      }
+    }
+  });
+
+  it('handles JSON parse errors gracefully', async () => {
+    const { persistedSignal } = await import('../src/reactive/signal');
+    const key = 'test-parse-error';
+
+    // Set invalid JSON
+    localStorage.setItem(key, 'invalid-json-{[}');
+
+    // Should fall back to initial value
+    const count = persistedSignal(key, 42);
+    expect(count.value).toBe(42);
+
+    // Clean up
+    localStorage.removeItem(key);
+  });
+
+  it('handles Safari private mode SecurityError gracefully', async () => {
+    // Capture original property descriptor to restore properly
+    const originalDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
+
+    try {
+      // Simulate Safari private mode where accessing localStorage or calling methods throws
+      const mockStorage = {
+        getItem: () => {
+          throw new DOMException('SecurityError', 'SecurityError');
+        },
+        setItem: () => {
+          throw new DOMException('SecurityError', 'SecurityError');
+        },
+        removeItem: () => {},
+        clear: () => {},
+        key: () => null,
+        length: 0,
+      };
+
+      Object.defineProperty(globalThis, 'localStorage', {
+        configurable: true,
+        get: () => mockStorage,
+      });
+
+      const { persistedSignal } = await import('../src/reactive/persisted');
+      const count = persistedSignal('test-safari-private', 100);
+
+      // Should still work as a normal signal despite localStorage throwing
+      expect(count.value).toBe(100);
+
+      // Should be updatable
+      count.value = 200;
+      expect(count.value).toBe(200);
+    } finally {
+      // Restore localStorage with original descriptor
+      if (originalDescriptor) {
+        Object.defineProperty(globalThis, 'localStorage', originalDescriptor);
+      }
+    }
   });
 });
