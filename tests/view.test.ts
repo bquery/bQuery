@@ -231,6 +231,90 @@ describe('View', () => {
       expect(div.classList.contains('disabled')).toBe(true);
       expect(div.classList.contains('enabled')).toBe(false);
     });
+
+    it('should clean up stale classes when switching between different class expressions', () => {
+      // Test that classes from one expression are removed when expression changes
+      // This verifies the cleanup loop works for string syntax
+      container.innerHTML = '<div bq-class="classValue"></div>';
+      const classValue = signal('class-a class-b');
+
+      view = mount(container, { classValue });
+
+      const div = container.querySelector('div')!;
+      expect(div.classList.contains('class-a')).toBe(true);
+      expect(div.classList.contains('class-b')).toBe(true);
+
+      // Change to completely different classes
+      classValue.value = 'class-c class-d';
+      expect(div.classList.contains('class-a')).toBe(false);
+      expect(div.classList.contains('class-b')).toBe(false);
+      expect(div.classList.contains('class-c')).toBe(true);
+      expect(div.classList.contains('class-d')).toBe(true);
+
+      // Verify only new classes remain
+      expect(div.className).toBe('class-c class-d');
+    });
+
+    it('should handle object syntax class toggling correctly', () => {
+      // This test verifies correct behavior for object syntax after the fix.
+      // The fix ensures the cleanup loop runs for ALL syntax forms (object, string, array).
+      
+      // For object syntax, classes are primarily removed by classList.toggle() (line 22
+      // in class.ts) when conditions change to false. All object syntax keys remain in
+      // newClasses regardless of boolean value (line 24 in class.ts), so the cleanup
+      // loop doesn't actively remove toggled-off classes in normal operation.
+      
+      // The fix provides consistency and defensive programming - the cleanup loop now
+      // runs for object syntax, handling edge cases like manual DOM manipulation or
+      // potential tracking bugs, even though classList.toggle() is the primary mechanism.
+      
+      container.innerHTML = '<div bq-class="{ foo: showFoo, bar: showBar }"></div>';
+      const showFoo = signal(true);
+      const showBar = signal(false);
+
+      view = mount(container, { showFoo, showBar });
+
+      const div = container.querySelector('div')!;
+      expect(div.classList.contains('foo')).toBe(true);
+      expect(div.classList.contains('bar')).toBe(false);
+      
+      // Toggle foo off - removed by classList.toggle(className, false)
+      showFoo.value = false;
+      
+      expect(div.classList.contains('foo')).toBe(false);
+      expect(div.classList.contains('bar')).toBe(false);
+      expect(div.className).toBe('');
+    });
+
+    it('should preserve non-directive classes when toggling object syntax classes', () => {
+      // This test verifies that object syntax classes are properly toggled via
+      // classList.toggle() without affecting non-directive classes. After the fix,
+      // the cleanup loop runs for consistency across all syntax forms, though for
+      // object syntax the primary removal mechanism is classList.toggle() on line 22
+      // of class.ts, not the cleanup loop.
+      
+      container.innerHTML = '<div class="static-class" bq-class="{ dynamic: isDynamic }"></div>';
+      const isDynamic = signal(true);
+
+      view = mount(container, { isDynamic });
+
+      const div = container.querySelector('div')!;
+      expect(div.classList.contains('static-class')).toBe(true);
+      expect(div.classList.contains('dynamic')).toBe(true);
+
+      // Toggle off - class is removed by classList.toggle(className, false),
+      // while static classes are preserved
+      isDynamic.value = false;
+
+      expect(div.classList.contains('static-class')).toBe(true);
+      expect(div.classList.contains('dynamic')).toBe(false);
+      expect(div.className).toBe('static-class');
+      
+      // Toggle back on to verify bidirectional toggling works correctly
+      isDynamic.value = true;
+      expect(div.classList.contains('dynamic')).toBe(true);
+      expect(div.className).toBe('static-class dynamic');
+    });
   });
 
   describe('bq-style', () => {
