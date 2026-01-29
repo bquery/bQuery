@@ -232,35 +232,9 @@ describe('View', () => {
       expect(div.classList.contains('enabled')).toBe(false);
     });
 
-    it('should properly clean up stale classes from object syntax when conditions change', () => {
-      // This test verifies that classes are properly tracked and removed
-      // even for object syntax, addressing the review comment about stale classes
-      container.innerHTML = '<div bq-class="{ foo: showFoo, bar: showBar, baz: showBaz }"></div>';
-      const showFoo = signal(true);
-      const showBar = signal(true);
-      const showBaz = signal(false);
-
-      view = mount(container, { showFoo, showBar, showBaz });
-
-      const div = container.querySelector('div')!;
-      expect(div.classList.contains('foo')).toBe(true);
-      expect(div.classList.contains('bar')).toBe(true);
-      expect(div.classList.contains('baz')).toBe(false);
-
-      // Change conditions - foo and bar should be toggled off, baz on
-      showFoo.value = false;
-      showBar.value = false;
-      showBaz.value = true;
-      expect(div.classList.contains('foo')).toBe(false);
-      expect(div.classList.contains('bar')).toBe(false);
-      expect(div.classList.contains('baz')).toBe(true);
-
-      // Verify no stale classes remain
-      expect(div.className).toBe('baz');
-    });
-
-    it('should clean up classes when switching between different class expressions', () => {
+    it('should clean up stale classes when switching between different class expressions', () => {
       // Test that classes from one expression are removed when expression changes
+      // This verifies the cleanup loop works for string syntax
       container.innerHTML = '<div bq-class="classValue"></div>';
       const classValue = signal('class-a class-b');
 
@@ -279,6 +253,73 @@ describe('View', () => {
 
       // Verify only new classes remain
       expect(div.className).toBe('class-c class-d');
+    });
+
+    it('should clean up object syntax classes when element has pre-existing classes', () => {
+      // This test verifies that the cleanup loop properly handles object syntax
+      // by ensuring classes not tracked by the directive are preserved, while
+      // classes that were previously tracked but are no longer active are removed
+      container.innerHTML = '<div class="pre-existing" bq-class="{ foo: showFoo, bar: showBar }"></div>';
+      const showFoo = signal(true);
+      const showBar = signal(true);
+
+      view = mount(container, { showFoo, showBar });
+
+      const div = container.querySelector('div')!;
+      // Pre-existing class should remain
+      expect(div.classList.contains('pre-existing')).toBe(true);
+      expect(div.classList.contains('foo')).toBe(true);
+      expect(div.classList.contains('bar')).toBe(true);
+
+      // Toggle both off
+      showFoo.value = false;
+      showBar.value = false;
+
+      // Pre-existing class should still be there, directive classes removed
+      expect(div.classList.contains('pre-existing')).toBe(true);
+      expect(div.classList.contains('foo')).toBe(false);
+      expect(div.classList.contains('bar')).toBe(false);
+      
+      // Verify only pre-existing class remains
+      expect(div.className).toBe('pre-existing');
+    });
+
+    it('should properly track and clean up object syntax classes through multiple evaluations', () => {
+      // This test ensures the cleanup loop runs for object syntax by verifying
+      // that classes are correctly removed even when toggled false, demonstrating
+      // that the fix maintains consistency across all syntax forms
+      container.innerHTML = '<div bq-class="{ active: isActive, pending: isPending, error: hasError }"></div>';
+      const isActive = signal(false);
+      const isPending = signal(true);
+      const hasError = signal(false);
+
+      view = mount(container, { isActive, isPending, hasError });
+
+      const div = container.querySelector('div')!;
+      expect(div.classList.contains('active')).toBe(false);
+      expect(div.classList.contains('pending')).toBe(true);
+      expect(div.classList.contains('error')).toBe(false);
+      expect(div.className).toBe('pending');
+
+      // Change state
+      isActive.value = true;
+      isPending.value = false;
+      hasError.value = false;
+
+      expect(div.classList.contains('active')).toBe(true);
+      expect(div.classList.contains('pending')).toBe(false);
+      expect(div.classList.contains('error')).toBe(false);
+      expect(div.className).toBe('active');
+
+      // Change to error state
+      isActive.value = false;
+      isPending.value = false;
+      hasError.value = true;
+
+      expect(div.classList.contains('active')).toBe(false);
+      expect(div.classList.contains('pending')).toBe(false);
+      expect(div.classList.contains('error')).toBe(true);
+      expect(div.className).toBe('error');
     });
   });
 
