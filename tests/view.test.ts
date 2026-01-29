@@ -259,14 +259,18 @@ describe('View', () => {
       // This test verifies correct behavior for object syntax after the fix.
       // The fix ensures the cleanup loop runs for ALL syntax forms (object, string, array).
       
-      // For object syntax, classes are primarily removed by classList.toggle() (line 22
-      // in class.ts) when conditions change to false. All object syntax keys remain in
-      // newClasses regardless of boolean value (line 24 in class.ts), so the cleanup
-      // loop doesn't actively remove toggled-off classes in normal operation.
-      
-      // The fix provides consistency and defensive programming - the cleanup loop now
-      // runs for object syntax, handling edge cases like manual DOM manipulation or
-      // potential tracking bugs, even though classList.toggle() is the primary mechanism.
+      // For object syntax, classes are primarily added/removed via classList.toggle()
+      // (line 22 in class.ts) when the boolean conditions change. All object syntax keys
+      // remain in newClasses regardless of their boolean value (line 24 in class.ts), so
+      // during normal operation (when the expression shape is stable) the cleanup loop
+      // does not remove classes merely because their condition became false.
+      //
+      // However, the cleanup loop WOULD remove classes whose keys disappear from the
+      // expression entirely (e.g., directive re-initialization with a different object
+      // expression, or recovery after manual DOM/classList manipulation). The fix keeps
+      // the cleanup loop active for object syntax to provide this defensive behavior and
+      // consistency across all syntax forms, even though classList.toggle() is the
+      // primary mechanism for per-key boolean toggling.
       
       container.innerHTML = '<div bq-class="{ foo: showFoo, bar: showBar }"></div>';
       const showFoo = signal(true);
