@@ -265,9 +265,9 @@ describe('View', () => {
       const div = container.querySelector('div')!;
       expect(div.classList.contains('foo')).toBe(true);
       expect(div.classList.contains('bar')).toBe(false);
-      
+
       showFoo.value = false;
-      
+
       expect(div.classList.contains('foo')).toBe(false);
       expect(div.classList.contains('bar')).toBe(false);
       expect(div.className).toBe('');
@@ -288,7 +288,7 @@ describe('View', () => {
       expect(div.classList.contains('static-class')).toBe(true);
       expect(div.classList.contains('dynamic')).toBe(false);
       expect(div.className).toBe('static-class');
-      
+
       isDynamic.value = true;
       expect(div.classList.contains('dynamic')).toBe(true);
       expect(div.className).toBe('static-class dynamic');
