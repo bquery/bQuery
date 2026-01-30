@@ -10,9 +10,10 @@ export const handleShow: DirectiveHandler = (el, expression, context, cleanups) 
   const htmlEl = el as HTMLElement;
   // Capture the computed display value to properly restore visibility.
   // If inline display is 'none' or empty, we need to use the computed value.
+  // Use ownerDocument.defaultView for cross-document/iframe compatibility.
   let originalDisplay = htmlEl.style.display;
   if (!originalDisplay || originalDisplay === 'none') {
-    const computed = window.getComputedStyle(htmlEl).display;
+    const computed = htmlEl.ownerDocument.defaultView?.getComputedStyle(htmlEl).display ?? '';
     originalDisplay = computed !== 'none' ? computed : '';
   }
 
