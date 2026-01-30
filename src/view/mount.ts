@@ -183,12 +183,15 @@ export const createTemplate = (
     }
 
     const { prefix = 'bq' } = options;
-    // Reject templates with bq-for on the root element
-    // bq-for replaces the element with a placeholder comment, which would leave View.el detached
-    if (el.hasAttribute(`${prefix}-for`)) {
+    // Reject templates with bq-for or bq-if on the root element
+    // These directives replace the element with a placeholder comment, which would leave View.el detached
+    // Since processing happens while el is still in the temporary container, the placeholder
+    // would remain there while view.el is inserted elsewhere, causing desync on future toggles
+    if (el.hasAttribute(`${prefix}-for`) || el.hasAttribute(`${prefix}-if`)) {
+      const directive = el.hasAttribute(`${prefix}-for`) ? 'for' : 'if';
       throw new Error(
-        `bQuery view: Template root element cannot have ${prefix}-for directive. ` +
-          `Wrap the ${prefix}-for element in a container instead.`
+        `bQuery view: Template root element cannot have ${prefix}-${directive} directive. ` +
+          `Wrap the ${prefix}-${directive} element in a container instead.`
       );
     }
 
