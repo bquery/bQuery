@@ -34,6 +34,13 @@ export type PropDefinition<T = unknown> = {
   default?: T;
   /** Optional validator function to validate prop values */
   validator?: (value: T) => boolean;
+  /**
+   * Explicitly control whether to invoke `type` with `new` (constructor) or as a plain function.
+   * - `true`: Always use `new type(value)` (for class constructors, Date, etc.)
+   * - `false`: Always call `type(value)` (for converter functions)
+   * - `undefined` (default): Auto-detect based on heuristics with fallback
+   */
+  construct?: boolean;
 };
 
 /**

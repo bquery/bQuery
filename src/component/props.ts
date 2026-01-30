@@ -48,12 +48,26 @@ export const coercePropValue = <T>(rawValue: string, config: PropDefinition<T>):
     const callable = type as (value: unknown) => T;
     const constructable = type as new (value: unknown) => T;
 
-    // Check if type is constructable (has a prototype with properties beyond constructor)
-    const isConstructable =
-      type.prototype !== undefined &&
-      type.prototype !== null &&
-      (Object.getOwnPropertyNames(type.prototype).length > 1 ||
-        type.prototype.constructor !== type);
+    // Explicit construct mode takes precedence
+    if (config.construct === true) {
+      return Reflect.construct(constructable, [rawValue]) as T;
+    }
+    if (config.construct === false) {
+      return callable(rawValue);
+    }
+
+    // Auto-detect: Check if type is constructable
+    // A function is considered constructable if:
+    // 1. It has a prototype with properties beyond just constructor, OR
+    // 2. Its prototype.constructor is not itself (inherited), OR
+    // 3. It's a class (toString starts with "class")
+    const hasPrototype = type.prototype !== undefined && type.prototype !== null;
+    const prototypeProps = hasPrototype ? Object.getOwnPropertyNames(type.prototype) : [];
+    const hasPrototypeMethods = prototypeProps.length > 1;
+    const hasInheritedConstructor = hasPrototype && type.prototype.constructor !== type;
+    const isClassSyntax = /^class\s/.test(Function.prototype.toString.call(type));
+
+    const isConstructable = hasPrototypeMethods || hasInheritedConstructor || isClassSyntax;
 
     // For constructable types (e.g. Date, custom classes), prefer `new` to avoid
     // silent wrong-type returns (Date() returns string, new Date() returns Date)
@@ -67,16 +81,30 @@ export const coercePropValue = <T>(rawValue: string, config: PropDefinition<T>):
     }
 
     // For non-constructable types (arrow functions, plain functions), call directly
+    // but fall back to constructor if result is undefined (common for function constructors)
     try {
-      return callable(rawValue);
+      const result = callable(rawValue);
+
+      // If calling without `new` returned undefined and the function has a prototype,
+      // it's likely a function constructor that should be called with `new`
+      if (result === undefined && hasPrototype) {
+        try {
+          return Reflect.construct(constructable, [rawValue]) as T;
+        } catch {
+          // Construction also failed, return the undefined
+          return result as T;
+        }
+      }
+
+      return result as T;
     } catch (error) {
-      // Fall back to constructor only if error explicitly indicates 'new' is required
+      // Fall back to constructor if error indicates 'new' is required
       const isNewRequired =
         error instanceof TypeError &&
         /cannot be invoked without 'new'|is not a function/i.test(error.message);
 
       if (isNewRequired) {
-        return new constructable(rawValue);
+        return Reflect.construct(constructable, [rawValue]) as T;
       }
 
       // Rethrow original error for non-constructable converters
