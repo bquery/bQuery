@@ -74,7 +74,7 @@ export const createRouter = (options: RouterOptions): Router => {
     }
 
     let pathname = window.location.pathname;
-    if (base && pathname.startsWith(base)) {
+    if (base && (pathname === base || pathname.startsWith(base + '/'))) {
       pathname = pathname.slice(base.length) || '/';
     }
 
