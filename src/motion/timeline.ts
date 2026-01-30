@@ -58,8 +58,8 @@ const normalizeDuration = (options?: KeyframeAnimationOptions): number => {
     return Number.MAX_SAFE_INTEGER;
   }
 
-  // Per Web Animations spec, iterations must be a positive number
-  // Treat zero or negative as 0 (only endDelay duration)
+  // Per Web Animations spec, iterations must be a non-negative number
+  // Treat negative as 0 (only endDelay duration)
   const iterations = Math.max(0, rawIterations);
 
   // Total duration = (baseDuration * iterations) + endDelay
