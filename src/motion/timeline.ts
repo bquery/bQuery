@@ -153,7 +153,9 @@ export const timeline = (
     totalDuration = schedule.length ? Math.max(...schedule.map((item) => item.end)) : 0;
 
     if (respectReducedMotion && prefersReducedMotion()) {
-      schedule.forEach(({ step }) => applyFinalKeyframeStyles(step.target, step.keyframes));
+      if (commitStyles) {
+        schedule.forEach(({ step }) => applyFinalKeyframeStyles(step.target, step.keyframes));
+      }
       reducedMotionApplied = true;
       return;
     }
@@ -163,7 +165,9 @@ export const timeline = (
       ({ step }) => typeof (step.target as HTMLElement).animate !== 'function'
     );
     if (animateUnavailable) {
-      schedule.forEach(({ step }) => applyFinalKeyframeStyles(step.target, step.keyframes));
+      if (commitStyles) {
+        schedule.forEach(({ step }) => applyFinalKeyframeStyles(step.target, step.keyframes));
+      }
       reducedMotionApplied = true;
       return;
     }
