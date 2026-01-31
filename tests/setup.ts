@@ -39,6 +39,10 @@ const window = new Window();
     clearTimeout(handle);
   };
 
+// Register DOMParser for security sanitization tests
+(globalThis as unknown as { DOMParser: typeof DOMParser }).DOMParser =
+  window.DOMParser as unknown as typeof DOMParser;
+
 // Polyfill crypto.getRandomValues for generateNonce tests
 if (typeof globalThis.crypto === 'undefined') {
   (globalThis as unknown as { crypto: Crypto }).crypto = {

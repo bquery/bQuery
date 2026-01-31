@@ -4,7 +4,7 @@
 
 import { afterEach, beforeEach, describe, expect, it, spyOn, type Mock } from 'bun:test';
 import { computed, signal } from '../src/reactive/index';
-import { createTemplate, mount, type View } from '../src/view/index';
+import { clearExpressionCache, createTemplate, mount, type View } from '../src/view/index';
 
 describe('View', () => {
   let container: HTMLElement;
@@ -38,6 +38,27 @@ describe('View', () => {
 
     it('should throw for non-existent selector', () => {
       expect(() => mount('#nonexistent', {})).toThrow('not found');
+    });
+
+    it('should reject mounting on element with bq-for directive', () => {
+      container.innerHTML = '<div bq-for="item in items" bq-text="item"></div>';
+      const items = signal([1, 2, 3]);
+      const div = container.querySelector('div')!;
+
+      expect(() => mount(div, { items })).toThrow('Cannot mount on element with bq-for directive');
+      expect(() => mount(div, { items })).toThrow('Wrap the bq-for element in a container');
+    });
+
+    it('should mount successfully when bq-for is on child element', () => {
+      container.innerHTML = '<div><ul><li bq-for="item in items" bq-text="item"></li></ul></div>';
+      const items = signal([1, 2, 3]);
+
+      // Should not throw when mounting on container
+      view = mount(container, { items });
+
+      expect(view.el).toBe(container);
+      const listItems = container.querySelectorAll('li');
+      expect(listItems.length).toBe(3);
     });
   });
 
@@ -123,6 +144,23 @@ describe('View', () => {
       visible.value = true;
       expect(div.style.display).not.toBe('none');
     });
+
+    it('should handle elements starting with display: none', () => {
+      container.innerHTML = '<div bq-show="visible" style="display: none">Content</div>';
+      const visible = signal(false);
+
+      view = mount(container, { visible });
+
+      const div = container.querySelector('div') as HTMLElement;
+      expect(div.style.display).toBe('none');
+
+      visible.value = true;
+      // Should become visible (not stay 'none')
+      expect(div.style.display).not.toBe('none');
+
+      visible.value = false;
+      expect(div.style.display).toBe('none');
+    });
   });
 
   describe('bq-class', () => {
@@ -152,6 +190,109 @@ describe('View', () => {
       const div = container.querySelector('div')!;
       expect(div.classList.contains('primary')).toBe(true);
     });
+
+    it('should handle bracket property access correctly', () => {
+      container.innerHTML = '<div bq-class="item[\'className\']"></div>';
+      const item = signal({ className: 'dynamic-class' });
+
+      view = mount(container, { item });
+
+      const div = container.querySelector('div')!;
+      expect(div.classList.contains('dynamic-class')).toBe(true);
+
+      // Update property value
+      item.value = { className: 'new-class' };
+      expect(div.classList.contains('new-class')).toBe(true);
+      expect(div.classList.contains('dynamic-class')).toBe(false);
+    });
+
+    it('should handle array literal syntax correctly', () => {
+      container.innerHTML = "<div bq-class=\"['foo', 'bar']\"></div>";
+
+      view = mount(container, {});
+
+      const div = container.querySelector('div')!;
+      expect(div.classList.contains('foo')).toBe(true);
+      expect(div.classList.contains('bar')).toBe(true);
+    });
+
+    it('should distinguish bracket access from array literals', () => {
+      // Test that obj['key'] is NOT treated as array literal
+      container.innerHTML = '<div id="test1" bq-class="config[\'activeClass\']"></div>';
+      const config = signal({ activeClass: 'enabled' });
+
+      view = mount(container, { config });
+
+      const div = container.querySelector('#test1')!;
+      expect(div.classList.contains('enabled')).toBe(true);
+
+      // Verify it's reactive
+      config.value = { activeClass: 'disabled' };
+      expect(div.classList.contains('disabled')).toBe(true);
+      expect(div.classList.contains('enabled')).toBe(false);
+    });
+
+    it('should clean up stale classes when switching between different class expressions', () => {
+      // Test that classes from one expression are removed when expression changes
+      // This verifies the cleanup loop works for string syntax
+      container.innerHTML = '<div bq-class="classValue"></div>';
+      const classValue = signal('class-a class-b');
+
+      view = mount(container, { classValue });
+
+      const div = container.querySelector('div')!;
+      expect(div.classList.contains('class-a')).toBe(true);
+      expect(div.classList.contains('class-b')).toBe(true);
+
+      // Change to completely different classes
+      classValue.value = 'class-c class-d';
+      expect(div.classList.contains('class-a')).toBe(false);
+      expect(div.classList.contains('class-b')).toBe(false);
+      expect(div.classList.contains('class-c')).toBe(true);
+      expect(div.classList.contains('class-d')).toBe(true);
+
+      // Verify only new classes remain
+      expect(div.className).toBe('class-c class-d');
+    });
+
+    it('should handle object syntax class toggling correctly', () => {
+      container.innerHTML = '<div bq-class="{ foo: showFoo, bar: showBar }"></div>';
+      const showFoo = signal(true);
+      const showBar = signal(false);
+
+      view = mount(container, { showFoo, showBar });
+
+      const div = container.querySelector('div')!;
+      expect(div.classList.contains('foo')).toBe(true);
+      expect(div.classList.contains('bar')).toBe(false);
+
+      showFoo.value = false;
+
+      expect(div.classList.contains('foo')).toBe(false);
+      expect(div.classList.contains('bar')).toBe(false);
+      expect(div.className).toBe('');
+    });
+
+    it('should preserve non-directive classes when toggling object syntax classes', () => {
+      container.innerHTML = '<div class="static-class" bq-class="{ dynamic: isDynamic }"></div>';
+      const isDynamic = signal(true);
+
+      view = mount(container, { isDynamic });
+
+      const div = container.querySelector('div')!;
+      expect(div.classList.contains('static-class')).toBe(true);
+      expect(div.classList.contains('dynamic')).toBe(true);
+
+      isDynamic.value = false;
+
+      expect(div.classList.contains('static-class')).toBe(true);
+      expect(div.classList.contains('dynamic')).toBe(false);
+      expect(div.className).toBe('static-class');
+
+      isDynamic.value = true;
+      expect(div.classList.contains('dynamic')).toBe(true);
+      expect(div.className).toBe('static-class dynamic');
+    });
   });
 
   describe('bq-style', () => {
@@ -168,6 +309,38 @@ describe('View', () => {
 
       textColor.value = 'blue';
       expect(div.style.color).toBe('blue');
+    });
+
+    it('should handle object-literal syntax with leading whitespace', () => {
+      container.innerHTML = '<div bq-style="  { color: textColor, fontSize: size }"></div>';
+      const textColor = signal('green');
+      const size = signal('14px');
+
+      view = mount(container, { textColor, size });
+
+      const div = container.querySelector('div') as HTMLElement;
+      expect(div.style.color).toBe('green');
+      expect(div.style.fontSize).toBe('14px');
+
+      textColor.value = 'purple';
+      expect(div.style.color).toBe('purple');
+    });
+
+    it('should remove stale styles when style object changes', () => {
+      container.innerHTML = '<div bq-style="styleObj"></div>';
+      const styleObj = signal({ color: 'red', fontSize: '16px' });
+
+      view = mount(container, { styleObj });
+
+      const div = container.querySelector('div') as HTMLElement;
+      expect(div.style.color).toBe('red');
+      expect(div.style.fontSize).toBe('16px');
+
+      // Change to style object without fontSize
+      styleObj.value = { color: 'blue' };
+      expect(div.style.color).toBe('blue');
+      // fontSize should be removed
+      expect(div.style.fontSize).toBe('');
     });
   });
 
@@ -270,6 +443,49 @@ describe('View', () => {
       button.click();
 
       expect(eventType).toBe('click');
+    });
+
+    it('should support signal mutations in event expressions', () => {
+      container.innerHTML = `
+        <div>
+          <span bq-text="count"></span>
+          <button id="increment" bq-on:click="count.value++">Increment</button>
+          <button id="decrement" bq-on:click="count.value--">Decrement</button>
+          <button id="add-five" bq-on:click="count.value += 5">Add 5</button>
+        </div>
+      `;
+      const count = signal(0);
+
+      view = mount(container, { count });
+
+      const span = container.querySelector('span')!;
+      const incrementBtn = container.querySelector('#increment')! as HTMLButtonElement;
+      const decrementBtn = container.querySelector('#decrement')! as HTMLButtonElement;
+      const addFiveBtn = container.querySelector('#add-five')! as HTMLButtonElement;
+
+      // Initial value
+      expect(span.textContent).toBe('0');
+      expect(count.value).toBe(0);
+
+      // Test increment
+      incrementBtn.click();
+      expect(count.value).toBe(1);
+      expect(span.textContent).toBe('1');
+
+      // Test increment again
+      incrementBtn.click();
+      expect(count.value).toBe(2);
+      expect(span.textContent).toBe('2');
+
+      // Test decrement
+      decrementBtn.click();
+      expect(count.value).toBe(1);
+      expect(span.textContent).toBe('1');
+
+      // Test compound assignment
+      addFiveBtn.click();
+      expect(count.value).toBe(6);
+      expect(span.textContent).toBe('6');
     });
   });
 
@@ -499,6 +715,40 @@ describe('View', () => {
         expect(container.querySelectorAll('li').length).toBe(1);
         expect(container.querySelector('li')?.textContent).toBe('Three');
       });
+
+      it('should warn when duplicate keys are detected', () => {
+        container.innerHTML =
+          '<ul><li bq-for="item in items" :key="item.type" bq-text="item.name"></li></ul>';
+        const items = signal([
+          { id: 1, type: 'A', name: 'First' },
+          { id: 2, type: 'B', name: 'Second' },
+          { id: 3, type: 'A', name: 'Third' }, // Duplicate key 'A'
+        ]);
+
+        // Spy on console.warn
+        const originalWarn = console.warn;
+        const warnCalls: unknown[][] = [];
+        console.warn = (...args: unknown[]) => {
+          warnCalls.push(args);
+        };
+
+        try {
+          view = mount(container, { items });
+        } finally {
+          // Restore console.warn even if test fails
+          console.warn = originalWarn;
+        }
+
+        // Should have logged a warning about duplicate key
+        expect(warnCalls.length).toBeGreaterThan(0);
+        const duplicateKeyWarning = warnCalls.find((call) =>
+          String(call[0]).includes('Duplicate key')
+        );
+        expect(duplicateKeyWarning).toBeDefined();
+        const warningMessage = String(duplicateKeyWarning![0]);
+        expect(warningMessage).toContain('"A"');
+        expect(warningMessage).toContain('Falling back to index-based key');
+      });
     });
   });
 
@@ -537,6 +787,32 @@ describe('View', () => {
       expect(counter.el.textContent).toBe('5');
 
       counter.destroy();
+    });
+
+    it('should reject templates with bq-for on root element', () => {
+      const items = signal([1, 2, 3]);
+      const BadTemplate = createTemplate('<li bq-for="item in items" bq-text="item"></li>');
+
+      expect(() => BadTemplate({ items })).toThrow(
+        /Template root element cannot have bq-for directive/
+      );
+    });
+
+    it('should reject templates with multiple root elements', () => {
+      const MultiRootTemplate = createTemplate('<div>A</div><div>B</div>');
+
+      expect(() => MultiRootTemplate({})).toThrow(
+        /Template must contain exactly one root element, found 2/
+      );
+    });
+
+    it('should accept templates with single root element and whitespace', () => {
+      const ValidTemplate = createTemplate('  <div>Content</div>  ');
+      const view = ValidTemplate({});
+
+      expect(view.el.textContent).toBe('Content');
+
+      view.destroy();
     });
   });
 
@@ -789,6 +1065,66 @@ describe('View', () => {
         expect(refObj.value).not.toBeNull();
         expect(refObj.value?.tagName).toBe('INPUT');
       });
+
+      it('should support nested object property access like refs.inputEl', () => {
+        container.innerHTML = '<input bq-ref="refs.inputEl" />';
+        const refs = {
+          inputEl: { value: null as Element | null },
+        };
+
+        view = mount(container, { refs });
+
+        expect(refs.inputEl.value).not.toBeNull();
+        expect(refs.inputEl.value?.tagName).toBe('INPUT');
+
+        // Verify cleanup works for nested refs
+        view.destroy();
+        expect(refs.inputEl.value).toBeNull();
+      });
+
+      it('should cleanup object refs on destroy to prevent memory leaks', () => {
+        container.innerHTML = '<input bq-ref="refObj" />';
+        const refObj = { value: null as Element | null };
+
+        view = mount(container, { refObj });
+
+        // Ref should be set after mount
+        expect(refObj.value).not.toBeNull();
+        expect(refObj.value?.tagName).toBe('INPUT');
+
+        // Destroy the view
+        view.destroy();
+
+        // Ref should be cleared to prevent memory leaks
+        expect(refObj.value).toBeNull();
+      });
+    });
+  });
+
+  describe('clearExpressionCache', () => {
+    it('should clear cached expressions without errors', () => {
+      container.innerHTML = '<span bq-text="message"></span>';
+      const message = signal('Hello');
+
+      // Mount a view to populate the cache
+      view = mount(container, { message });
+      expect(container.querySelector('span')?.textContent).toBe('Hello');
+
+      // Clear the cache - should not throw
+      expect(() => clearExpressionCache()).not.toThrow();
+
+      // Should still work after clearing cache (recompiles expressions)
+      message.value = 'World';
+      expect(container.querySelector('span')?.textContent).toBe('World');
+    });
+
+    it('should allow calling clearExpressionCache multiple times', () => {
+      // Should not throw even when called multiple times
+      expect(() => {
+        clearExpressionCache();
+        clearExpressionCache();
+        clearExpressionCache();
+      }).not.toThrow();
     });
   });
 });

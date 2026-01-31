@@ -42,6 +42,8 @@ All mutating methods are chainable and return `this`.
 - `toggleClass(className, force?)`
 - `hasClass(className)`
 - `attr(name, value?)`
+- `removeAttr(name)`
+- `toggleAttr(name, force?)`
 - `prop(name, value?)`
 - `data(name, value?)`
 
@@ -65,7 +67,7 @@ All mutating methods are chainable and return `this`.
 - `hide()`
 - `toggle(force?)`
 
-### Events (Collection)
+### Events (Element)
 
 - `on(event, handler)`
 - `once(event, handler)`
@@ -104,14 +106,19 @@ $('#list').delegate('click', '.item', (event, target) => {
 
 ### DOM Manipulation
 
-- `wrap(wrapper)` – wrap element with new parent
+- `wrap(wrapper)` – wrap element with new parent (accepts tag name or Element)
 - `unwrap()` – remove parent, keeping element
 - `replaceWith(content)` – replace element with new content
 - `scrollTo(options?)` – scroll element into view
 
 ```ts
-// Wrap element
-$('#content').wrap('<div class="wrapper"></div>');
+// Wrap element with a div
+$('#content').wrap('div');
+
+// Wrap with an existing element
+const wrapper = document.createElement('section');
+wrapper.className = 'wrapper';
+$('#content').wrap(wrapper);
 
 // Unwrap (remove parent)
 $('#content').unwrap();
@@ -161,9 +168,17 @@ All mutating methods are chainable and apply to every element. Getter methods re
 - `toggleClass(className, force?)`
 - `attr(name, value?)`
 - `removeAttr(name)`
+- `toggleAttr(name, force?)`
 - `text(value?)`
 - `html(value?)` – sanitized by default
 - `htmlUnsafe(value)`
+- `append(content)`
+- `prepend(content)`
+- `before(content)`
+- `after(content)`
+- `wrap(wrapper)`
+- `unwrap()`
+- `replaceWith(content)`
 - `css(property, value?)`
 - `show(display?)`
 - `hide()`
@@ -181,18 +196,25 @@ All mutating methods are chainable and apply to every element. Getter methods re
 ## Utilities
 
 ```ts
-import { utils } from '@bquery/bquery/core';
+import { debounce, merge, uid, utils } from '@bquery/bquery/core';
 
-const id = utils.uid();
-const merged = utils.merge({ a: 1 }, { b: 2 });
+const id = uid();
+const merged = merge({ a: 1 }, { b: 2 });
+const delayed = debounce(() => console.log('Saved'), 200);
+const legacyId = utils.uid();
 ```
 
 ### Utility list
 
 - `clone(value)`
 - `merge(...sources)`
+- `pick(obj, keys)`
+- `omit(obj, keys)`
+- `hasOwn(obj, key)`
 - `debounce(fn, delayMs)`
 - `throttle(fn, intervalMs)`
+- `once(fn)`
+- `noop()`
 - `uid(prefix?)`
 - `isElement(value)`
 - `isCollection(value)`
@@ -203,12 +225,23 @@ const merged = utils.merge({ a: 1 }, { b: 2 });
 - `isNumber(value)`
 - `isBoolean(value)`
 - `isArray(value)`
+- `isDate(value)`
+- `isPromise(value)`
+- `isObject(value)`
 - `parseJson(json, fallback)`
-- `pick(obj, keys)`
-- `omit(obj, keys)`
 - `sleep(ms)`
 - `randomInt(min, max)`
 - `clamp(value, min, max)`
+- `inRange(value, min, max, inclusive?)`
+- `toNumber(value, fallback?)`
 - `capitalize(str)`
 - `toKebabCase(str)`
 - `toCamelCase(str)`
+- `truncate(str, maxLength, suffix?)`
+- `slugify(str)`
+- `escapeRegExp(str)`
+- `ensureArray(value)`
+- `unique(items)`
+- `chunk(items, size)`
+- `compact(items)`
+- `flatten(items)`

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test';
-import { utils } from '../src/core/utils';
+import { isPrototypePollutionKey, utils } from '../src/core/utils';
 
 describe('utils/merge', () => {
   it('merges objects deeply', () => {
@@ -156,6 +156,85 @@ describe('utils/string helpers', () => {
   });
 });
 
+describe('utils/once', () => {
+  it('executes function only once', () => {
+    let callCount = 0;
+    const fn = utils.once(() => {
+      callCount++;
+      return 'result';
+    });
+
+    const result1 = fn();
+    const result2 = fn();
+    const result3 = fn();
+
+    expect(callCount).toBe(1);
+    expect(result1).toBe('result');
+    expect(result2).toBe('result');
+    expect(result3).toBe('result');
+  });
+
+  it('returns cached result on subsequent calls', () => {
+    const fn = utils.once(() => ({ value: Math.random() }));
+
+    const result1 = fn();
+    const result2 = fn();
+
+    expect(result2).toBe(result1);
+  });
+
+  it('does not cache failures when function throws', () => {
+    let callCount = 0;
+    const fn = utils.once(() => {
+      callCount++;
+      if (callCount === 1) {
+        throw new Error('First call fails');
+      }
+      return 'success';
+    });
+
+    // First call should throw
+    expect(() => fn()).toThrow('First call fails');
+    expect(callCount).toBe(1);
+
+    // Second call should retry and succeed
+    const result = fn();
+    expect(callCount).toBe(2);
+    expect(result).toBe('success');
+
+    // Third call should return cached success result
+    const result2 = fn();
+    expect(callCount).toBe(2); // No additional call
+    expect(result2).toBe('success');
+  });
+
+  it('retries on each call until function succeeds', () => {
+    let callCount = 0;
+    const fn = utils.once(() => {
+      callCount++;
+      if (callCount < 3) {
+        throw new Error('Not ready yet');
+      }
+      return 'finally ready';
+    });
+
+    expect(() => fn()).toThrow('Not ready yet');
+    expect(callCount).toBe(1);
+
+    expect(() => fn()).toThrow('Not ready yet');
+    expect(callCount).toBe(2);
+
+    const result = fn();
+    expect(callCount).toBe(3);
+    expect(result).toBe('finally ready');
+
+    // Should not call again after success
+    const result2 = fn();
+    expect(callCount).toBe(3);
+    expect(result2).toBe('finally ready');
+  });
+});
+
 describe('utils/sleep', () => {
   it('returns a promise', () => {
     const result = utils.sleep(0);
@@ -183,10 +262,11 @@ describe('utils/clone', () => {
 
 describe('utils/security', () => {
   it('isPrototypePollutionKey identifies dangerous keys', () => {
-    expect(utils.isPrototypePollutionKey('__proto__')).toBe(true);
-    expect(utils.isPrototypePollutionKey('constructor')).toBe(true);
-    expect(utils.isPrototypePollutionKey('prototype')).toBe(true);
-    expect(utils.isPrototypePollutionKey('normalKey')).toBe(false);
+    // Note: isPrototypePollutionKey is now a named export only, not in utils namespace
+    expect(isPrototypePollutionKey('__proto__')).toBe(true);
+    expect(isPrototypePollutionKey('constructor')).toBe(true);
+    expect(isPrototypePollutionKey('prototype')).toBe(true);
+    expect(isPrototypePollutionKey('normalKey')).toBe(false);
   });
 
   it('merge ignores prototype pollution keys', () => {

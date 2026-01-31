@@ -4,6 +4,8 @@ title: Router
 
 The router module provides SPA-style client-side routing built on the History API. It integrates seamlessly with bQuery's reactive system.
 
+Internally, the router is now split into focused submodules (matching, navigation, state, links, utilities). The public API remains unchanged.
+
 ```ts
 import { createRouter, navigate, currentRoute } from '@bquery/bquery/router';
 import { effect } from '@bquery/bquery/reactive';
@@ -254,7 +256,7 @@ router.destroy();
 type Route = {
   path: string;
   params: Record<string, string>;
-  query: Record<string, string>;
+  query: Record<string, string | string[]>;
   matched: RouteDefinition | null;
   hash: string;
 };

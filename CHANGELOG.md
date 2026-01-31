@@ -8,27 +8,86 @@ and this project adheres to Semantic Versioning.
 
 - [Changelog](#changelog)
   - [Releases](#releases)
-  - [[1.2.0] - 2026-01-24](#120---2026-01-24)
-    - [Added](#added)
-  - [[1.1.2] - 2026-01-24](#112---2026-01-24)
-    - [Fixed](#fixed)
-    - [Security](#security)
-  - [[1.1.1] - 2026-01-24](#111---2026-01-24)
-    - [Fixed](#fixed-1)
-  - [[1.1.0] - 2026-01-23](#110---2026-01-23)
-    - [Added](#added-1)
-    - [Changed](#changed)
-    - [Security](#security-1)
-  - [[1.0.2] - 2026-01-23](#102---2026-01-23)
-    - [Fixed](#fixed-2)
-  - [[1.0.1] - 2026-01-23](#101---2026-01-23)
-    - [Fixed](#fixed-3)
-  - [[1.0.0] - 2026-01-21](#100---2026-01-21)
-    - [Added](#added-2)
+  - [\[1.3.0\] - 2026-01-26](#130---2026-01-26)
+    - [Added (1.3.0)](#added-130)
+    - [Changed (1.3.0)](#changed-130)
+    - [Fixed (1.3.0)](#fixed-130)
+  - [\[1.2.0\] - 2026-01-24](#120---2026-01-24)
+    - [Added (1.2.0)](#added-120)
+  - [\[1.1.2\] - 2026-01-24](#112---2026-01-24)
+    - [Fixed (1.1.2)](#fixed-112)
+    - [Security (1.1.2)](#security-112)
+  - [\[1.1.1\] - 2026-01-24](#111---2026-01-24)
+    - [Fixed (1.1.1)](#fixed-111)
+  - [\[1.1.0\] - 2026-01-23](#110---2026-01-23)
+    - [Added (1.1.0)](#added-110)
+    - [Changed (1.1.0)](#changed-110)
+    - [Security (1.1.0)](#security-110)
+  - [\[1.0.2\] - 2026-01-23](#102---2026-01-23)
+    - [Fixed (1.0.2)](#fixed-102)
+  - [\[1.0.1\] - 2026-01-23](#101---2026-01-23)
+    - [Fixed (1.0.1)](#fixed-101)
+  - [\[1.0.0\] - 2026-01-21](#100---2026-01-21)
+    - [Added (1.0.0)](#added-100)
+
+## [1.3.0] - 2026-01-26
+
+### Added (1.3.0)
+
+- **Core**: Added attribute helpers `removeAttr()` and `toggleAttr()`, plus collection DOM helpers `append()`, `prepend()`, `before()`, `after()`, `wrap()`, `unwrap()`, and `replaceWith()`.
+- **Core**: Expanded utilities with new array, function, number, and string helpers (e.g. `ensureArray()`, `unique()`, `chunk()`, `compact()`, `flatten()`, `once()`, `noop()`, `inRange()`, `toNumber()`, `truncate()`, `slugify()`, `escapeRegExp()`, `hasOwn()`, `isDate()`, `isPromise()`, `isObject()`).
+- **Motion**: Modularized motion utilities with new single-purpose helpers and presets.
+  - New helpers: `animate`, `sequence`, `timeline`, `scrollAnimate`, `stagger`, `flipElements`.
+  - New presets: `easingPresets`, `keyframePresets`, plus individual easing exports.
+  - Improved reduced-motion support via `prefersReducedMotion()`.
+- **Component**: `defineComponent()` factory for manual class creation and custom registration.
+- **Reactive**: `linkedSignal()` helper for writable computed values that bridge getters and setters.
+- **Store**: New helpers `defineStore()`, `mapGetters()`, and `watchStore()` for ergonomic factories, getter mapping, and targeted subscriptions.
+
+### Changed (1.3.0)
+
+- **Core**: Internal DOM helpers extracted into focused utilities to improve core modularity (no breaking API changes).
+- **Core**: Utilities modularized into focused helper modules and re-exported as named exports from `@bquery/bquery/core` (the `utils` namespace remains for compatibility).
+- **Security**: Internals modularized (sanitize core, Trusted Types, CSP helpers, constants/types) with no API changes.
+- **Router**: Internals modularized into focused submodules with no public API changes.
+- **Component**: Internals modularized into focused submodules with no public API changes.
+- **Reactive**: Internals modularized into focused submodules with no public API changes.
+- **Store**: Internals modularized into focused submodules (types, registry, plugins, helpers) with no public API breaks.
+- **View**: Internals modularized into focused submodules with no public API changes.
+
+### Fixed (1.3.0)
+
+- **Security**: `security/sanitize` now re-exports `generateNonce()` and `isTrustedTypesSupported()` for legacy deep imports.
+- **Component**: Sanitize component render markup before writing to the Shadow DOM (security-by-default consistency).
+- **Component**: `attributeChangedCallback` now only triggers re-renders after initial mount, preventing double renders.
+- **Component**: Styles are now applied via `<style>` element with `textContent` instead of `innerHTML` to prevent markup injection.
+- **Core**: `unwrap()` on collections now correctly de-duplicates parents to avoid removing the same parent multiple times.
+- **Core**: `insertContent()` now maintains correct DOM order when inserting multiple elements for `beforebegin`, `afterbegin`, and `afterend` positions.
+- **Core**: `once()` utility no longer caches failures; function is retried on subsequent calls after an exception.
+- **Motion**: `timeline.seek()` now correctly calculates currentTime without double-subtracting delay offset.
+- **Motion**: `timeline.duration()` now properly accounts for `iterations` option when calculating total duration.
+- **Router**: `interceptLinks()` now skips middle-click, Ctrl+click, Cmd+click, Shift+click, Alt+click, and already-prevented events.
+- **Router**: Hash-routing mode now correctly parses query parameters and hash fragments for route matching.
+- **Router**: Navigation guards cancelling popstate now restore the full URL including query and hash.
+- **Router**: Link interception now correctly strips base path and handles hash-routing links (`href="#/route"`).
+- **Reactive**: `untrack()` now properly suppresses dependency tracking for computed values without breaking internal computed dependencies.
+- **Reactive**: `persistedSignal()` now gracefully handles Safari private mode and environments without `localStorage`.
+- **Store**: `defineStore()` now caches store instances properly and respects `destroyStore()` invalidation.
+- **Store**: `$state` snapshot now uses `untrack()` to prevent accidental reactive dependencies inside effects.
+- **Store**: Actions can now assign non-state properties without throwing `TypeError` in strict mode.
+- **View**: `bq-class` now correctly distinguishes bracket property access (`obj['key']`) from array literals.
+- **View**: `bq-style` now removes stale style properties when the style object changes.
+- **View**: `bq-show` now correctly shows elements that start with `display: none`.
+- **View**: `bq-for` now warns when duplicate keys are detected and falls back to index-based keying.
+- **View**: `bq-ref` now correctly handles nested object property access (e.g., `refs.inputEl`) and cleans up object refs on destroy.
+- **View**: `bq-on` now supports signal mutations in event expressions (e.g., `count.value++`).
+- **View**: `createTemplate()` now rejects templates with multiple root elements or `bq-for`/`bq-if` on root.
+- **View**: `mount()` now rejects mounting on elements with `bq-for` directive to prevent detached root issues.
+- **Docs**: Corrected the event section heading in the Core API guide for `BQueryElement`.
 
 ## [1.2.0] - 2026-01-24
 
-### Added
+### Added (1.2.0)
 
 - **Router**: New SPA client-side routing module with History API support.
   - `createRouter()` factory with routes, base path, and hash mode options.
@@ -65,23 +124,23 @@ and this project adheres to Semantic Versioning.
 
 ## [1.1.2] - 2026-01-24
 
-### Fixed
+### Fixed (1.1.2)
 
 - **Docs**: Fixed import paths and added error handling in agents documentation.
 
-### Security
+### Security (1.1.2)
 
 - Added `rel="noopener noreferrer"` to external links for improved security.
 
 ## [1.1.1] - 2026-01-24
 
-### Fixed
+### Fixed (1.1.1)
 
-- Fixed a possibly dangrous html handling in the playground examples.
+- Fixed a possibly dangerous HTML handling in the playground examples.
 
 ## [1.1.0] - 2026-01-23
 
-### Added
+### Added (1.1.0)
 
 - **Core**: `delegate(event, selector, handler)` method for event delegation on dynamically added elements.
 - **Core**: `wrap(wrapper)` method to wrap elements with a new parent container.
@@ -104,13 +163,13 @@ and this project adheres to Semantic Versioning.
 - **Security**: DOM clobbering protection with reserved ID/name filtering.
 - **Security**: Zero-width Unicode character stripping in URL normalization.
 
-### Changed
+### Changed (1.1.0)
 
 - **Reactive**: Optimized observer stack operations from O(n) array copy to O(1) push/pop (~40% performance improvement).
 - **Security**: Added `file:` protocol to blocked URL schemes.
 - **Security**: Extended dangerous attribute prefixes with `xlink:` and `xmlns:`.
 
-### Security
+### Security (1.1.0)
 
 - Fixed prototype pollution vulnerability in `utils.merge()` by filtering `__proto__`, `constructor`, and `prototype` keys.
 - Enhanced HTML sanitizer to block additional XSS vectors through SVG, MathML, and template elements.
@@ -119,13 +178,13 @@ and this project adheres to Semantic Versioning.
 
 ## [1.0.2] - 2026-01-23
 
-### Fixed
+### Fixed (1.0.2)
 
-- Fixed brodken documentation links in README.md.
+- Fixed broken documentation links in README.md.
 
 ## [1.0.1] - 2026-01-23
 
-### Fixed
+### Fixed (1.0.1)
 
 - Corrected the package name in `package.json` to `@bquery/bquery` for proper npm publishing.
 - Updated the author field in `package.json` to reflect the main maintainer.
@@ -134,7 +193,7 @@ and this project adheres to Semantic Versioning.
 
 ## [1.0.0] - 2026-01-21
 
-### Added
+### Added (1.0.0)
 
 - Core API with selectors (`$`, `$$`), `BQueryElement`/`BQueryCollection`, DOM operations, events, and utilities.
 - Reactive module with `signal`, `computed`, `effect`, `batch`, plus `Signal`/`Computed` types.

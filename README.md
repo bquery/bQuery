@@ -14,6 +14,7 @@
 [![Bundle Size](https://img.shields.io/bundlephobia/minzip/@bquery/bquery)](https://bundlephobia.com/package/@bquery/bquery)
 [![unpkg](https://img.shields.io/badge/unpkg-browse-blue?logo=unpkg)](https://unpkg.com/@bquery/bquery)
 [![CodeFactor](https://www.codefactor.io/repository/github/bquery/bquery/badge)](https://www.codefactor.io/repository/github/bquery/bquery)
+[![JsDelivr](https://data.jsdelivr.com/v1/package/npm/@bquery/bquery/badge)](https://www.jsdelivr.com/package/npm/@bquery/bquery)
 
 **The jQuery for the modern Web Platform.**
 
@@ -84,30 +85,33 @@ import { $, signal, component } from '@bquery/bquery';
 // Core only
 import { $, $$ } from '@bquery/bquery/core';
 
+// Core utilities (named exports, tree-shakeable)
+import { debounce, merge, uid, once, utils } from '@bquery/bquery/core';
+
 // À la carte (individual modules)
-import { signal, computed, effect } from '@bquery/bquery/reactive';
-import { component, html } from '@bquery/bquery/component';
-import { transition, spring } from '@bquery/bquery/motion';
+import { signal, computed, effect, linkedSignal, persistedSignal } from '@bquery/bquery/reactive';
+import { component, defineComponent, html } from '@bquery/bquery/component';
+import { transition, spring, animate, timeline } from '@bquery/bquery/motion';
 import { sanitize } from '@bquery/bquery/security';
 import { storage, cache } from '@bquery/bquery/platform';
 import { createRouter, navigate } from '@bquery/bquery/router';
-import { createStore } from '@bquery/bquery/store';
-import { mount } from '@bquery/bquery/view';
+import { createStore, defineStore } from '@bquery/bquery/store';
+import { mount, createTemplate } from '@bquery/bquery/view';
 ```
 
 ## Modules at a glance
 
-| Module        | Description                                    | Size (gzip) |
-| ------------- | ---------------------------------------------- | ----------- |
-| **Core**      | Selectors, DOM manipulation, events, utilities | ~7.7 KB     |
-| **Reactive**  | `signal`, `computed`, `effect`, `batch`        | ~1.2 KB     |
-| **Component** | Lightweight Web Components with props          | ~1.5 KB     |
-| **Motion**    | View transitions, FLIP animations, springs     | ~1.2 KB     |
-| **Security**  | HTML sanitizing, Trusted Types, CSP            | ~2.2 KB     |
-| **Platform**  | Storage, cache, notifications, buckets         | ~1.6 KB     |
-| **Router**    | SPA routing, navigation guards, history API    | ~2 KB       |
-| **Store**     | Signal-based state management, persistence     | ~1.5 KB     |
-| **View**      | Declarative DOM bindings, directives           | ~2.6 KB     |
+| Module        | Description                                        | Size (gzip) |
+| ------------- | -------------------------------------------------- | ----------- |
+| **Core**      | Selectors, DOM manipulation, events, utilities     | ~11.3 KB    |
+| **Reactive**  | `signal`, `computed`, `effect`, `batch`            | ~0.3 KB     |
+| **Component** | Lightweight Web Components with props              | ~1.9 KB     |
+| **Motion**    | View transitions, FLIP, timelines, scroll, springs | ~4.0 KB     |
+| **Security**  | HTML sanitizing, Trusted Types, CSP                | ~0.7 KB     |
+| **Platform**  | Storage, cache, notifications, buckets             | ~2.2 KB     |
+| **Router**    | SPA routing, navigation guards, history API        | ~2.2 KB     |
+| **Store**     | Signal-based state management, persistence         | ~0.3 KB     |
+| **View**      | Declarative DOM bindings, directives               | ~4.3 KB     |
 
 ## Quick examples
 
@@ -130,8 +134,11 @@ $('#list').delegate('click', '.item', (event, target) => {
 $('#box').addClass('active').css({ opacity: '0.8' }).attr('data-state', 'ready');
 
 // DOM manipulation
-$('#content').wrap('<div class="wrapper"></div>');
-$('#wrapper').unwrap(); // Remove parent wrapper
+$('#content').wrap('div');
+$('#content').unwrap(); // Remove parent wrapper
+
+// Attribute helpers
+$('#dialog').toggleAttr('open');
 
 // Smooth scrolling
 $('#section').scrollTo({ behavior: 'smooth' });
@@ -142,12 +149,21 @@ const queryString = $('form').serializeString(); // Returns URL-encoded string
 
 // Collections
 $$('.items').addClass('highlight');
+$$('.items').append('<li class="item">New</li>');
 ```
 
 ### Reactive – signals
 
 ```ts
-import { signal, computed, effect, batch, watch, readonly } from '@bquery/bquery/reactive';
+import {
+  signal,
+  computed,
+  effect,
+  batch,
+  watch,
+  readonly,
+  linkedSignal,
+} from '@bquery/bquery/reactive';
 
 const count = signal(0);
 const doubled = computed(() => count.value * 2);
@@ -169,12 +185,26 @@ batch(() => {
   count.value++;
   count.value++;
 });
+
+// Writable computed (linked signal)
+const first = signal('Ada');
+const last = signal('Lovelace');
+const fullName = linkedSignal(
+  () => `${first.value} ${last.value}`,
+  (next) => {
+    const [nextFirst, nextLast] = next.split(' ');
+    first.value = nextFirst ?? '';
+    last.value = nextLast ?? '';
+  }
+);
+
+fullName.value = 'Grace Hopper';
 ```
 
 ### Components – Web Components
 
 ```ts
-import { component, html } from '@bquery/bquery/component';
+import { component, defineComponent, html } from '@bquery/bquery/component';
 
 component('user-card', {
   props: {
@@ -199,16 +229,29 @@ component('user-card', {
     return html`<div>Hello ${props.username}</div>`;
   },
 });
+
+// Optional: create the class without auto-registration
+const UserCard = defineComponent('user-card', {
+  props: { username: { type: String, required: true } },
+  render: ({ props }) => html`<div>Hello ${props.username}</div>`,
+});
+customElements.define('user-card', UserCard);
 ```
 
 ### Motion – animations
 
 ```ts
-import { transition, spring } from '@bquery/bquery/motion';
+import { animate, keyframePresets, spring, transition } from '@bquery/bquery/motion';
 
 // View transitions (with fallback)
 await transition(() => {
   $('#content').text('Updated');
+});
+
+// Web Animations helper
+await animate(card, {
+  keyframes: keyframePresets.pop(),
+  options: { duration: 240, easing: 'ease-out' },
 });
 
 // Spring physics
@@ -220,6 +263,8 @@ await x.to(100);
 ```
 
 ### Security – sanitizing
+
+Internally modularized (sanitize core, Trusted Types, CSP helpers) — the public API remains unchanged. For legacy deep imports, `@bquery/bquery/security/sanitize` also re-exports `generateNonce()` and `isTrustedTypesSupported()`.
 
 ```ts
 import { sanitize, escapeHtml } from '@bquery/bquery/security';
@@ -261,6 +306,8 @@ if (permission === 'granted') {
 
 ### Router – SPA navigation
 
+Internally, the router has been split into focused submodules (matching, navigation, state, links, utilities) with no public API changes.
+
 ```ts
 import { createRouter, navigate, currentRoute } from '@bquery/bquery/router';
 
@@ -297,8 +344,8 @@ effect(() => {
 ```ts
 import { createStore, createPersistedStore } from '@bquery/bquery/store';
 
-// Define a store
-const useCounter = createStore({
+// Create a store (returns the store instance directly)
+const counterStore = createStore({
   id: 'counter',
   state: () => ({ count: 0, name: 'Counter' }),
   getters: {
@@ -315,18 +362,45 @@ const useCounter = createStore({
 });
 
 // Use the store
-const counter = useCounter;
-counter.increment();
-console.log(counter.doubled); // Reactive getter
+counterStore.increment();
+console.log(counterStore.doubled); // Reactive getter
 
 // Persisted store (localStorage)
-const useSettings = createPersistedStore({
+const settingsStore = createPersistedStore({
   id: 'settings',
   state: () => ({ theme: 'dark', language: 'en' }),
 });
+
+// Factory-style store definition (Pinia-style)
+import { defineStore, mapGetters, watchStore } from '@bquery/bquery/store';
+
+const useCounter = defineStore('counter', {
+  state: () => ({ count: 0 }),
+  getters: {
+    doubled: (state) => state.count * 2,
+  },
+  actions: {
+    increment() {
+      this.count++;
+    },
+  },
+});
+
+const counter = useCounter();
+const getters = mapGetters(counter, ['doubled']);
+
+watchStore(
+  counter,
+  (state) => state.count,
+  (value) => {
+    console.log('Count changed:', value, getters.doubled);
+  }
+);
 ```
 
 ### View – declarative bindings
+
+Internally modularized into focused submodules; the public API remains unchanged.
 
 ```ts
 import { mount, createTemplate } from '@bquery/bquery/view';

@@ -2,6 +2,10 @@
 
 bQuery sanitizes DOM writes by default and supports Trusted Types. Use the security module directly when you need explicit control over sanitization and CSP helpers.
 
+As of 1.3.0, the security module is internally modularized (sanitize core, Trusted Types, CSP helpers, and constants). The **public API remains unchanged**, so you continue to import from `@bquery/bquery/security` as usual.
+
+For compatibility with legacy deep imports, `@bquery/bquery/security/sanitize` also re-exports `generateNonce()` and `isTrustedTypesSupported()`.
+
 ```ts
 import { sanitize, escapeHtml, stripTags } from '@bquery/bquery/security';
 
@@ -63,6 +67,7 @@ bQuery automatically adds `rel="noopener noreferrer"` to links that:
 2. Point to external domains (different origin)
 
 This protects against:
+
 - **Tabnabbing attacks**: prevents the opened page from accessing `window.opener`
 - **Referrer leakage**: prevents sensitive information in the URL from being sent
 

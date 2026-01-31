@@ -1,5 +1,4 @@
-import { sanitizeHtml } from '../security/sanitize';
-import { applyAll, toElementList } from './shared';
+import { createElementFromHtml, insertContent, setHtml } from './dom';
 
 /**
  * Wrapper for a single DOM element.
@@ -83,6 +82,24 @@ export class BQueryElement {
     return this;
   }
 
+  /** Remove an attribute. */
+  removeAttr(name: string): this {
+    this.element.removeAttribute(name);
+    return this;
+  }
+
+  /** Toggle an attribute on/off. */
+  toggleAttr(name: string, force?: boolean): this {
+    const hasAttr = this.element.hasAttribute(name);
+    const shouldAdd = force ?? !hasAttr;
+    if (shouldAdd) {
+      this.element.setAttribute(name, '');
+    } else {
+      this.element.removeAttribute(name);
+    }
+    return this;
+  }
+
   /** Get or set a property. */
   prop<T extends keyof Element>(name: T, value?: Element[T]): Element[T] | this {
     if (value === undefined) {
@@ -125,7 +142,7 @@ export class BQueryElement {
    * ```
    */
   html(value: string): this {
-    this.element.innerHTML = sanitizeHtml(value);
+    setHtml(this.element, value);
     return this;
   }
 
@@ -240,6 +257,10 @@ export class BQueryElement {
    * Removes the parent element, keeping this element in its place.
    * Essentially the opposite of wrap().
    *
+   * **Important**: This method only moves the current element out of its parent
+   * before removing the parent. Any sibling elements will be removed along with
+   * the parent. For unwrapping multiple siblings, use a collection: `$$(siblings).unwrap()`.
+   *
    * @returns The instance for method chaining
    *
    * @example
@@ -270,14 +291,7 @@ export class BQueryElement {
    * ```
    */
   replaceWith(content: string | Element): BQueryElement {
-    let newEl: Element;
-    if (typeof content === 'string') {
-      const template = document.createElement('template');
-      template.innerHTML = sanitizeHtml(content);
-      newEl = template.content.firstElementChild ?? document.createElement('div');
-    } else {
-      newEl = content;
-    }
+    const newEl = typeof content === 'string' ? createElementFromHtml(content) : content;
     this.element.replaceWith(newEl);
     return new BQueryElement(newEl);
   }
@@ -727,14 +741,6 @@ export class BQueryElement {
    * @internal
    */
   private insertContent(content: string | Element | Element[], position: InsertPosition) {
-    if (typeof content === 'string') {
-      this.element.insertAdjacentHTML(position, sanitizeHtml(content));
-      return;
-    }
-
-    const elements = toElementList(content);
-    applyAll(elements, (el) => {
-      this.element.insertAdjacentElement(position, el);
-    });
+    insertContent(this.element, content, position);
   }
 }
