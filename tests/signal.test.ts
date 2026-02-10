@@ -660,3 +660,57 @@ describe('persistedSignal', () => {
     }
   });
 });
+
+describe('signal dispose', () => {
+  it('dispose clears all subscribers', () => {
+    const count = signal(0);
+    let effectRuns = 0;
+
+    effect(() => {
+      void count.value;
+      effectRuns++;
+    });
+
+    expect(effectRuns).toBe(1);
+
+    count.dispose();
+    count.value = 1;
+
+    // Effect should not run again after dispose
+    expect(effectRuns).toBe(1);
+  });
+
+  it('dispose allows value to still be read', () => {
+    const count = signal(42);
+    count.dispose();
+
+    expect(count.value).toBe(42);
+    expect(count.peek()).toBe(42);
+  });
+});
+
+describe('effect error handling', () => {
+  it('effect catches errors and continues working', () => {
+    const count = signal(0);
+    let errorLogged = false;
+    const originalError = console.error;
+    console.error = () => {
+      errorLogged = true;
+    };
+
+    try {
+      const dispose = effect(() => {
+        if (count.value === 1) {
+          throw new Error('test error');
+        }
+      });
+
+      count.value = 1; // Should trigger error but not crash
+      expect(errorLogged).toBe(true);
+
+      dispose();
+    } finally {
+      console.error = originalError;
+    }
+  });
+});

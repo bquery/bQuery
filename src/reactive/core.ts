@@ -75,6 +75,21 @@ export class Signal<T> implements ReactiveSource {
   }
 
   /**
+   * Removes all subscribers from this signal.
+   * Use this when a signal is no longer needed to prevent memory leaks.
+   *
+   * @example
+   * ```ts
+   * const count = signal(0);
+   * effect(() => console.log(count.value));
+   * count.dispose(); // All subscribers removed
+   * ```
+   */
+  dispose(): void {
+    this.subscribers.clear();
+  }
+
+  /**
    * Removes an observer from this signal's subscriber set.
    * @internal
    */

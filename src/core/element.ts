@@ -176,12 +176,15 @@ export class BQueryElement {
    * $('#box').css({ color: 'red', 'font-size': '16px' });
    * ```
    */
-  css(property: string | Record<string, string>, value?: string): this {
+  css(property: string, value?: string): string | this;
+  css(property: Record<string, string>): this;
+  css(property: string | Record<string, string>, value?: string): string | this {
     if (typeof property === 'string') {
       if (value !== undefined) {
         (this.element as HTMLElement).style.setProperty(property, value);
+        return this;
       }
-      return this;
+      return getComputedStyle(this.element).getPropertyValue(property);
     }
 
     for (const [key, val] of Object.entries(property)) {
@@ -560,6 +563,23 @@ export class BQueryElement {
    * @returns True if the element matches the selector
    */
   matches(selector: string): boolean {
+    return this.element.matches(selector);
+  }
+
+  /**
+   * Alias for `matches()`. Checks if the element matches a CSS selector.
+   *
+   * @param selector - CSS selector to match against
+   * @returns True if the element matches the selector
+   *
+   * @example
+   * ```ts
+   * if ($('#el').is('.active')) {
+   *   console.log('Element is active');
+   * }
+   * ```
+   */
+  is(selector: string): boolean {
     return this.element.matches(selector);
   }
 

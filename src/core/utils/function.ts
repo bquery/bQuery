@@ -4,6 +4,20 @@
  * @module bquery/core/utils/function
  */
 
+/** A debounced function with a cancel method to clear the pending timeout. */
+export interface DebouncedFn<TArgs extends unknown[]> {
+  (...args: TArgs): void;
+  /** Cancels the pending debounced invocation. */
+  cancel(): void;
+}
+
+/** A throttled function with a cancel method to reset the throttle timer. */
+export interface ThrottledFn<TArgs extends unknown[]> {
+  (...args: TArgs): void;
+  /** Resets the throttle timer, allowing the next call to execute immediately. */
+  cancel(): void;
+}
+
 /**
  * Creates a debounced function that delays execution until after
  * the specified delay has elapsed since the last call.
@@ -11,7 +25,7 @@
  * @template TArgs - The argument types of the function
  * @param fn - The function to debounce
  * @param delayMs - Delay in milliseconds
- * @returns A debounced version of the function
+ * @returns A debounced version of the function with a `cancel()` method
  *
  * @example
  * ```ts
@@ -22,19 +36,29 @@
  * search('h');
  * search('he');
  * search('hello'); // Only this call executes after 300ms
+ *
+ * search('cancel me');
+ * search.cancel(); // Cancels the pending invocation
  * ```
  */
 export function debounce<TArgs extends unknown[]>(
   fn: (...args: TArgs) => void,
   delayMs: number
-): (...args: TArgs) => void {
+): DebouncedFn<TArgs> {
   let timeoutId: ReturnType<typeof setTimeout> | undefined;
-  return (...args: TArgs) => {
+  const debounced = (...args: TArgs) => {
     if (timeoutId) {
       clearTimeout(timeoutId);
     }
     timeoutId = setTimeout(() => fn(...args), delayMs);
   };
+  debounced.cancel = () => {
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+      timeoutId = undefined;
+    }
+  };
+  return debounced;
 }
 
 /**
@@ -43,7 +67,7 @@ export function debounce<TArgs extends unknown[]>(
  * @template TArgs - The argument types of the function
  * @param fn - The function to throttle
  * @param intervalMs - Minimum interval between calls in milliseconds
- * @returns A throttled version of the function
+ * @returns A throttled version of the function with a `cancel()` method
  *
  * @example
  * ```ts
@@ -52,20 +76,26 @@ export function debounce<TArgs extends unknown[]>(
  * }, 100);
  *
  * window.addEventListener('scroll', handleScroll);
+ *
+ * handleScroll.cancel(); // Resets throttle, next call executes immediately
  * ```
  */
 export function throttle<TArgs extends unknown[]>(
   fn: (...args: TArgs) => void,
   intervalMs: number
-): (...args: TArgs) => void {
+): ThrottledFn<TArgs> {
   let lastRun = 0;
-  return (...args: TArgs) => {
+  const throttled = (...args: TArgs) => {
     const now = Date.now();
     if (now - lastRun >= intervalMs) {
       lastRun = now;
       fn(...args);
     }
   };
+  throttled.cancel = () => {
+    lastRun = 0;
+  };
+  return throttled;
 }
 
 /**
