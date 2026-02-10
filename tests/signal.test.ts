@@ -184,6 +184,25 @@ describe('effect', () => {
     count.value = 1;
     expect(cleanupRan).toBe(true);
   });
+
+  it('handles cleanup function errors without breaking', () => {
+    const count = signal(0);
+    let effectRan = 0;
+
+    effect(() => {
+      void count.value;
+      effectRan++;
+      return () => {
+        throw new Error('cleanup error');
+      };
+    });
+
+    expect(effectRan).toBe(1);
+
+    // Should not throw; error in cleanup is caught
+    count.value = 1;
+    expect(effectRan).toBe(2);
+  });
 });
 
 describe('batch', () => {
@@ -227,6 +246,36 @@ describe('batch', () => {
 
     // Only runs after outermost batch completes
     expect(runs).toBe(2);
+  });
+
+  it('continues flushing remaining observers when one throws', () => {
+    const a = signal(0);
+    const b = signal(0);
+    let aRan = 0;
+    let bRan = 0;
+
+    // First effect will throw in batch
+    effect(() => {
+      if (a.value > 0) throw new Error('observer error');
+      aRan++;
+    });
+
+    // Second effect should still run
+    effect(() => {
+      void b.value;
+      bRan++;
+    });
+
+    expect(aRan).toBe(1);
+    expect(bRan).toBe(1);
+
+    // Both signals update in a batch; first observer throws but second should still run
+    batch(() => {
+      a.value = 1;
+      b.value = 1;
+    });
+
+    expect(bRan).toBe(2);
   });
 });
 

@@ -63,6 +63,28 @@ describe('platform/storage interface', () => {
     expect(typeof local.keys).toBe('function');
   });
 
+  it('local adapter keys() returns storage keys', async () => {
+    if (typeof localStorage === 'undefined') {
+      expect(true).toBe(true);
+      return;
+    }
+    const { storage } = await import('../src/platform/storage');
+    const local = storage.local();
+
+    // Clear and set known values
+    await local.clear();
+    await local.set('test-key-1', 'value1');
+    await local.set('test-key-2', 'value2');
+
+    const keys = await local.keys();
+    expect(keys).toContain('test-key-1');
+    expect(keys).toContain('test-key-2');
+
+    // Clean up
+    await local.remove('test-key-1');
+    await local.remove('test-key-2');
+  });
+
   it('session adapter has required methods', async () => {
     // Skip in test environment without sessionStorage
     if (typeof sessionStorage === 'undefined') {

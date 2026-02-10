@@ -5,6 +5,7 @@
 import { afterEach, beforeEach, describe, expect, it, spyOn, type Mock } from 'bun:test';
 import { computed, signal } from '../src/reactive/index';
 import { clearExpressionCache, createTemplate, mount, type View } from '../src/view/index';
+import { parseObjectExpression } from '../src/view/evaluate';
 
 describe('View', () => {
   let container: HTMLElement;
@@ -1126,5 +1127,25 @@ describe('View', () => {
         clearExpressionCache();
       }).not.toThrow();
     });
+  });
+});
+
+describe('parseObjectExpression', () => {
+  it('handles escaped backslash before quote correctly', () => {
+    // A double backslash before a quote should NOT escape the quote
+    const result = parseObjectExpression('{ key: "value\\\\" }');
+    expect(result).toHaveProperty('key');
+  });
+
+  it('parses simple key-value pairs', () => {
+    const result = parseObjectExpression('{ active: isActive, bold: isBold }');
+    expect(result['active']).toBe('isActive');
+    expect(result['bold']).toBe('isBold');
+  });
+
+  it('handles string values with commas inside', () => {
+    const result = parseObjectExpression('{ msg: "hello, world", other: true }');
+    expect(result['msg']).toBe('"hello, world"');
+    expect(result['other']).toBe('true');
   });
 });
