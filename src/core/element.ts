@@ -179,7 +179,8 @@ export class BQueryElement {
    * $('#box').css({ color: 'red', 'font-size': '16px' });
    * ```
    */
-  css(property: string, value?: string): string | this;
+  css(property: string): string;
+  css(property: string, value: string): this;
   css(property: Record<string, string>): this;
   css(property: string | Record<string, string>, value?: string): string | this {
     if (typeof property === 'string') {
