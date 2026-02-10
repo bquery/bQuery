@@ -71,18 +71,20 @@ describe('platform/storage interface', () => {
     const { storage } = await import('../src/platform/storage');
     const local = storage.local();
 
-    // Clear and set known values
-    await local.clear();
-    await local.set('test-key-1', 'value1');
-    await local.set('test-key-2', 'value2');
+    // Use unique prefixed keys to avoid cross-test interference
+    const key1 = '__bquery_test_keys_1__';
+    const key2 = '__bquery_test_keys_2__';
+
+    await local.set(key1, 'value1');
+    await local.set(key2, 'value2');
 
     const keys = await local.keys();
-    expect(keys).toContain('test-key-1');
-    expect(keys).toContain('test-key-2');
+    expect(keys).toContain(key1);
+    expect(keys).toContain(key2);
 
-    // Clean up
-    await local.remove('test-key-1');
-    await local.remove('test-key-2');
+    // Clean up only our test keys
+    await local.remove(key1);
+    await local.remove(key2);
   });
 
   it('session adapter has required methods', async () => {

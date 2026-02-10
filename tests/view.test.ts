@@ -1132,9 +1132,10 @@ describe('View', () => {
 
 describe('parseObjectExpression', () => {
   it('handles escaped backslash before quote correctly', () => {
-    // A double backslash before a quote should NOT escape the quote
+    // A double backslash before a quote should NOT escape the quote;
+    // the string ends at the second quote, yielding the value `"value\\"`
     const result = parseObjectExpression('{ key: "value\\\\" }');
-    expect(result).toHaveProperty('key');
+    expect(result['key']).toBe('"value\\\\"');
   });
 
   it('parses simple key-value pairs', () => {
