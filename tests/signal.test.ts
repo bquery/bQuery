@@ -184,6 +184,36 @@ describe('effect', () => {
     count.value = 1;
     expect(cleanupRan).toBe(true);
   });
+
+  it('handles cleanup function errors without breaking', () => {
+    const count = signal(0);
+    let effectRan = 0;
+
+    const originalError = console.error;
+    let errorCalls = 0;
+    console.error = () => {
+      errorCalls++;
+    };
+
+    try {
+      effect(() => {
+        void count.value;
+        effectRan++;
+        return () => {
+          throw new Error('cleanup error');
+        };
+      });
+
+      expect(effectRan).toBe(1);
+
+      // Should not throw; error in cleanup is caught and logged
+      count.value = 1;
+      expect(effectRan).toBe(2);
+      expect(errorCalls).toBeGreaterThan(0);
+    } finally {
+      console.error = originalError;
+    }
+  });
 });
 
 describe('batch', () => {
@@ -227,6 +257,76 @@ describe('batch', () => {
 
     // Only runs after outermost batch completes
     expect(runs).toBe(2);
+  });
+
+  it('continues flushing remaining observers when one throws', () => {
+    const a = signal(0);
+    const b = signal(0);
+    let aRan = 0;
+    let bRan = 0;
+
+    // First effect will throw in batch
+    effect(() => {
+      if (a.value > 0) throw new Error('observer error');
+      aRan++;
+    });
+
+    // Second effect should still run
+    effect(() => {
+      void b.value;
+      bRan++;
+    });
+
+    expect(aRan).toBe(1);
+    expect(bRan).toBe(1);
+
+    // Mock console.error to avoid noisy output and assert logging behavior
+    const originalError = console.error;
+    let errorCalls = 0;
+    console.error = () => {
+      errorCalls++;
+    };
+
+    try {
+      // Both signals update in a batch; first observer throws but second should still run.
+      // Batch itself should not throw, it should log via console.error instead.
+      expect(() => {
+        batch(() => {
+          a.value = 1;
+          b.value = 1;
+        });
+      }).not.toThrow();
+
+      expect(bRan).toBe(2);
+      expect(errorCalls).toBeGreaterThan(0);
+    } finally {
+      console.error = originalError;
+    }
+  });
+
+  it('recovers from endBatch underflow (no matching beginBatch)', async () => {
+    const { endBatch } = await import('../src/reactive/internals');
+    const count = signal(0);
+    let runs = 0;
+
+    effect(() => {
+      void count.value;
+      runs++;
+    });
+
+    expect(runs).toBe(1);
+
+    // Call endBatch without beginBatch — should not break batching
+    endBatch();
+
+    // Subsequent batch should still work correctly
+    batch(() => {
+      count.value = 1;
+      count.value = 2;
+    });
+
+    expect(runs).toBe(2);
+    expect(count.value).toBe(2);
   });
 });
 
@@ -557,6 +657,67 @@ describe('persistedSignal', () => {
       if (originalDescriptor) {
         Object.defineProperty(globalThis, 'localStorage', originalDescriptor);
       }
+    }
+  });
+});
+
+describe('signal dispose', () => {
+  it('dispose clears all subscribers', () => {
+    const count = signal(0);
+    let effectRuns = 0;
+
+    effect(() => {
+      void count.value;
+      effectRuns++;
+    });
+
+    expect(effectRuns).toBe(1);
+
+    count.dispose();
+    count.value = 1;
+
+    // Effect should not run again after dispose
+    expect(effectRuns).toBe(1);
+  });
+
+  it('dispose allows value to still be read', () => {
+    const count = signal(42);
+    count.dispose();
+
+    expect(count.value).toBe(42);
+    expect(count.peek()).toBe(42);
+  });
+});
+
+describe('effect error handling', () => {
+  it('effect catches errors and continues working', () => {
+    const count = signal(0);
+    let errorLogged = false;
+    let effectRanAfterError = false;
+    const originalError = console.error;
+    console.error = () => {
+      errorLogged = true;
+    };
+
+    try {
+      const dispose = effect(() => {
+        if (count.value === 1) {
+          throw new Error('test error');
+        }
+        if (count.value === 2) {
+          effectRanAfterError = true;
+        }
+      });
+
+      count.value = 1; // Should trigger error but not crash
+      expect(errorLogged).toBe(true);
+
+      count.value = 2; // Should still work after the error
+      expect(effectRanAfterError).toBe(true);
+
+      dispose();
+    } finally {
+      console.error = originalError;
     }
   });
 });

@@ -62,7 +62,11 @@ export const scheduleObserver = (observer: Observer): void => {
 const flushObservers = (): void => {
   for (const observer of Array.from(pendingObservers)) {
     pendingObservers.delete(observer);
-    observer();
+    try {
+      observer();
+    } catch (error) {
+      console.error('bQuery reactive: Error in observer during batch flush', error);
+    }
   }
 };
 
@@ -71,6 +75,7 @@ export const beginBatch = (): void => {
 };
 
 export const endBatch = (): void => {
+  if (batchDepth <= 0) return;
   batchDepth -= 1;
   if (batchDepth === 0) {
     flushObservers();
@@ -88,6 +93,18 @@ export const registerDependency = (observer: Observer, source: ReactiveSource): 
     observerDependencies.set(observer, deps);
   }
   deps.add(source);
+};
+
+/**
+ * Removes a specific source from an observer's dependency set.
+ * Used when a source (e.g. Signal) is disposed to prevent stale references.
+ * @internal
+ */
+export const removeDependency = (observer: Observer, source: ReactiveSource): void => {
+  const deps = observerDependencies.get(observer);
+  if (deps) {
+    deps.delete(source);
+  }
 };
 
 /**
