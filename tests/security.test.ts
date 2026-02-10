@@ -330,10 +330,9 @@ describe('security/enhanced protections', () => {
   });
 
   it('validates individual URLs in srcset attribute', () => {
-    const result = sanitizeHtml(
-      '<img srcset="safe.jpg 1x, javascript:alert(1) 2x">',
-      { allowAttributes: ['srcset'] }
-    );
+    const result = sanitizeHtml('<img srcset="safe.jpg 1x, javascript:alert(1) 2x">', {
+      allowAttributes: ['srcset'],
+    });
     expect(result).not.toContain('javascript:');
     expect(result).not.toContain('srcset');
   });

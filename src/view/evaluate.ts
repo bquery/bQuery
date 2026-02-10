@@ -191,7 +191,7 @@ export const parseObjectExpression = (expression: string): Record<string, string
 
     // Handle string literals: count consecutive backslashes before a quote
     // to correctly distinguish escaped quotes from end-of-string
-    if ((char === '"' || char === "'" || char === '`')) {
+    if (char === '"' || char === "'" || char === '`') {
       let backslashCount = 0;
       let j = i - 1;
       while (j >= 0 && inner[j] === '\\') {
@@ -247,7 +247,7 @@ export const parseObjectExpression = (expression: string): Record<string, string
     for (let i = 0; i < part.length; i++) {
       const char = part[i];
 
-      if ((char === '"' || char === "'" || char === '`')) {
+      if (char === '"' || char === "'" || char === '`') {
         let backslashCount = 0;
         let j = i - 1;
         while (j >= 0 && part[j] === '\\') {
