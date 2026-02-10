@@ -51,7 +51,10 @@ export function debounce<TArgs extends unknown[]>(
       if (timeoutId !== undefined) {
         clearTimeout(timeoutId);
       }
-      timeoutId = setTimeout(() => fn(...args), delayMs);
+      timeoutId = setTimeout(() => {
+        timeoutId = undefined;
+        fn(...args);
+      }, delayMs);
     },
     {
       cancel: () => {

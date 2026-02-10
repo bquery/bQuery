@@ -294,7 +294,7 @@ export class BQueryCollection {
       if (!first) {
         return '';
       }
-      const view = first.ownerDocument.defaultView;
+      const view = first.ownerDocument?.defaultView;
       if (!view || typeof view.getComputedStyle !== 'function') {
         return '';
       }
