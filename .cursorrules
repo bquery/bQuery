@@ -6,7 +6,7 @@ You are working on bQuery.js, a TypeScript-first, zero-build DOM library.
 
 - Runtime: Bun (not Node). Use `bun test` for tests, `bun:test` imports.
 - TypeScript: strict mode, ES2020 target, Bundler module resolution.
-- Security: ALL DOM HTML writes MUST use `sanitizeHtml()` from `src/security/sanitize-core.ts`.
+- Security: ALL DOM HTML writes MUST use `sanitizeHtml()` from `src/security/sanitize.ts` (re-exported via `src/security/index.ts`).
 - Chaining: Mutating methods on `BQueryElement` / `BQueryCollection` return `this`.
 - No runtime dependencies. Zero `dependencies` in package.json.
 - `$()` throws if element not found → use `$$()` for optional queries.
