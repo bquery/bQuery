@@ -5,6 +5,7 @@
 import {
   getCurrentObserver,
   registerDependency,
+  removeDependency,
   scheduleObserver,
   type ReactiveSource,
 } from './internals';
@@ -86,6 +87,11 @@ export class Signal<T> implements ReactiveSource {
    * ```
    */
   dispose(): void {
+    // Remove this signal from each subscriber's dependency set
+    // so the observer no longer holds a strong reference to it
+    for (const subscriber of this.subscribers) {
+      removeDependency(subscriber, this);
+    }
     this.subscribers.clear();
   }
 

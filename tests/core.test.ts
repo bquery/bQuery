@@ -944,7 +944,9 @@ describe('core/BQueryElement css getter', () => {
     const wrapped = new BQueryElement(div);
     const result = wrapped.css('color');
 
-    expect(typeof result).toBe('string');
+    const expected = getComputedStyle(div).getPropertyValue('color');
+    expect(result).toBe(expected);
+    expect(result).not.toBe('');
 
     div.remove();
   });
@@ -999,7 +1001,9 @@ describe('core/BQueryCollection css getter', () => {
     const collection = new BQueryCollection([div1, div2]);
     const result = collection.css('color');
 
-    expect(typeof result).toBe('string');
+    const expected = getComputedStyle(div1).getPropertyValue('color');
+    expect(result).toBe(expected);
+    expect(result).not.toBe('');
 
     div1.remove();
     div2.remove();
