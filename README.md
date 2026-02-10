@@ -293,8 +293,8 @@ const urlSafe = sanitize('<a href="java\u200Bscript:alert(1)">click</a>');
 // Automatic link security (adds rel="noopener noreferrer" to external/target="_blank" links)
 const secureLink = sanitize('<a href="https://external.com" target="_blank">Link</a>');
 
-// srcset validation (per-URL, catches javascript: in responsive image descriptors)
-const safeSrcset = sanitize('<img srcset="safe.jpg 1x, javascript:alert(1) 2x">');
+// srcset validation (per-URL; entire attribute removed if any entry is unsafe)
+const safeSrcset = sanitize('<img srcset="safe.jpg 1x, javascript:alert(1) 2x">'); // <img>
 
 // Form action validation (blocks javascript: protocol)
 const safeForm = sanitize('<form action="javascript:alert(1)">...</form>');

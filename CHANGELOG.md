@@ -56,7 +56,7 @@ and this project adheres to Semantic Versioning.
 
 ### Security (1.4.0)
 
-- `srcset` attributes are now validated per-URL rather than as a single URL string, correctly catching `javascript:` URLs embedded in responsive image descriptors (e.g., `"safe.jpg 1x, javascript:alert(1) 2x"`).
+- `srcset` attributes are now validated per-URL rather than as a single URL string, correctly catching `javascript:` URLs embedded in responsive image descriptors. If any entry is unsafe, the entire `srcset` attribute is removed (e.g., `"safe.jpg 1x, javascript:alert(1) 2x"` → attribute removed).
 - `action` attribute on `<form>` elements is now validated as a URL attribute (like `href`/`src`), preventing `javascript:` protocol URLs in form actions.
 
 ## [1.3.0] - 2026-01-26

@@ -51,12 +51,12 @@ sanitize('<form id="cookie">...</form>');
 
 ### Srcset Validation
 
-`srcset` attributes are validated per-URL to catch `javascript:` URLs embedded in responsive image descriptors:
+`srcset` attributes are validated per-URL to catch `javascript:` URLs embedded in responsive image descriptors. If **any** entry contains an unsafe URL, the entire `srcset` attribute is removed:
 
 ```ts
 // Each URL in srcset is validated individually
 sanitize('<img srcset="safe.jpg 1x, javascript:alert(1) 2x">');
-// Result: dangerous URL entry removed
+// Result: <img> (entire srcset attribute removed)
 ```
 
 ### Form Action Validation
