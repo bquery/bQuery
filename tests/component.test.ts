@@ -862,7 +862,7 @@ describe('component/registerDefaultComponents', () => {
     expect(() => registerDefaultComponents({ prefix })).not.toThrow();
   });
 
-  it('renders button labels from observed attributes for Storybook controls', () => {
+  it('updates button text when the label attribute changes', () => {
     const prefix = `story${Date.now()}`;
     const tags = registerDefaultComponents({ prefix });
 

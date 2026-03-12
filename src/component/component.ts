@@ -206,6 +206,9 @@ export const defineComponent = <TProps extends Record<string, unknown>>(
           emit,
         });
 
+        // Component render output is authored by the component definition itself,
+        // so we can explicitly preserve shadow-DOM-specific markup such as <slot> and
+        // the stylistic `part` attribute without relaxing the global DOM sanitization rules.
         const sanitizedMarkup = sanitizeHtml(markup, {
           allowTags: ['slot'],
           allowAttributes: ['part'],
