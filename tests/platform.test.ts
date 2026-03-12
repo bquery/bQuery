@@ -251,6 +251,20 @@ describe('platform/definePageMeta', () => {
     expect(document.title).not.toBe('Dashboard · bQuery');
     expect(document.head.querySelector('meta[name=\"description\"]')).toBeNull();
   });
+
+  it('does not mutate the provided meta entries array', async () => {
+    const { definePageMeta } = await import('../src/platform/index');
+    const meta = [{ property: 'og:title', content: 'Dashboard' }];
+
+    const cleanup = definePageMeta({
+      description: 'Overview page',
+      meta,
+    });
+
+    expect(meta).toEqual([{ property: 'og:title', content: 'Dashboard' }]);
+
+    cleanup();
+  });
 });
 
 describe('platform/useAnnouncer', () => {

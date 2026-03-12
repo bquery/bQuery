@@ -4,6 +4,7 @@
  * @module bquery/component
  */
 
+import { escapeHtml } from '../security';
 import { getBqueryConfig } from '../platform/config';
 import { component } from './component';
 import { html } from './html';
@@ -71,6 +72,8 @@ const controlStyles = `
     cursor: not-allowed;
   }
 `;
+
+const escapeProp = (value: string): string => escapeHtml(value);
 
 const handlerStore = new WeakMap<HTMLElement, Record<string, EventListener>>();
 
@@ -161,12 +164,12 @@ export const registerDefaultComponents = (
     render: ({ props }) => html`
       <button
         part="button"
-        type="${props.type}"
-        data-variant="${props.variant}"
-        data-size="${props.size}"
+        type="${escapeProp(props.type)}"
+        data-variant="${escapeProp(props.variant)}"
+        data-size="${escapeProp(props.size)}"
         ${props.disabled ? 'disabled' : ''}
       >
-        <slot>${props.label}</slot>
+        <slot>${escapeProp(props.label)}</slot>
       </button>
     `,
   });
@@ -205,9 +208,9 @@ export const registerDefaultComponents = (
     `,
     render: ({ props }) => html`
       <article part="card" data-elevated="${String(props.elevated)}">
-        ${props.title ? `<header part="header">${props.title}</header>` : ''}
+        ${props.title ? `<header part="header">${escapeProp(props.title)}</header>` : ''}
         <section part="body"><slot></slot></section>
-        ${props.footer ? `<footer part="footer">${props.footer}</footer>` : ''}
+        ${props.footer ? `<footer part="footer">${escapeProp(props.footer)}</footer>` : ''}
       </article>
     `,
   });
@@ -253,14 +256,14 @@ export const registerDefaultComponents = (
     },
     render: ({ props }) => html`
       <label part="field" class="field">
-        ${props.label ? `<span part="label" class="label">${props.label}</span>` : ''}
+        ${props.label ? `<span part="label" class="label">${escapeProp(props.label)}</span>` : ''}
         <input
           part="control"
           class="control"
-          type="${props.type}"
-          value="${props.value}"
-          placeholder="${props.placeholder}"
-          name="${props.name}"
+          type="${escapeProp(props.type)}"
+          value="${escapeProp(props.value)}"
+          placeholder="${escapeProp(props.placeholder)}"
+          name="${escapeProp(props.name)}"
           ${props.disabled ? 'disabled' : ''}
         />
       </label>
@@ -313,15 +316,15 @@ export const registerDefaultComponents = (
     },
     render: ({ props }) => html`
       <label part="field" class="field">
-        ${props.label ? `<span part="label" class="label">${props.label}</span>` : ''}
+        ${props.label ? `<span part="label" class="label">${escapeProp(props.label)}</span>` : ''}
         <textarea
           part="control"
           class="control"
-          placeholder="${props.placeholder}"
-          name="${props.name}"
+          placeholder="${escapeProp(props.placeholder)}"
+          name="${escapeProp(props.name)}"
           rows="${props.rows}"
           ${props.disabled ? 'disabled' : ''}
-        >${props.value}</textarea>
+        >${escapeProp(props.value)}</textarea>
       </label>
     `,
   });
@@ -379,7 +382,7 @@ export const registerDefaultComponents = (
     render: ({ props }) => html`
       <label part="label">
         <input part="control" type="checkbox" ${props.checked ? 'checked' : ''} ${props.disabled ? 'disabled' : ''} />
-        <span part="text"><slot>${props.label}</slot></span>
+        <span part="text"><slot>${escapeProp(props.label)}</slot></span>
       </label>
     `,
   });

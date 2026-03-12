@@ -878,6 +878,62 @@ describe('component/registerDefaultComponents', () => {
     button.remove();
   });
 
+  it('renders string props as text instead of injected markup', () => {
+    const prefix = `safe${Date.now()}`;
+    const tags = registerDefaultComponents({ prefix });
+
+    const button = document.createElement(tags.button);
+    button.setAttribute('label', '<img src=x onerror=alert(1)>');
+    document.body.appendChild(button);
+
+    const card = document.createElement(tags.card);
+    card.setAttribute('title', '<a href="https://example.com">Title</a>');
+    card.setAttribute('footer', '<img src="https://example.com/x.png">');
+    document.body.appendChild(card);
+
+    const input = document.createElement(tags.input);
+    input.setAttribute('label', '<strong>Name</strong>');
+    input.setAttribute('placeholder', '"quoted"');
+    input.setAttribute('value', '<value>');
+    document.body.appendChild(input);
+
+    const textarea = document.createElement(tags.textarea);
+    textarea.setAttribute('label', '<em>Notes</em>');
+    textarea.setAttribute('value', '<script>alert(1)</script>');
+    document.body.appendChild(textarea);
+
+    const checkbox = document.createElement(tags.checkbox);
+    checkbox.setAttribute('label', '<svg>Active</svg>');
+    document.body.appendChild(checkbox);
+
+    expect(button.shadowRoot?.querySelector('img')).toBeNull();
+    expect(button.shadowRoot?.textContent).toContain('<img src=x onerror=alert(1)>');
+
+    expect(card.shadowRoot?.querySelector('a')).toBeNull();
+    expect(card.shadowRoot?.querySelector('img')).toBeNull();
+    expect(card.shadowRoot?.textContent).toContain('<a href="https://example.com">Title</a>');
+    expect(card.shadowRoot?.textContent).toContain('<img src="https://example.com/x.png">');
+
+    expect(input.shadowRoot?.querySelector('strong')).toBeNull();
+    expect(input.shadowRoot?.querySelector('.label')?.textContent).toBe('<strong>Name</strong>');
+    expect(input.shadowRoot?.querySelector('img')).toBeNull();
+
+    expect(textarea.shadowRoot?.querySelector('em')).toBeNull();
+    expect(textarea.shadowRoot?.querySelector('.label')?.textContent).toBe('<em>Notes</em>');
+    expect((textarea.shadowRoot?.querySelector('textarea') as HTMLTextAreaElement | null)?.value).toBe(
+      '<script>alert(1)</script>'
+    );
+
+    expect(checkbox.shadowRoot?.querySelector('svg')).toBeNull();
+    expect(checkbox.shadowRoot?.textContent).toContain('<svg>Active</svg>');
+
+    button.remove();
+    card.remove();
+    input.remove();
+    textarea.remove();
+    checkbox.remove();
+  });
+
   it('keeps form components interactive without external dependencies', () => {
     const prefix = `kit${Date.now()}`;
     const tags = registerDefaultComponents({ prefix });

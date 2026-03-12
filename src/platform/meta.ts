@@ -120,7 +120,7 @@ export const definePageMeta = (definition: PageMetaDefinition): PageMetaCleanup 
     document.title = title;
   }
 
-  const metaEntries = definition.meta ?? [];
+  const metaEntries = [...(definition.meta ?? [])];
   if (definition.description) {
     metaEntries.unshift({ name: 'description', content: definition.description });
   }
