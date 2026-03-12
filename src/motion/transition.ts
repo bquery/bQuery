@@ -21,6 +21,9 @@ type DocumentWithTransition = Document & {
   };
 };
 
+const sanitizeTokens = (tokens?: string[]): string[] =>
+  (tokens ?? []).map((token) => token.trim()).filter((token) => token.length > 0);
+
 /**
  * Execute a DOM update with view transition animation.
  * Falls back to immediate update when View Transitions API is unavailable.
@@ -63,7 +66,8 @@ export const transition = async (
 
   const doc = document as DocumentWithTransition;
   const root = document.documentElement;
-  const classes = options.classes ?? [];
+  const classes = sanitizeTokens(options.classes);
+  const types = sanitizeTokens(options.types);
 
   if (!doc.startViewTransition || (options.skipOnReducedMotion && prefersReducedMotion())) {
     await update();
@@ -78,7 +82,7 @@ export const transition = async (
     const transitionTypes = viewTransition.types;
 
     if (transitionTypes) {
-      for (const type of options.types ?? []) {
+      for (const type of types) {
         transitionTypes.add(type);
       }
     }

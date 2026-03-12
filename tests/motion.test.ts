@@ -118,6 +118,54 @@ describe('motion/transition', () => {
       }).startViewTransition = original;
     }
   });
+
+  it('ignores empty and whitespace transition class/type tokens', async () => {
+    const original = (document as Document & {
+      startViewTransition?: Document['startViewTransition'];
+    }).startViewTransition;
+    const calls: string[] = [];
+
+    (document as Document & {
+      startViewTransition?: (callback: () => void | Promise<void>) => {
+        finished: Promise<void>;
+        ready: Promise<void>;
+        updateCallbackDone: Promise<void>;
+        types: { add: (value: string) => void };
+      };
+    }).startViewTransition = (callback) => {
+      const updateCallbackDone = Promise.resolve(callback());
+
+      return {
+        finished: updateCallbackDone.then(() => undefined),
+        ready: Promise.resolve(),
+        updateCallbackDone,
+        types: {
+          add: (value: string) => {
+            calls.push(`type:${value}`);
+          },
+        },
+      };
+    };
+
+    try {
+      await transition({
+        update: () => {
+          calls.push('updated');
+        },
+        classes: ['', '   ', ' is-transitioning '],
+        types: ['', '   ', ' navigation '],
+      });
+
+      expect(calls).toContain('updated');
+      expect(calls).toContain('type:navigation');
+      expect(calls).not.toContain('type:');
+      expect(document.documentElement.classList.contains('is-transitioning')).toBe(false);
+    } finally {
+      (document as Document & {
+        startViewTransition?: Document['startViewTransition'];
+      }).startViewTransition = original;
+    }
+  });
 });
 
 describe('motion/capturePosition', () => {

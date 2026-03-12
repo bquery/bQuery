@@ -117,7 +117,6 @@ export const useCookie = <T>(name: string, options: UseCookieOptions<T> = {}): S
   }
 
   const raw = readCookie(name);
-  const cookieExists = raw !== null;
   let initialValue = (resolvedOptions.defaultValue ?? null) as T | null;
 
   if (raw !== null) {
@@ -145,9 +144,7 @@ export const useCookie = <T>(name: string, options: UseCookieOptions<T> = {}): S
 
     if (!initialized) {
       initialized = true;
-      if (!cookieExists) {
-        return;
-      }
+      return;
     }
 
     if (nextValue == null) {

@@ -842,4 +842,30 @@ describe('createUseFetch', () => {
     const result = await state.execute();
     expect(result?.ok).toBe(true);
   });
+
+  it('allows response types to be specified per invocation', async () => {
+    const requests: string[] = [];
+    const useApiFetch = createUseFetch({
+      baseUrl: 'https://example.com',
+      immediate: false,
+      fetcher: async (input) => {
+        requests.push(String(input));
+
+        if (String(input).includes('/users')) {
+          return new Response(JSON.stringify([{ id: 1, name: 'Ada' }]), { status: 200 });
+        }
+
+        return new Response(JSON.stringify([{ id: 2, title: 'Hello' }]), { status: 200 });
+      },
+    });
+
+    const users = useApiFetch<Array<{ id: number; name: string }>>('/users');
+    const posts = useApiFetch<Array<{ id: number; title: string }>>('/posts');
+
+    const [userResult, postResult] = await Promise.all([users.execute(), posts.execute()]);
+
+    expect(userResult?.[0]?.name).toBe('Ada');
+    expect(postResult?.[0]?.title).toBe('Hello');
+    expect(requests).toEqual(['https://example.com/users', 'https://example.com/posts']);
+  });
 });

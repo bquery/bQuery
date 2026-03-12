@@ -6,11 +6,16 @@ import { beforeEach, describe, expect, it } from 'bun:test';
 import { notifications } from '../src/platform/notifications';
 
 const withMockCookies = async (
-  callback: (ctx: { lastRawSet: () => string }) => Promise<void> | void
+  callback: (ctx: {
+    lastRawSet: () => string;
+    setCount: () => number;
+    resetTracking: () => void;
+  }) => Promise<void> | void
 ): Promise<void> => {
   const original = Object.getOwnPropertyDescriptor(Document.prototype, 'cookie');
   const jar = new Map<string, string>();
   let lastSetString = '';
+  let writeCount = 0;
 
   Object.defineProperty(document, 'cookie', {
     configurable: true,
@@ -21,6 +26,7 @@ const withMockCookies = async (
     },
     set(value: string) {
       lastSetString = value;
+      writeCount += 1;
       const [pair] = value.split(';');
       const [rawName, rawValue = ''] = pair.split('=');
       const name = rawName.trim();
@@ -36,7 +42,14 @@ const withMockCookies = async (
   });
 
   try {
-    await callback({ lastRawSet: () => lastSetString });
+    await callback({
+      lastRawSet: () => lastSetString,
+      setCount: () => writeCount,
+      resetTracking: () => {
+        lastSetString = '';
+        writeCount = 0;
+      },
+    });
   } finally {
     if (original) {
       Object.defineProperty(document, 'cookie', original);
@@ -278,6 +291,25 @@ describe('platform/useCookie', () => {
       expect(document.cookie).toContain('cross-site');
       expect(lastRawSet()).toContain('Secure');
       expect(lastRawSet()).toContain('SameSite=None');
+    });
+  });
+
+  it('does not rewrite an existing cookie during initialization', async () => {
+    await withMockCookies(async ({ setCount, resetTracking, lastRawSet }) => {
+      const { useCookie } = await import('../src/platform/index');
+
+      document.cookie = 'theme=dark; Path=/';
+      resetTracking();
+
+      const theme = useCookie<string>('theme');
+
+      expect(theme.value).toBe('dark');
+      expect(setCount()).toBe(0);
+      expect(lastRawSet()).toBe('');
+
+      theme.value = 'light';
+      expect(setCount()).toBe(1);
+      expect(document.cookie).toContain('theme=light');
     });
   });
 });

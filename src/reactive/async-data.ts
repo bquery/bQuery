@@ -355,16 +355,23 @@ export const useFetch = <TResponse = unknown, TData = TResponse>(
  * const profile = useApiFetch('/profile');
  * ```
  */
-export const createUseFetch = <TResponse = unknown, TData = TResponse>(
-  defaults: UseFetchOptions<TResponse, TData> = {}
+export const createUseFetch = <TDefaultResponse = unknown, TDefaultData = TDefaultResponse>(
+  defaults: UseFetchOptions<TDefaultResponse, TDefaultData> = {}
 ) => {
-  return (input: FetchInput, options: UseFetchOptions<TResponse, TData> = {}): AsyncDataState<TData> => {
-    const mergedQuery = merge({}, defaults.query ?? {}, options.query ?? {}) as Record<string, unknown>;
+  return <TResponse = TDefaultResponse, TData = TResponse>(
+    input: FetchInput,
+    options: UseFetchOptions<TResponse, TData> = {}
+  ): AsyncDataState<TData> => {
+    const resolvedDefaults = defaults as unknown as UseFetchOptions<TResponse, TData>;
+    const mergedQuery = merge({}, resolvedDefaults.query ?? {}, options.query ?? {}) as Record<
+      string,
+      unknown
+    >;
 
     return useFetch<TResponse, TData>(input, {
-      ...defaults,
+      ...resolvedDefaults,
       ...options,
-      headers: toHeaders(defaults.headers, options.headers),
+      headers: toHeaders(resolvedDefaults.headers, options.headers),
       query: Object.keys(mergedQuery).length > 0 ? mergedQuery : undefined,
     });
   };
