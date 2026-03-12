@@ -29,9 +29,6 @@ docs:
   - 'docs/**'
   - '*.md'
 
-playground:
-  - 'playground/**'
-
 tests:
   - 'tests/**'
   - '**/*.test.ts'
