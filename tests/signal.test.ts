@@ -977,11 +977,13 @@ describe('useFetch', () => {
 
   it('preserves the original Request URL when no query parameters are provided', async () => {
     let capturedUrl = '';
+    let capturedInput: RequestInfo | URL | null = null;
 
     const request = new Request('https://example.com/api/users?existing=1');
     const state = useFetch<{ ok: boolean }>(request, {
       immediate: false,
       fetcher: async (input) => {
+        capturedInput = input;
         capturedUrl = input instanceof Request ? input.url : String(input);
         return new Response(JSON.stringify({ ok: true }), { status: 200 });
       },
@@ -990,6 +992,7 @@ describe('useFetch', () => {
     await state.execute();
 
     expect(capturedUrl).toBe('https://example.com/api/users?existing=1');
+    expect(capturedInput).toBe(request);
   });
 
   it('resolves relative base URLs against the runtime base URL', async () => {

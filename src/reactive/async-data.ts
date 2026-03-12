@@ -372,7 +372,7 @@ export const useFetch = <TResponse = unknown, TData = TResponse>(
     const requestUrl =
       typeof requestInput === 'string' || requestInput instanceof URL
         ? toUrl(requestInput, options.baseUrl ?? fetchConfig?.baseUrl)
-        : requestInput instanceof Request
+        : requestInput instanceof Request && options.query
           ? new URL(requestInput.url)
           : null;
 
@@ -411,12 +411,12 @@ export const useFetch = <TResponse = unknown, TData = TResponse>(
     delete (requestInit as Partial<UseFetchOptions>).onSuccess;
     delete (requestInit as Partial<UseFetchOptions>).onError;
 
-    const requestTarget =
-      requestInput instanceof Request && requestUrl
-        ? // Rebuild Request inputs when query params changed so the updated URL is preserved.
-          // String/URL inputs already use `requestUrl` directly, so only Request objects need rebuilding.
-          new Request(requestUrl.toString(), toRequestInit(requestInput))
-        : requestUrl ?? requestInput;
+    let requestTarget: Request | string | URL = requestUrl ?? requestInput;
+    if (requestInput instanceof Request && requestUrl && requestUrl.toString() !== requestInput.url) {
+      // Rebuild Request inputs when query params changed so the updated URL is preserved.
+      // String/URL inputs already use `requestUrl` directly, so only Request objects need rebuilding.
+      requestTarget = new Request(requestUrl.toString(), toRequestInit(requestInput));
+    }
     const response = await fetcher(requestTarget, requestInit);
 
     if (!response.ok) {

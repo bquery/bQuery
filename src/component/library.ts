@@ -317,6 +317,7 @@ export const registerDefaultComponents = (
       const handleInput = (event: Event) => {
         const target = event.target as HTMLInputElement | null;
         if (!target?.matches('input')) return;
+        event.stopPropagation();
         this.setAttribute('value', target.value);
         this.dispatchEvent(
           new CustomEvent('input', {
@@ -387,6 +388,7 @@ export const registerDefaultComponents = (
       const handleInput = (event: Event) => {
         const target = event.target as HTMLTextAreaElement | null;
         if (!target?.matches('textarea')) return;
+        event.stopPropagation();
         this.setAttribute('value', target.value);
         this.dispatchEvent(
           new CustomEvent('input', {
@@ -448,6 +450,7 @@ export const registerDefaultComponents = (
       const handleChange = (event: Event) => {
         const target = event.target as HTMLInputElement | null;
         if (!target?.matches('input[type="checkbox"]')) return;
+        event.stopPropagation();
         if (target.checked) {
           this.setAttribute('checked', 'true');
         } else {

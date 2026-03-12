@@ -1073,4 +1073,53 @@ describe('component/registerDefaultComponents', () => {
     input.remove();
     textarea.remove();
   });
+
+  it('dispatches a single host event for input, textarea, and checkbox interactions', () => {
+    const prefix = `events${Date.now()}`;
+    const tags = registerDefaultComponents({ prefix });
+
+    const input = document.createElement(tags.input);
+    document.body.appendChild(input);
+    const inputEvents: Array<{ value: string | undefined }> = [];
+    input.addEventListener('input', (event) => {
+      inputEvents.push({ value: (event as CustomEvent<{ value: string }>).detail?.value });
+    });
+
+    const inputControl = input.shadowRoot?.querySelector('input') as HTMLInputElement | null;
+    if (!inputControl) throw new Error('Expected input control to exist');
+    inputControl.value = 'Ada';
+    inputControl.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
+
+    const textarea = document.createElement(tags.textarea);
+    document.body.appendChild(textarea);
+    const textareaEvents: Array<{ value: string | undefined }> = [];
+    textarea.addEventListener('input', (event) => {
+      textareaEvents.push({ value: (event as CustomEvent<{ value: string }>).detail?.value });
+    });
+
+    const textareaControl = textarea.shadowRoot?.querySelector('textarea') as HTMLTextAreaElement | null;
+    if (!textareaControl) throw new Error('Expected textarea control to exist');
+    textareaControl.value = 'Notes';
+    textareaControl.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
+
+    const checkbox = document.createElement(tags.checkbox);
+    document.body.appendChild(checkbox);
+    const checkboxEvents: Array<{ checked: boolean | undefined }> = [];
+    checkbox.addEventListener('change', (event) => {
+      checkboxEvents.push({ checked: (event as CustomEvent<{ checked: boolean }>).detail?.checked });
+    });
+
+    const checkboxControl = checkbox.shadowRoot?.querySelector('input') as HTMLInputElement | null;
+    if (!checkboxControl) throw new Error('Expected checkbox control to exist');
+    checkboxControl.checked = true;
+    checkboxControl.dispatchEvent(new Event('change', { bubbles: true, composed: true }));
+
+    expect(inputEvents).toEqual([{ value: 'Ada' }]);
+    expect(textareaEvents).toEqual([{ value: 'Notes' }]);
+    expect(checkboxEvents).toEqual([{ checked: true }]);
+
+    input.remove();
+    textarea.remove();
+    checkbox.remove();
+  });
 });
