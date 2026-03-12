@@ -1236,4 +1236,26 @@ describe('createUseFetch', () => {
     expect(postResult?.[0]?.title).toBe('Hello');
     expect(requests).toEqual(['https://example.com/users', 'https://example.com/posts']);
   });
+
+  it('preserves configured transform data types by default', async () => {
+    const useApiFetch = createUseFetch<{ id: number; name: string }, string>({
+      baseUrl: 'https://example.com',
+      immediate: false,
+      transform: (value) => value.name,
+      fetcher: async () =>
+        new Response(JSON.stringify({ id: 1, name: 'Ada' }), {
+          status: 200,
+        }),
+    });
+
+    const state = useApiFetch('/users');
+    const execution: Promise<string | undefined> = state.execute();
+    const currentValue: string | undefined = state.data.value;
+
+    expect(currentValue).toBeUndefined();
+    expect(await execution).toBe('Ada');
+    expect(state.data.value).toBe('Ada');
+    expect(state.status.value).toBe('success');
+    expect(state.error.value).toBeNull();
+  });
 });

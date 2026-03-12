@@ -443,10 +443,26 @@ export const useFetch = <TResponse = unknown, TData = TResponse>(
  * const profile = useApiFetch('/profile');
  * ```
  */
-export const createUseFetch = <TDefaultResponse = unknown, TDefaultData = TDefaultResponse>(
+/** Overload for factories without a configured transform, preserving per-call `TResponse -> TData` inference. */
+export function createUseFetch<TDefaultResponse = unknown>(
+  defaults?: UseFetchOptions<TDefaultResponse, TDefaultResponse>
+): <TResponse = TDefaultResponse, TData = TResponse>(
+  input: FetchInput,
+  options?: UseFetchOptions<TResponse, TData>
+) => AsyncDataState<TData>;
+
+/** Overload for factories with a configured transform, preserving the transformed factory data type by default. */
+export function createUseFetch<TDefaultResponse = unknown, TDefaultData = TDefaultResponse>(
+  defaults: UseFetchOptions<TDefaultResponse, TDefaultData>
+): <TResponse = TDefaultResponse, TData = TDefaultData>(
+  input: FetchInput,
+  options?: UseFetchOptions<TResponse, TData>
+) => AsyncDataState<TData>;
+
+export function createUseFetch<TDefaultResponse = unknown, TDefaultData = TDefaultResponse>(
   defaults: UseFetchOptions<TDefaultResponse, TDefaultData> = {}
-) => {
-  return <TResponse = TDefaultResponse, TData = TResponse>(
+) {
+  return <TResponse = TDefaultResponse, TData = TDefaultData>(
     input: FetchInput,
     options: UseFetchOptions<TResponse, TData> = {}
   ): AsyncDataState<TData> => {
@@ -463,4 +479,4 @@ export const createUseFetch = <TDefaultResponse = unknown, TDefaultData = TDefau
       query: Object.keys(mergedQuery).length > 0 ? mergedQuery : undefined,
     });
   };
-};
+}
