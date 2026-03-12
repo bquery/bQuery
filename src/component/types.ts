@@ -69,17 +69,17 @@ export type ComponentDefinition<TProps extends Record<string, unknown> = Record<
     /** CSS styles scoped to the component's shadow DOM */
     styles?: string;
     /** Lifecycle hook called before the component mounts (before first render) */
-    beforeMount?: () => void;
+    beforeMount?: (this: HTMLElement) => void;
     /** Lifecycle hook called when component is added to DOM */
-    connected?: () => void;
+    connected?: (this: HTMLElement) => void;
     /** Lifecycle hook called when component is removed from DOM */
-    disconnected?: () => void;
+    disconnected?: (this: HTMLElement) => void;
     /** Lifecycle hook called before an update render; return false to prevent */
-    beforeUpdate?: (props: TProps) => boolean | void;
+    beforeUpdate?: (this: HTMLElement, props: TProps) => boolean | void;
     /** Lifecycle hook called after reactive updates trigger a render */
-    updated?: () => void;
+    updated?: (this: HTMLElement) => void;
     /** Error handler for errors during rendering or lifecycle */
-    onError?: (error: Error) => void;
+    onError?: (this: HTMLElement, error: Error) => void;
     /** Render function returning HTML string */
     render: (context: ComponentRenderContext<TProps>) => string;
   };

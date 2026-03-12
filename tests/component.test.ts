@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'bun:test';
-import { component, defineComponent, html } from '../src/component/index';
+import {
+  component,
+  defineComponent,
+  html,
+  registerDefaultComponents,
+} from '../src/component/index';
 
 describe('component/html', () => {
   it('creates HTML from template literal', () => {
@@ -835,5 +840,46 @@ describe('component/defineComponent', () => {
     expect(el.shadowRoot?.innerHTML).toContain('custom');
 
     el.remove();
+  });
+});
+
+describe('component/registerDefaultComponents', () => {
+  it('registers the default foundational component library', () => {
+    const prefix = `ui${Date.now()}`;
+    const tags = registerDefaultComponents({ prefix });
+
+    expect(customElements.get(tags.button)).toBeDefined();
+    expect(customElements.get(tags.card)).toBeDefined();
+    expect(customElements.get(tags.input)).toBeDefined();
+    expect(customElements.get(tags.textarea)).toBeDefined();
+    expect(customElements.get(tags.checkbox)).toBeDefined();
+  });
+
+  it('keeps form components interactive without external dependencies', () => {
+    const prefix = `kit${Date.now()}`;
+    const tags = registerDefaultComponents({ prefix });
+
+    const input = document.createElement(tags.input);
+    input.setAttribute('label', 'Name');
+    document.body.appendChild(input);
+
+    const inputControl = input.shadowRoot?.querySelector('input') as HTMLInputElement | null;
+    expect(inputControl).not.toBeNull();
+    inputControl!.value = 'Ada';
+    inputControl!.dispatchEvent(new Event('input', { bubbles: true }));
+    expect(input.getAttribute('value')).toBe('Ada');
+
+    const checkbox = document.createElement(tags.checkbox);
+    checkbox.setAttribute('label', 'Active');
+    document.body.appendChild(checkbox);
+
+    const checkboxControl = checkbox.shadowRoot?.querySelector('input') as HTMLInputElement | null;
+    expect(checkboxControl).not.toBeNull();
+    checkboxControl!.checked = true;
+    checkboxControl!.dispatchEvent(new Event('change', { bubbles: true }));
+    expect(checkbox.getAttribute('checked')).toBe('true');
+
+    input.remove();
+    checkbox.remove();
   });
 });

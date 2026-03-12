@@ -5,6 +5,41 @@
 import { beforeEach, describe, expect, it } from 'bun:test';
 import { notifications } from '../src/platform/notifications';
 
+const withMockCookies = async (callback: () => Promise<void> | void): Promise<void> => {
+  const original = Object.getOwnPropertyDescriptor(Document.prototype, 'cookie');
+  const jar = new Map<string, string>();
+
+  Object.defineProperty(document, 'cookie', {
+    configurable: true,
+    get() {
+      return [...jar.entries()]
+        .map(([key, value]) => `${key}=${value}`)
+        .join('; ');
+    },
+    set(value: string) {
+      const [pair] = value.split(';');
+      const [rawName, rawValue = ''] = pair.split('=');
+      const name = rawName.trim();
+      const decodedValue = rawValue.trim();
+
+      if (value.includes('Expires=Thu, 01 Jan 1970 00:00:00 GMT') || decodedValue === '') {
+        jar.delete(name);
+        return;
+      }
+
+      jar.set(name, decodedValue);
+    },
+  });
+
+  try {
+    await callback();
+  } finally {
+    if (original) {
+      Object.defineProperty(document, 'cookie', original);
+    }
+  }
+};
+
 describe('platform/notifications', () => {
   it('isSupported returns boolean', () => {
     const result = notifications.isSupported();
@@ -149,5 +184,106 @@ describe('platform/cache interface', () => {
     const { cache } = await import('../src/platform/cache');
     const result = cache.isSupported();
     expect(typeof result).toBe('boolean');
+  });
+});
+
+describe('platform/useCookie', () => {
+  it('reads and writes reactive cookie values', async () => {
+    await withMockCookies(async () => {
+      const { useCookie } = await import('../src/platform/index');
+      document.cookie = 'theme=dark; Path=/';
+
+      const theme = useCookie<string>('theme');
+      expect(theme.value).toBe('dark');
+
+      theme.value = 'light';
+      expect(document.cookie).toContain('theme=light');
+
+      theme.value = null;
+      expect(document.cookie).not.toContain('theme=light');
+    });
+  });
+
+  it('supports typed defaults without writing immediately', async () => {
+    await withMockCookies(async () => {
+      const { useCookie } = await import('../src/platform/index');
+      const cookieName = `prefs-${Date.now()}`;
+
+      const prefs = useCookie<{ mode: string }>(cookieName, {
+        defaultValue: { mode: 'system' },
+      });
+
+      expect(prefs.value).toEqual({ mode: 'system' });
+      expect(document.cookie).not.toContain(cookieName);
+
+      prefs.value = { mode: 'dark' };
+      expect(document.cookie).toContain(encodeURIComponent(cookieName));
+    });
+  });
+});
+
+describe('platform/definePageMeta', () => {
+  it('applies and restores document metadata', async () => {
+    const { defineBqueryConfig, definePageMeta } = await import('../src/platform/index');
+    defineBqueryConfig({
+      pageMeta: {
+        titleTemplate: (title) => `${title} · bQuery`,
+      },
+    });
+
+    const cleanup = definePageMeta({
+      title: 'Dashboard',
+      description: 'Overview page',
+      htmlAttributes: { lang: 'de' },
+      bodyAttributes: { 'data-page': 'dashboard' },
+      link: [{ rel: 'canonical', href: 'https://example.com/dashboard' }],
+    });
+
+    expect(document.title).toBe('Dashboard · bQuery');
+    expect(document.documentElement.getAttribute('lang')).toBe('de');
+    expect(document.body.getAttribute('data-page')).toBe('dashboard');
+    expect(document.head.querySelector('meta[name=\"description\"]')?.getAttribute('content')).toBe(
+      'Overview page'
+    );
+
+    cleanup();
+
+    expect(document.title).not.toBe('Dashboard · bQuery');
+    expect(document.head.querySelector('meta[name=\"description\"]')).toBeNull();
+  });
+});
+
+describe('platform/useAnnouncer', () => {
+  it('creates a live region and announces messages', async () => {
+    const { useAnnouncer } = await import('../src/platform/index');
+    const announcer = useAnnouncer({ delay: 0, clearDelay: 0, id: `announcer-${Date.now()}` });
+
+    announcer.announce('Saved');
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(announcer.element?.getAttribute('aria-live')).toBe('polite');
+    expect(announcer.element?.textContent).toBe('Saved');
+
+    announcer.clear();
+    expect(announcer.element?.textContent).toBe('');
+
+    announcer.destroy();
+    expect(document.getElementById(announcer.element?.id ?? '')).toBeNull();
+  });
+});
+
+describe('platform/defineBqueryConfig', () => {
+  it('merges nested config values', async () => {
+    const { defineBqueryConfig, getBqueryConfig } = await import('../src/platform/index');
+
+    defineBqueryConfig({
+      fetch: { baseUrl: 'https://api.example.com' },
+      components: { prefix: 'ui' },
+    });
+
+    const config = getBqueryConfig();
+    expect(config.fetch?.baseUrl).toBe('https://api.example.com');
+    expect(config.fetch?.parseAs).toBe('json');
+    expect(config.components?.prefix).toBe('ui');
   });
 });
