@@ -312,6 +312,29 @@ describe('platform/useCookie', () => {
       expect(document.cookie).toContain('theme=light');
     });
   });
+
+  it('tolerates cookie strings without space separators and malformed percent-encoding', async () => {
+    const original = Object.getOwnPropertyDescriptor(Document.prototype, 'cookie');
+
+    Object.defineProperty(document, 'cookie', {
+      configurable: true,
+      get() {
+        // `%E0%A4%A` is an intentionally incomplete UTF-8 sequence that causes decodeURIComponent() to throw.
+        return ' theme=dark ; broken=%E0%A4%A ';
+      },
+      set() {},
+    });
+
+    try {
+      const { useCookie } = await import('../src/platform/index');
+      expect(useCookie<string>('theme').value).toBe('dark');
+      expect(useCookie<string>('broken').value).toBe('%E0%A4%A');
+    } finally {
+      if (original) {
+        Object.defineProperty(document, 'cookie', original);
+      }
+    }
+  });
 });
 
 describe('platform/definePageMeta', () => {

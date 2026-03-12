@@ -184,6 +184,56 @@ const parseResponse = async <TResponse>(
   }
 };
 
+const normalizeMethod = (method?: string): string | undefined => {
+  const normalized = method?.trim();
+  return normalized ? normalized.toUpperCase() : undefined;
+};
+
+const resolveMethod = (
+  explicitMethod: string | undefined,
+  requestInput: string | URL | Request,
+  bodyProvided: boolean
+): string | undefined => {
+  const requestMethod = requestInput instanceof Request ? normalizeMethod(requestInput.method) : undefined;
+  return explicitMethod ?? requestMethod ?? (bodyProvided ? 'POST' : undefined);
+};
+
+const resolveRequestInitMethod = (
+  explicitMethod: string | undefined,
+  requestInput: string | URL | Request,
+  method: string | undefined
+): string | undefined => {
+  if (explicitMethod) return explicitMethod;
+  return requestInput instanceof Request ? undefined : method;
+};
+
+const toRequestInit = (request: Request): RequestInit => {
+  const requestMethod = normalizeMethod(request.method);
+  let body: BodyInit | undefined;
+  if (requestMethod !== 'GET' && requestMethod !== 'HEAD' && !request.bodyUsed) {
+    try {
+      body = request.clone().body ?? undefined;
+    } catch {
+      body = undefined;
+    }
+  }
+
+  return {
+    method: requestMethod,
+    headers: request.headers,
+    body,
+    cache: request.cache,
+    credentials: request.credentials,
+    integrity: request.integrity,
+    keepalive: request.keepalive,
+    mode: request.mode,
+    redirect: request.redirect,
+    referrer: request.referrer,
+    referrerPolicy: request.referrerPolicy,
+    signal: request.signal,
+  };
+};
+
 /**
  * Create a reactive wrapper around an async resolver.
  *
@@ -322,7 +372,9 @@ export const useFetch = <TResponse = unknown, TData = TResponse>(
     const requestUrl =
       typeof requestInput === 'string' || requestInput instanceof URL
         ? toUrl(requestInput, options.baseUrl ?? fetchConfig?.baseUrl)
-        : null;
+        : requestInput instanceof Request
+          ? new URL(requestInput.url)
+          : null;
 
     if (requestUrl && options.query) {
       appendQuery(requestUrl, options.query);
@@ -333,8 +385,17 @@ export const useFetch = <TResponse = unknown, TData = TResponse>(
       fetchConfig?.headers,
       options.headers
     );
+    const bodyProvided = options.body != null;
+    const explicitMethod = normalizeMethod(options.method);
+    const method = resolveMethod(explicitMethod, requestInput, bodyProvided);
+    const bodylessMethod = method === 'GET' || method === 'HEAD' ? method : null;
+    if (bodyProvided && bodylessMethod) {
+      throw new Error(`Cannot send a request body with ${bodylessMethod} requests`);
+    }
+    const requestInitMethod = resolveRequestInitMethod(explicitMethod, requestInput, method);
     const requestInit: RequestInit = {
       ...options,
+      method: requestInitMethod,
       headers,
       body: serializeBody(options.body, headers),
     };
@@ -350,7 +411,13 @@ export const useFetch = <TResponse = unknown, TData = TResponse>(
     delete (requestInit as Partial<UseFetchOptions>).onSuccess;
     delete (requestInit as Partial<UseFetchOptions>).onError;
 
-    const response = await fetcher(requestUrl ?? requestInput, requestInit);
+    const requestTarget =
+      requestInput instanceof Request && requestUrl
+        ? // Rebuild Request inputs when query params changed so the updated URL is preserved.
+          // String/URL inputs already use `requestUrl` directly, so only Request objects need rebuilding.
+          new Request(requestUrl.toString(), toRequestInit(requestInput))
+        : requestUrl ?? requestInput;
+    const response = await fetcher(requestTarget, requestInit);
 
     if (!response.ok) {
       throw Object.assign(new Error(`Request failed with status ${response.status}`), {

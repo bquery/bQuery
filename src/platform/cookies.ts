@@ -35,11 +35,17 @@ const readCookie = (name: string): string | null => {
   if (typeof document === 'undefined') return null;
 
   const prefix = `${encodeURIComponent(name)}=`;
-  const segments = document.cookie ? document.cookie.split('; ') : [];
+  const segments = document.cookie ? document.cookie.split(';') : [];
 
   for (const segment of segments) {
-    if (segment.startsWith(prefix)) {
-      return decodeURIComponent(segment.slice(prefix.length));
+    const normalizedSegment = segment.trim();
+    if (normalizedSegment.startsWith(prefix)) {
+      const rawValue = normalizedSegment.slice(prefix.length);
+      try {
+        return decodeURIComponent(rawValue);
+      } catch {
+        return rawValue;
+      }
     }
   }
 

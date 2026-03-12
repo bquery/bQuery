@@ -944,6 +944,54 @@ describe('useFetch', () => {
     expect(capturedAuth).toBe('Bearer request-token');
   });
 
+  it('applies query parameters when input is a Request', async () => {
+    let capturedUrl = '';
+    let capturedAuth = '';
+    let capturedExtra = '';
+
+    const request = new Request('https://example.com/api/users?existing=1', {
+      headers: { authorization: 'Bearer token' },
+    });
+
+    const state = useFetch<{ ok: boolean }>(request, {
+      immediate: false,
+      query: { page: 2, tags: ['a', 'hello world'] },
+      headers: { 'x-extra': '123' },
+      fetcher: async (input, init) => {
+        capturedUrl = input instanceof Request ? input.url : String(input);
+        const headers = new Headers(init?.headers);
+        capturedAuth = headers.get('authorization') ?? '';
+        capturedExtra = headers.get('x-extra') ?? '';
+        return new Response(JSON.stringify({ ok: true }), { status: 200 });
+      },
+    });
+
+    await state.execute();
+
+    expect(capturedUrl).toBe(
+      'https://example.com/api/users?existing=1&page=2&tags=a&tags=hello+world'
+    );
+    expect(capturedAuth).toBe('Bearer token');
+    expect(capturedExtra).toBe('123');
+  });
+
+  it('preserves the original Request URL when no query parameters are provided', async () => {
+    let capturedUrl = '';
+
+    const request = new Request('https://example.com/api/users?existing=1');
+    const state = useFetch<{ ok: boolean }>(request, {
+      immediate: false,
+      fetcher: async (input) => {
+        capturedUrl = input instanceof Request ? input.url : String(input);
+        return new Response(JSON.stringify({ ok: true }), { status: 200 });
+      },
+    });
+
+    await state.execute();
+
+    expect(capturedUrl).toBe('https://example.com/api/users?existing=1');
+  });
+
   it('resolves relative base URLs against the runtime base URL', async () => {
     let capturedUrl = '';
 
@@ -1000,6 +1048,89 @@ describe('useFetch', () => {
     const resultAfterDispose = await state.execute();
     expect(resultAfterDispose?.ok).toBe(true);
     expect(calls).toEqual(['fetch']);
+  });
+
+  it('defaults to POST when a body is provided without an explicit method', async () => {
+    let capturedMethod = '';
+
+    const state = useFetch<{ ok: boolean }>('/api/users', {
+      immediate: false,
+      body: { saved: true },
+      fetcher: async (_input, init) => {
+        capturedMethod = init?.method ?? '';
+        return new Response(JSON.stringify({ ok: true }), { status: 200 });
+      },
+    });
+
+    await state.execute();
+
+    expect(capturedMethod).toBe('POST');
+    expect(state.status.value).toBe('success');
+  });
+
+  it('normalizes mixed-case methods and treats whitespace-only methods as unspecified', async () => {
+    let normalizedMethod = '';
+    let defaultedMethod = '';
+
+    const normalized = useFetch<{ ok: boolean }>('/api/users', {
+      immediate: false,
+      method: ' PoSt ',
+      body: { saved: true },
+      fetcher: async (_input, init) => {
+        normalizedMethod = init?.method ?? '';
+        return new Response(JSON.stringify({ ok: true }), { status: 200 });
+      },
+    });
+
+    const defaulted = useFetch<{ ok: boolean }>('/api/users', {
+      immediate: false,
+      method: '   ',
+      body: { saved: true },
+      fetcher: async (_input, init) => {
+        defaultedMethod = init?.method ?? '';
+        return new Response(JSON.stringify({ ok: true }), { status: 200 });
+      },
+    });
+
+    await normalized.execute();
+    await defaulted.execute();
+
+    expect(normalizedMethod).toBe('POST');
+    expect(defaultedMethod).toBe('POST');
+  });
+
+  it('stores a clear error when a GET request is given a body', async () => {
+    let calls = 0;
+    const state = useFetch<{ ok: boolean }>('/api/users', {
+      immediate: false,
+      method: 'GET',
+      body: { invalid: true },
+      fetcher: async () => {
+        calls += 1;
+        return new Response(JSON.stringify({ ok: true }), { status: 200 });
+      },
+    });
+
+    const result = await state.execute();
+
+    expect(result).toBeUndefined();
+    expect(state.status.value).toBe('error');
+    expect(state.error.value?.message).toBe('Cannot send a request body with GET requests');
+    expect(calls).toBe(0);
+  });
+
+  it('stores a clear error when a HEAD request is given a body', async () => {
+    const state = useFetch<{ ok: boolean }>('/api/users', {
+      immediate: false,
+      method: 'HEAD',
+      body: { invalid: true },
+    });
+
+    const result = await state.execute();
+
+    expect(result).toBeUndefined();
+    expect(state.status.value).toBe('error');
+    expect(state.error.value?.message).toBe('Cannot send a request body with HEAD requests');
   });
 });
 
