@@ -87,6 +87,77 @@ const storeHandler = (element: HTMLElement, key: string, value: EventListener): 
   handlerStore.set(element, handlers);
 };
 
+const getShadowLabelText = (element: HTMLElement): string => {
+  return element.shadowRoot?.querySelector('.label')?.textContent ?? '';
+};
+
+/**
+ * Detect a value-only input update, patch the live control in place, and
+ * return whether the component can skip a full shadow DOM re-render.
+ *
+ * @param element - The host custom element whose shadow DOM is being updated
+ * @param props - The next reflected input props for the pending update
+ */
+const canSkipInputRender = (
+  element: HTMLElement,
+  props: {
+    label: string;
+    type: string;
+    value: string;
+    placeholder: string;
+    name: string;
+    disabled: boolean;
+  }
+): boolean => {
+  const control = element.shadowRoot?.querySelector('input.control') as HTMLInputElement | null;
+  if (!control) return false;
+
+  if (getShadowLabelText(element) !== props.label) return false;
+  if ((control.getAttribute('type') ?? 'text') !== props.type) return false;
+  if ((control.getAttribute('placeholder') ?? '') !== props.placeholder) return false;
+  if ((control.getAttribute('name') ?? '') !== props.name) return false;
+  if (control.disabled !== props.disabled) return false;
+
+  if (control.value !== props.value) {
+    control.value = props.value;
+  }
+
+  return true;
+};
+
+/**
+ * Detect a value-only textarea update, patch the live control in place, and
+ * return whether the component can skip a full shadow DOM re-render.
+ *
+ * @param element - The host custom element whose shadow DOM is being updated
+ * @param props - The next reflected textarea props for the pending update
+ */
+const canSkipTextareaRender = (
+  element: HTMLElement,
+  props: {
+    label: string;
+    value: string;
+    placeholder: string;
+    name: string;
+    rows: number;
+    disabled: boolean;
+  }
+): boolean => {
+  const control = element.shadowRoot?.querySelector('textarea.control') as HTMLTextAreaElement | null;
+  if (!control) return false;
+
+  if (getShadowLabelText(element) !== props.label) return false;
+  if ((control.getAttribute('placeholder') ?? '') !== props.placeholder) return false;
+  if ((control.getAttribute('name') ?? '') !== props.name) return false;
+  if (control.getAttribute('rows') !== String(props.rows)) return false;
+  if (control.disabled !== props.disabled) return false;
+
+  if (control.value !== props.value) {
+    control.value = props.value;
+  }
+  return true;
+};
+
 /**
  * Register a default set of foundational UI components.
  *
@@ -232,6 +303,16 @@ export const registerDefaultComponents = (
       disabled: { type: Boolean, default: false },
     },
     styles: controlStyles,
+    /**
+     * Skip the full shadow DOM re-render when only the reflected input value
+     * changed, because the live control has already been patched in place.
+     */
+    beforeUpdate(props) {
+      if (canSkipInputRender(this, props)) {
+        return false;
+      }
+      return true;
+    },
     connected() {
       const handleInput = (event: Event) => {
         const target = event.target as HTMLInputElement | null;
@@ -292,6 +373,16 @@ export const registerDefaultComponents = (
         resize: vertical;
       }
     `,
+    /**
+     * Skip the full shadow DOM re-render when only the reflected textarea value
+     * changed, because the live control has already been patched in place.
+     */
+    beforeUpdate(props) {
+      if (canSkipTextareaRender(this, props)) {
+        return false;
+      }
+      return true;
+    },
     connected() {
       const handleInput = (event: Event) => {
         const target = event.target as HTMLTextAreaElement | null;

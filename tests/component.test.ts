@@ -944,8 +944,9 @@ describe('component/registerDefaultComponents', () => {
 
     const inputControl = input.shadowRoot?.querySelector('input') as HTMLInputElement | null;
     expect(inputControl).not.toBeNull();
-    inputControl!.value = 'Ada';
-    inputControl!.dispatchEvent(new Event('input', { bubbles: true }));
+    if (!inputControl) throw new Error('Expected input control to exist');
+    inputControl.value = 'Ada';
+    inputControl.dispatchEvent(new Event('input', { bubbles: true }));
     expect(input.getAttribute('value')).toBe('Ada');
 
     const checkbox = document.createElement(tags.checkbox);
@@ -1003,5 +1004,45 @@ describe('component/registerDefaultComponents', () => {
     input.remove();
     textarea.remove();
     checkbox.remove();
+  });
+
+  it('keeps input and textarea controls stable while reflecting typed values', () => {
+    const prefix = `stable${Date.now()}`;
+    const tags = registerDefaultComponents({ prefix });
+
+    const input = document.createElement(tags.input);
+    input.setAttribute('label', 'Name');
+    document.body.appendChild(input);
+
+    const inputControl = input.shadowRoot?.querySelector('input') as HTMLInputElement | null;
+    expect(inputControl).not.toBeNull();
+    if (!inputControl) throw new Error('Expected input control to exist');
+    inputControl.value = 'Ada';
+    inputControl.dispatchEvent(new Event('input', { bubbles: true }));
+
+    const inputControlAfterUpdate = input.shadowRoot?.querySelector('input') as HTMLInputElement | null;
+    expect(inputControlAfterUpdate).toBe(inputControl);
+    expect(input.getAttribute('value')).toBe('Ada');
+    expect(inputControlAfterUpdate?.value).toBe('Ada');
+
+    const textarea = document.createElement(tags.textarea);
+    textarea.setAttribute('label', 'Notes');
+    document.body.appendChild(textarea);
+
+    const textareaControl = textarea.shadowRoot?.querySelector('textarea') as HTMLTextAreaElement | null;
+    expect(textareaControl).not.toBeNull();
+    if (!textareaControl) throw new Error('Expected textarea control to exist');
+    textareaControl.value = 'Updated notes';
+    textareaControl.dispatchEvent(new Event('input', { bubbles: true }));
+
+    const textareaControlAfterUpdate = textarea.shadowRoot?.querySelector(
+      'textarea'
+    ) as HTMLTextAreaElement | null;
+    expect(textareaControlAfterUpdate).toBe(textareaControl);
+    expect(textarea.getAttribute('value')).toBe('Updated notes');
+    expect(textareaControlAfterUpdate?.value).toBe('Updated notes');
+
+    input.remove();
+    textarea.remove();
   });
 });
