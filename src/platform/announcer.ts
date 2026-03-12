@@ -148,29 +148,43 @@ export const useAnnouncer = (options: UseAnnouncerOptions = {}): AnnouncerHandle
 
   let messageTimer: ReturnType<typeof setTimeout> | undefined;
   let clearTimer: ReturnType<typeof setTimeout> | undefined;
+  let destroyed = false;
+
+  const clearTimers = (): void => {
+    if (messageTimer) {
+      clearTimeout(messageTimer);
+      messageTimer = undefined;
+    }
+    if (clearTimer) {
+      clearTimeout(clearTimer);
+      clearTimer = undefined;
+    }
+  };
 
   const clear = (): void => {
-    if (messageTimer) clearTimeout(messageTimer);
-    if (clearTimer) clearTimeout(clearTimer);
+    if (destroyed) return;
+    clearTimers();
     message.value = '';
   };
 
   const announce = (value: string, announceOptions: AnnounceOptions = {}): void => {
+    if (destroyed) return;
     const politeness = announceOptions.politeness ?? resolvedOptions.politeness;
     const delay = announceOptions.delay ?? resolvedOptions.delay;
     const clearDelay = announceOptions.clearDelay ?? resolvedOptions.clearDelay;
 
-    if (messageTimer) clearTimeout(messageTimer);
-    if (clearTimer) clearTimeout(clearTimer);
+    clearTimers();
 
     element.setAttribute('aria-live', politeness);
     element.setAttribute('role', politeness === 'assertive' ? 'alert' : 'status');
     message.value = '';
 
     messageTimer = setTimeout(() => {
+      if (destroyed) return;
       message.value = value;
       if (clearDelay > 0) {
         clearTimer = setTimeout(() => {
+          if (destroyed) return;
           message.value = '';
         }, clearDelay);
       }
@@ -178,7 +192,10 @@ export const useAnnouncer = (options: UseAnnouncerOptions = {}): AnnouncerHandle
   };
 
   const destroy = (): void => {
-    clear();
+    if (destroyed) return;
+    destroyed = true;
+    clearTimers();
+    message.value = '';
     disposeMessageEffect();
     if (created) {
       element.remove();

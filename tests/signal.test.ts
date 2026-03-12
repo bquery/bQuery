@@ -852,6 +852,29 @@ describe('useFetch', () => {
     expect(contentType).toBe('application/json');
   });
 
+  it('creates fresh headers for each execution when serializing JSON bodies', async () => {
+    const contentTypes: string[] = [];
+    const state = useFetch<{ saved: boolean }>('/api/save', {
+      immediate: false,
+      method: 'POST',
+      body: { name: 'Ada' },
+      headers: { 'x-test': '1' },
+      fetcher: async (_input, init) => {
+        const headers = init?.headers;
+        expect(headers).toBeInstanceOf(Headers);
+        const requestHeaders = headers as Headers;
+        contentTypes.push(requestHeaders.get('content-type') ?? '');
+        requestHeaders.delete('content-type');
+        return new Response(JSON.stringify({ saved: true }), { status: 200 });
+      },
+    });
+
+    await state.execute();
+    await state.execute();
+
+    expect(contentTypes).toEqual(['application/json', 'application/json']);
+  });
+
   it('returns the cached value after dispose()', async () => {
     const calls: string[] = [];
     const state = useFetch<{ ok: boolean }>('/api/users', {

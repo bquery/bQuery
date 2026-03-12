@@ -387,6 +387,23 @@ describe('platform/useAnnouncer', () => {
     expect(announcer.element?.textContent).toBe('');
     expect(document.getElementById(announcer.element?.id ?? '')).toBeNull();
   });
+
+  it('ignores announce and clear calls after destroy', async () => {
+    const { useAnnouncer } = await import('../src/platform/index');
+    const announcer = useAnnouncer({
+      delay: 0,
+      clearDelay: 0,
+      id: `announcer-destroyed-handle-${Date.now()}`,
+    });
+
+    announcer.destroy();
+    announcer.announce('Should be ignored');
+    announcer.clear();
+
+    expect(announcer.message.value).toBe('');
+    expect(announcer.element?.textContent).toBe('');
+    expect(document.getElementById(announcer.element?.id ?? '')).toBeNull();
+  });
 });
 
 describe('platform/defineBqueryConfig', () => {

@@ -313,7 +313,6 @@ export const useFetch = <TResponse = unknown, TData = TResponse>(
   options: UseFetchOptions<TResponse, TData> = {}
 ): AsyncDataState<TData> => {
   const fetchConfig = getBqueryConfig().fetch;
-  const headers = toHeaders(fetchConfig?.headers, options.headers);
   const parseAs = options.parseAs ?? fetchConfig?.parseAs ?? 'json';
   const fetcher = options.fetcher ?? fetch;
 
@@ -328,6 +327,7 @@ export const useFetch = <TResponse = unknown, TData = TResponse>(
       appendQuery(requestUrl, options.query);
     }
 
+    const headers = toHeaders(fetchConfig?.headers, options.headers);
     const requestInit: RequestInit = {
       ...options,
       headers,
