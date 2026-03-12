@@ -54,6 +54,7 @@ temp/
 # Source-only / dev-only assets
 docs/
 .storybook/
+storybook-static/
 stories/
 tests/
 .github/
