@@ -40,8 +40,6 @@ jobs:
 
       - name: Run ESLint
         continue-on-error: ${{ github.event_name == 'schedule' }}
-        env:
-          SARIF_ESLINT_IGNORE_SUPPRESSED: 'true'
         run: |
           bunx eslint . \
             --format json \
@@ -53,12 +51,12 @@ jobs:
           node <<'EOF'
           const fs = require('node:fs');
           const path = require('node:path');
+          const { pathToFileURL } = require('node:url');
 
           const eslintResults = JSON.parse(fs.readFileSync('eslint-results.json', 'utf8'));
           const rules = new Map();
           const results = [];
-          const workspaceUri =
-            process.platform === 'win32' ? process.cwd().replace(/\\/g, '/') : process.cwd();
+          const workspaceUri = pathToFileURL(`${process.cwd()}${path.sep}`).href;
 
           for (const file of eslintResults) {
             const resolvedPath = path.resolve(file.filePath);
@@ -117,7 +115,7 @@ jobs:
                 },
                 originalUriBaseIds: {
                   SRCROOT: {
-                    uri: `file://${workspaceUri}/`,
+                    uri: workspaceUri,
                   },
                 },
                 results,
