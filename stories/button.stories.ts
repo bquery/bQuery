@@ -19,7 +19,7 @@ const render = (args: ButtonArgs): HTMLElement => {
     element.setAttribute('disabled', 'true');
   }
 
-  element.textContent = args.label;
+  element.setAttribute('label', args.label);
   return element;
 };
 
