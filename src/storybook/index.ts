@@ -19,20 +19,20 @@ type StoryValue =
   | (() => StoryValue);
 
 const BOOLEAN_ATTRIBUTE_PATTERN = /(\s*)\?([^\s=/>]+)\s*=\s*$/;
-const CUSTOM_ELEMENT_PATTERN = /<\s*\/?\s*([a-z][\w:-]*-[\w:-]*)\b/gi;
-const ATTRIBUTE_PATTERN = /(?:^|[\s<])\?*([^\s=/>]+)\s*=/g;
+const CUSTOM_ELEMENT_TAG_PATTERN = /<\/?([a-z][a-z0-9._-]*-[a-z0-9._-]*[a-z0-9._])\b/gi;
+const ATTRIBUTE_NAME_PATTERN = /(?:^|[\s<])\??([a-z][a-z0-9:._-]*)\s*=/gi;
 
 const collectTemplateSanitizeOptions = (strings: TemplateStringsArray) => {
   const template = strings.join('');
   const allowTags = new Set<string>();
   const allowAttributes = new Set<string>();
 
-  for (const match of template.matchAll(CUSTOM_ELEMENT_PATTERN)) {
+  for (const match of template.matchAll(CUSTOM_ELEMENT_TAG_PATTERN)) {
     allowTags.add(match[1].toLowerCase());
   }
 
-  for (const match of template.matchAll(ATTRIBUTE_PATTERN)) {
-    allowAttributes.add(match[1].toLowerCase());
+  for (const match of template.matchAll(ATTRIBUTE_NAME_PATTERN)) {
+    allowAttributes.add(match[1].replace(/^\?/, '').toLowerCase());
   }
 
   return {
