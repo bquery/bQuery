@@ -8,7 +8,11 @@ import {
   safeHtml,
 } from '../src/component/index';
 import { computed, signal } from '../src/reactive/index';
-import type { ComponentDefinition, ComponentRenderContext } from '../src/component/index';
+import type {
+  ComponentDefinition,
+  ComponentRenderContext,
+  ComponentSignalLike,
+} from '../src/component/index';
 
 const expectType = <T>(_value: T): void => {};
 
@@ -201,10 +205,11 @@ describe('component/component', () => {
   });
 
   it('requires runtime signals when an explicit signal generic is used', () => {
-    const theme = signal<'light' | 'dark'>('light');
+    type Props = Record<string, never>;
+    type ThemeSignals = { theme: ComponentSignalLike<'light' | 'dark'> };
 
     // @ts-expect-error explicit signal generics require a matching runtime signals object
-    const invalidDefinition: ComponentDefinition<{}, undefined, { theme: typeof theme }> = {
+    const invalidDefinition: ComponentDefinition<Props, undefined, ThemeSignals> = {
       props: {},
       render: ({ signals }) => html`<div>${signals.theme.value}</div>`,
     };
