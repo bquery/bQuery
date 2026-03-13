@@ -142,11 +142,6 @@ export type AttributeChange = {
  * Arrow functions capture outer scope, so component APIs like `this.getState()`
  * are only available from method/function syntax.
  */
-type ComponentHook<TResult = void> = ((this: HTMLElement) => TResult) | (() => TResult);
-type ComponentHookWithProps<TProps extends Record<string, unknown>, TResult = void> =
-  | ((this: HTMLElement, newProps: TProps, oldProps: TProps) => TResult)
-  | ((newProps: TProps, oldProps: TProps) => TResult);
-type ComponentErrorHook = ((this: HTMLElement, error: Error) => void) | ((error: Error) => void);
 type ComponentSanitizeOptions = Pick<SanitizeOptions, 'allowTags' | 'allowAttributes'>;
 type ComponentHook<
   TState extends Record<string, unknown> | undefined = undefined,
@@ -160,8 +155,8 @@ type ComponentHookWithProps<
   TState extends Record<string, unknown> | undefined = undefined,
   TResult = void,
 > = {
-  (this: ComponentElement<TState>, props: TProps): TResult;
-  (props: TProps): TResult;
+   (this: ComponentElement<TState>, newProps: TProps, oldProps: TProps): TResult;
+   (newProps: TProps, oldProps: TProps): TResult;
 };
 type ComponentUpdatedHook<
   TState extends Record<string, unknown> | undefined = undefined,

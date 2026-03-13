@@ -155,7 +155,7 @@ const createComponentClass = <
 
         if (this.hasMounted) {
           // Component already mounted - trigger update render
-          this.render(true, { name, oldValue, newValue });
+          this.render(true, previousProps, { name, oldValue, newValue });
         } else if (this.isConnected && this.missingRequiredProps.size === 0) {
           // All required props are now satisfied and element is connected
           // Trigger the deferred initial mount
@@ -261,9 +261,8 @@ const createComponentClass = <
      * @internal
      */
     private render(): void;
-    private render(triggerUpdated: true, oldProps: TProps): void;
-    private render(triggerUpdated = false, oldProps?: TProps): void;
-    private render(triggerUpdated = false, change?: AttributeChange): void {
+    private render(triggerUpdated: true, oldProps: TProps, change?: AttributeChange): void;
+    private render(triggerUpdated = false, oldProps?: TProps, change?: AttributeChange): void {
       try {
         if (triggerUpdated && definition.beforeUpdate) {
           if (!oldProps) {
