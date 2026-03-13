@@ -11,7 +11,7 @@ import type { SanitizedHtml } from './trusted-html';
 import type { SanitizeOptions } from './types';
 export { generateNonce } from './csp';
 export { isTrustedTypesSupported } from './trusted-types';
-export { isTrustedHtml, trusted, unwrapTrustedHtml } from './trusted-html';
+export { trusted } from './trusted-html';
 export type { SanitizedHtml, TrustedHtml } from './trusted-html';
 
 /**
