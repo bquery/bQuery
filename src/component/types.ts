@@ -4,6 +4,8 @@
  * @module bquery/component
  */
 
+import type { SanitizeOptions } from '../security/types';
+
 /**
  * Defines a single prop's type and configuration.
  *
@@ -65,6 +67,7 @@ type ComponentHookWithProps<TProps extends Record<string, unknown>, TResult = vo
   | ((this: HTMLElement, props: TProps) => TResult)
   | ((props: TProps) => TResult);
 type ComponentErrorHook = ((this: HTMLElement, error: Error) => void) | ((error: Error) => void);
+type ComponentSanitizeOptions = Pick<SanitizeOptions, 'allowTags' | 'allowAttributes'>;
 
 export type ComponentDefinition<TProps extends Record<string, unknown> = Record<string, unknown>> =
   {
@@ -74,6 +77,8 @@ export type ComponentDefinition<TProps extends Record<string, unknown> = Record<
     state?: Record<string, unknown>;
     /** CSS styles scoped to the component's shadow DOM */
     styles?: string;
+    /** Extra sanitizer options merged with the framework base allowlist during render */
+    sanitize?: ComponentSanitizeOptions;
     /** Lifecycle hook called before the component mounts (before first render) */
     beforeMount?: ComponentHook;
     /** Lifecycle hook called when component is added to DOM */

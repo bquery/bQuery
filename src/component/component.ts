@@ -8,6 +8,32 @@ import { sanitizeHtml } from '../security/sanitize';
 import { coercePropValue } from './props';
 import type { ComponentDefinition, PropDefinition } from './types';
 
+const COMPONENT_ALLOWED_TAGS = ['slot'];
+const COMPONENT_ALLOWED_ATTRIBUTES = [
+  'part',
+  // Standard form attributes required by interactive shadow DOM content
+  'disabled',
+  'checked',
+  'placeholder',
+  'value',
+  'rows',
+  'cols',
+  'readonly',
+  'required',
+  'maxlength',
+  'minlength',
+  'max',
+  'min',
+  'step',
+  'pattern',
+  'autocomplete',
+  'autofocus',
+  'for',
+  'multiple',
+  'selected',
+  'wrap',
+];
+
 /**
  * Creates a custom element class for a component definition.
  *
@@ -211,30 +237,10 @@ export const defineComponent = <TProps extends Record<string, unknown>>(
         // the stylistic `part` attribute, and standard form/input attributes without
         // relaxing the global DOM sanitization rules.
         const sanitizedMarkup = sanitizeHtml(markup, {
-          allowTags: ['slot'],
+          allowTags: [...COMPONENT_ALLOWED_TAGS, ...(definition.sanitize?.allowTags ?? [])],
           allowAttributes: [
-            'part',
-            // Standard form attributes required by interactive shadow DOM content
-            'disabled',
-            'checked',
-            'placeholder',
-            'value',
-            'rows',
-            'cols',
-            'readonly',
-            'required',
-            'maxlength',
-            'minlength',
-            'max',
-            'min',
-            'step',
-            'pattern',
-            'autocomplete',
-            'autofocus',
-            'for',
-            'multiple',
-            'selected',
-            'wrap',
+            ...COMPONENT_ALLOWED_ATTRIBUTES,
+            ...(definition.sanitize?.allowAttributes ?? []),
           ],
         });
         this.shadowRoot.innerHTML = sanitizedMarkup;

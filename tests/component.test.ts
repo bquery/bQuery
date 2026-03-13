@@ -829,6 +829,31 @@ describe('component/defineComponent', () => {
     el.remove();
   });
 
+  it('merges per-component sanitizer options with the base allowlist', () => {
+    const tagName = `test-define-sanitize-options-${Date.now()}`;
+    const ElementClass = defineComponent(tagName, {
+      props: {},
+      sanitize: {
+        allowAttributes: ['open', 'style'],
+      },
+      render: () =>
+        html`<div role="dialog" open style="--offset: 12px" onclick="alert('xss')">Visible</div>`,
+    });
+
+    customElements.define(tagName, ElementClass);
+    const el = document.createElement(tagName);
+    document.body.appendChild(el);
+
+    const dialog = el.shadowRoot?.querySelector('div');
+    expect(dialog?.getAttribute('role')).toBe('dialog');
+    expect(dialog?.hasAttribute('open')).toBe(true);
+    expect(dialog?.getAttribute('style')).toBe('--offset: 12px');
+    expect(dialog?.hasAttribute('onclick')).toBe(false);
+    expect(el.shadowRoot?.innerHTML).toContain('Visible');
+
+    el.remove();
+  });
+
   it('instances apply styles correctly', () => {
     const tagName = `test-define-styles-${Date.now()}`;
     const ElementClass = defineComponent(tagName, {
