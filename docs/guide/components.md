@@ -207,7 +207,7 @@ Only declared signals trigger re-renders, which keeps component updates predicta
 - `beforeMount()` – runs before the element renders (can modify initial state)
 - `connected()` – runs when the element mounts
 - `beforeUpdate(newProps, oldProps)` – runs before re-render; return `false` to prevent update
-- `updated(change?)` – runs after re-render; receives attribute-change metadata for prop-driven updates and `undefined` for state/signal updates
+- `updated()` – runs after re-render on prop changes
 - `disconnected()` – runs on teardown
 - `onError(error)` – handles errors during lifecycle/render
 

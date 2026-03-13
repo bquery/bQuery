@@ -155,8 +155,8 @@ type ComponentHookWithProps<
   TState extends Record<string, unknown> | undefined = undefined,
   TResult = void,
 > = {
-  (this: ComponentElement<TState>, props: TProps): TResult;
-  (props: TProps): TResult;
+   (this: ComponentElement<TState>, newProps: TProps, oldProps: TProps): TResult;
+   (newProps: TProps, oldProps: TProps): TResult;
 };
 type ComponentUpdatedHook<
   TState extends Record<string, unknown> | undefined = undefined,

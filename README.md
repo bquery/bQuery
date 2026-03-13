@@ -279,9 +279,6 @@ component('user-card', {
   beforeUpdate(newProps, oldProps) {
     return newProps.username !== oldProps.username;
   },
-  updated(change) {
-    console.log('Updated because of', change?.name ?? 'state/signal change');
-  },
   onError(error) {
     console.error('Component error:', error);
   },
