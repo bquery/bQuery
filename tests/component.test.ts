@@ -1023,6 +1023,69 @@ describe('component/defineComponent', () => {
     el.remove();
   });
 
+  it('merges per-component sanitizer options with the base allowlist', () => {
+    const tagName = `test-define-sanitize-options-${Date.now()}`;
+    const ElementClass = defineComponent(tagName, {
+      props: {},
+      sanitize: {
+        allowAttributes: ['open', 'style'],
+      },
+      render: () =>
+        html`<div role="dialog" open style="--offset: 12px" onclick="alert('xss')">Visible</div>`,
+    });
+
+    customElements.define(tagName, ElementClass);
+    const el = document.createElement(tagName);
+    document.body.appendChild(el);
+
+    const dialog = el.shadowRoot?.querySelector('div');
+    expect(dialog?.getAttribute('role')).toBe('dialog');
+    expect(dialog?.hasAttribute('open')).toBe(true);
+    expect(dialog?.getAttribute('style')).toBe('--offset: 12px');
+    expect(dialog?.hasAttribute('onclick')).toBe(false);
+    expect(el.shadowRoot?.innerHTML).not.toContain('onclick');
+    expect(el.shadowRoot?.innerHTML).not.toContain('alert');
+    expect(el.shadowRoot?.innerHTML).toContain('Visible');
+
+    el.remove();
+  });
+
+  it('extends the component sanitizer tag allowlist when explicitly requested', () => {
+    const restrictedComponentTagName = `test-define-sanitize-tag-default-${Date.now()}`;
+    const permissiveComponentTagName = `test-define-sanitize-tag-allowed-${Date.now()}`;
+
+    const DefaultElementClass = defineComponent(restrictedComponentTagName, {
+      props: {},
+      render: () => html`<dialog>Default hidden dialog</dialog>`,
+    });
+    const AllowedElementClass = defineComponent(permissiveComponentTagName, {
+      props: {},
+      sanitize: {
+        allowTags: ['dialog'],
+      },
+      render: () => html`<dialog>Allowed visible dialog</dialog>`,
+    });
+
+    customElements.define(restrictedComponentTagName, DefaultElementClass);
+    customElements.define(permissiveComponentTagName, AllowedElementClass);
+
+    const defaultEl = document.createElement(restrictedComponentTagName);
+    const allowedEl = document.createElement(permissiveComponentTagName);
+
+    document.body.appendChild(defaultEl);
+    document.body.appendChild(allowedEl);
+
+    expect(defaultEl.shadowRoot?.querySelector('dialog')).toBeNull();
+    expect(defaultEl.shadowRoot?.innerHTML).not.toContain('<dialog');
+
+    const allowedDialog = allowedEl.shadowRoot?.querySelector('dialog');
+    expect(allowedDialog).not.toBeNull();
+    expect(allowedDialog?.textContent).toBe('Allowed visible dialog');
+
+    defaultEl.remove();
+    allowedEl.remove();
+  });
+
   it('instances apply styles correctly', () => {
     const tagName = `test-define-styles-${Date.now()}`;
     const ElementClass = defineComponent(tagName, {
