@@ -63,6 +63,10 @@ describe('component/html', () => {
       'Invalid boolean attribute name: disabled="true"'
     );
   });
+
+  it('returns an immutable boolean attribute marker', () => {
+    expect(Object.isFrozen(bool('disabled', true))).toBe(true);
+  });
 });
 
 describe('component/component', () => {

@@ -1,14 +1,27 @@
 const BOOLEAN_ATTRIBUTE_MARKER: unique symbol = Symbol('bquery.booleanAttribute');
 const BOOLEAN_ATTRIBUTE_NAME = /^[^\0-\x20"'/>=]+$/;
 
-interface BooleanAttributeValue {
-  readonly [BOOLEAN_ATTRIBUTE_MARKER]: true;
+export interface BooleanAttribute {
   readonly enabled: boolean;
   readonly name: string;
 }
 
-const isBooleanAttributeValue = (value: unknown): value is BooleanAttributeValue =>
-  typeof value === 'object' && value !== null && BOOLEAN_ATTRIBUTE_MARKER in value;
+interface BooleanAttributeValue extends BooleanAttribute {
+  readonly [BOOLEAN_ATTRIBUTE_MARKER]: true;
+}
+
+const isBooleanAttributeValue = (value: unknown): value is BooleanAttributeValue => {
+  if (typeof value !== 'object' || value === null) {
+    return false;
+  }
+
+  const candidate = value as Partial<BooleanAttributeValue>;
+  return (
+    candidate[BOOLEAN_ATTRIBUTE_MARKER] === true &&
+    typeof candidate.enabled === 'boolean' &&
+    typeof candidate.name === 'string'
+  );
+};
 
 const stringifyTemplateValue = (value: unknown): string => {
   if (isBooleanAttributeValue(value)) {
@@ -47,16 +60,18 @@ const escapeTemplateValue = (value: unknown): string =>
  * // Result when isDisabled = true: '<button disabled>Save</button>'
  * ```
  */
-export const bool = (name: string, enabled: unknown): BooleanAttributeValue => {
+export const bool = (name: string, enabled: unknown): BooleanAttribute => {
   if (!BOOLEAN_ATTRIBUTE_NAME.test(name)) {
     throw new TypeError(`Invalid boolean attribute name: ${name}`);
   }
 
-  return {
+  const attribute: BooleanAttributeValue = {
     [BOOLEAN_ATTRIBUTE_MARKER]: true,
     enabled: Boolean(enabled),
     name,
   };
+
+  return Object.freeze(attribute);
 };
 
 /**
