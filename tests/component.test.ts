@@ -54,21 +54,21 @@ describe('component/html', () => {
 
   it('escapes interpolated values in safeHtml templates', () => {
     const result = safeHtml`<div>${'<strong>Hello</strong>'}</div>`;
-    expect(result).toBe('<div>&lt;strong&gt;Hello&lt;/strong&gt;</div>');
+    expect(String(result)).toBe('<div>&lt;strong&gt;Hello&lt;/strong&gt;</div>');
   });
 
   it('splices trusted sanitized fragments into safeHtml templates without double-escaping', () => {
     const icon = trusted(sanitizeHtml('<strong onclick="alert(1)">Hi</strong>'));
     const result = safeHtml`<div>${icon}</div>`;
 
-    expect(result).toBe('<div><strong>Hi</strong></div>');
+    expect(String(result)).toBe('<div><strong>Hi</strong></div>');
   });
 
   it('can compose trusted safeHtml fragments', () => {
     const icon = trusted(safeHtml`<span class="icon">&hearts;</span>`);
     const result = safeHtml`<button>${icon}<span>${'Save & Close'}</span></button>`;
 
-    expect(result).toBe(
+    expect(String(result)).toBe(
       '<button><span class="icon">&hearts;</span><span>Save &amp; Close</span></button>'
     );
   });
@@ -84,12 +84,12 @@ describe('component/html', () => {
 
   it('supports boolean attributes in safeHtml templates', () => {
     const result = safeHtml`<button ${bool('disabled', true)}>${'<Save>'}</button>`;
-    expect(result).toBe('<button disabled>&lt;Save&gt;</button>');
+    expect(String(result)).toBe('<button disabled>&lt;Save&gt;</button>');
   });
 
   it('does not escape boolean attribute markers in safeHtml templates', () => {
     const result = safeHtml`<button ${bool('data-safe&sound', true)}>Save</button>`;
-    expect(result).toBe('<button data-safe&sound>Save</button>');
+    expect(String(result)).toBe('<button data-safe&sound>Save</button>');
   });
 
   it('rejects invalid boolean attribute names', () => {

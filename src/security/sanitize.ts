@@ -14,7 +14,11 @@ const sanitizedHtmlBrand: unique symbol = Symbol('bquery.sanitized-html.brand');
 const trustedHtmlBrand: unique symbol = Symbol('bquery.trusted-html.brand');
 
 /**
- * Branded HTML string that has already been sanitized for safe DOM insertion.
+ * Branded HTML string produced by bQuery's sanitization or escaping template helpers.
+ *
+ * Values returned from {@link sanitizeHtml} or {@link safeHtml} carry this brand and are safe
+ * to insert as markup in the contexts those helpers produce. This brand is not intended for
+ * arbitrary strings or manual concatenation outside those helpers.
  */
 export type SanitizedHtml = string & { readonly [sanitizedHtmlBrand]: true };
 
@@ -75,13 +79,13 @@ export const escapeHtml = (text: string): string => {
 /**
  * Mark a sanitized HTML string for verbatim splicing into safeHtml templates.
  *
- * @param html - HTML previously produced by sanitizeHtml or another trusted bQuery helper
+ * @param html - HTML previously produced by sanitizeHtml, safeHtml, or another trusted bQuery helper
  * @returns Trusted HTML marker object for safeHtml interpolations
  *
  * @example
  * ```ts
- * const icon = trusted(sanitizeHtml('<svg><circle /></svg>'));
- * const markup = safeHtml`<span>${icon}</span>`;
+ * const badge = trusted(sanitizeHtml('<strong onclick="alert(1)">New</strong>'));
+ * const markup = safeHtml`<span>${badge}</span>`;
  * ```
  */
 export const trusted = (html: SanitizedHtml): TrustedHtml => {

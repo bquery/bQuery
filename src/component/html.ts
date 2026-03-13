@@ -1,5 +1,4 @@
 import {
-  escapeHtml,
   isTrustedHtml,
   type SanitizedHtml,
   unwrapTrustedHtml,
@@ -140,15 +139,12 @@ export const safeHtml = (
   ...values: unknown[]
 ): SanitizedHtml => {
   const escape = (value: unknown): string => {
-    if (value == null) return '';
     if (isTrustedHtml(value)) return unwrapTrustedHtml(value);
-    return escapeHtml(String(value));
+    return escapeTemplateValue(value);
   };
 
   return strings.reduce(
     (acc, part, index) => `${acc}${part}${index < values.length ? escape(values[index]) : ''}`,
     ''
   ) as SanitizedHtml;
-export const safeHtml = (strings: TemplateStringsArray, ...values: unknown[]): string => {
-  return strings.reduce((acc, part, index) => `${acc}${part}${escapeTemplateValue(values[index])}`, '');
 };

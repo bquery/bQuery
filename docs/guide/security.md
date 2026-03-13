@@ -138,8 +138,8 @@ When you need to reuse sanitized markup inside `safeHtml`, wrap the sanitized st
 import { safeHtml } from '@bquery/bquery/component';
 import { sanitizeHtml, trusted } from '@bquery/bquery/security';
 
-const icon = trusted(sanitizeHtml('<svg><circle /></svg>'));
-const markup = safeHtml`<button>${icon}<span>Save</span></button>`;
+const badge = trusted(sanitizeHtml('<span class="icon">♥</span>'));
+const markup = safeHtml`<button>${badge}<span>Save</span></button>`;
 ```
 
 ## Strip tags
