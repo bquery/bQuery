@@ -371,10 +371,20 @@ const createComponentClass = <
           allowTags: componentAllowedTags,
           allowAttributes: componentAllowedAttributes,
         });
+        let existingStyleElement: HTMLStyleElement | null = null;
+        if (definition.styles) {
+          existingStyleElement = this.shadowRoot.querySelector<HTMLStyleElement>(
+            'style[data-bquery-component-style]'
+          );
+        }
+
         this.shadowRoot.innerHTML = sanitizedMarkup;
 
         if (definition.styles) {
-          const styleElement = document.createElement('style');
+          const styleElement = existingStyleElement ?? document.createElement('style');
+          if (!existingStyleElement) {
+            styleElement.setAttribute('data-bquery-component-style', '');
+          }
           styleElement.textContent = definition.styles;
           this.shadowRoot.prepend(styleElement);
         }
