@@ -2,7 +2,7 @@ import {
   isTrustedHtml,
   type SanitizedHtml,
   unwrapTrustedHtml,
-} from '../security/sanitize';
+} from '../security/trusted-html';
 const BOOLEAN_ATTRIBUTE_MARKER: unique symbol = Symbol('bquery.booleanAttribute');
 const BOOLEAN_ATTRIBUTE_NAME = /^[^\0-\x20"'/>=]+$/;
 
