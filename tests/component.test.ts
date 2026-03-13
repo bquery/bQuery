@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'bun:test';
 import {
+  bool,
   component,
   defineComponent,
   html,
   registerDefaultComponents,
+  safeHtml,
 } from '../src/component/index';
 
 describe('component/html', () => {
@@ -39,6 +41,36 @@ describe('component/html', () => {
   it('handles boolean values', () => {
     const result = html`<span>${true} ${false}</span>`;
     expect(result).toBe('<span>true false</span>');
+  });
+
+  it('renders multiple enabled boolean attributes without values', () => {
+    const result = html`<button ${bool('disabled', true)} ${bool('loading', true)}>Save</button>`;
+    expect(result).toBe('<button disabled loading>Save</button>');
+  });
+
+  it('omits disabled boolean attributes entirely', () => {
+    const result = html`<button ${bool('disabled', false)}>Save</button>`;
+    expect(result).toBe('<button >Save</button>');
+  });
+
+  it('supports boolean attributes in safeHtml templates', () => {
+    const result = safeHtml`<button ${bool('disabled', true)}>${'<Save>'}</button>`;
+    expect(result).toBe('<button disabled>&lt;Save&gt;</button>');
+  });
+
+  it('does not escape boolean attribute markers in safeHtml templates', () => {
+    const result = safeHtml`<button ${bool('data-safe&sound', true)}>Save</button>`;
+    expect(result).toBe('<button data-safe&sound>Save</button>');
+  });
+
+  it('rejects invalid boolean attribute names', () => {
+    expect(() => bool('disabled="true"', true)).toThrow(
+      'Invalid boolean attribute name: disabled="true"'
+    );
+  });
+
+  it('returns an immutable boolean attribute marker', () => {
+    expect(Object.isFrozen(bool('disabled', true))).toBe(true);
   });
 });
 
