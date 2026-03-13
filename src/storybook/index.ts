@@ -306,7 +306,7 @@ const resolveStoryValue = (value: StoryValue): string => {
  *
  * ```ts
  * storyHtml`<bq-button ?disabled=${true}>Save</bq-button>`;
- * // => '<bq-button disabled>Save</bq-button>'
+ * // => '<bq-button disabled="">Save</bq-button>'
  * ```
  *
  * @param strings - Template literal string parts
