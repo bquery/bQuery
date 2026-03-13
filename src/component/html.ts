@@ -1,3 +1,10 @@
+import {
+  escapeHtml,
+  isTrustedHtml,
+  type SanitizedHtml,
+  unwrapTrustedHtml,
+} from '../security/sanitize';
+
 /**
  * Tagged template literal for creating HTML strings.
  *
@@ -34,20 +41,15 @@ export const html = (strings: TemplateStringsArray, ...values: unknown[]): strin
  * // Result: '<div>&lt;script&gt;alert("xss")&lt;/script&gt;</div>'
  * ```
  */
-export const safeHtml = (strings: TemplateStringsArray, ...values: unknown[]): string => {
-  const escapeMap: Record<string, string> = {
-    '&': '&amp;',
-    '<': '&lt;',
-    '>': '&gt;',
-    '"': '&quot;',
-    "'": '&#x27;',
-    '`': '&#x60;',
-  };
-
+export const safeHtml = (
+  strings: TemplateStringsArray,
+  ...values: unknown[]
+): SanitizedHtml => {
   const escape = (value: unknown): string => {
-    const str = String(value ?? '');
-    return str.replace(/[&<>"'`]/g, (char) => escapeMap[char]);
+    if (value == null) return '';
+    if (isTrustedHtml(value)) return unwrapTrustedHtml(value);
+    return escapeHtml(String(value));
   };
 
-  return strings.reduce((acc, part, index) => `${acc}${part}${escape(values[index])}`, '');
+  return strings.reduce((acc, part, index) => `${acc}${part}${escape(values[index])}`, '') as SanitizedHtml;
 };

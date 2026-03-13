@@ -5,6 +5,7 @@ Internally, the component module is now split into focused submodules (types, pr
 
 ```ts
 import { component, html, safeHtml } from '@bquery/bquery/component';
+import { sanitizeHtml, trusted } from '@bquery/bquery/security';
 
 component('user-card', {
   props: {
@@ -28,6 +29,7 @@ component('user-card', {
       <div class="card ${props.active ? 'active' : ''}">
         <img src="${props.avatar}" alt="${props.username}" />
         <strong>${safeHtml`${props.username}`}</strong>
+        ${trusted(sanitizeHtml(props.active ? '<em>Active</em>' : ''))}
         <div>Clicks: ${state.clicks}</div>
       </div>
     `;
@@ -192,6 +194,7 @@ component('my-element', {
 
 - `html` – template literal helper for building HTML strings
 - `safeHtml` – escapes interpolated values for safety
+- `trusted(sanitizeHtml(...))` – opt in to reusing a sanitized fragment inside `safeHtml`
 
 Rendered component output is sanitized before it is written into the Shadow DOM. That keeps custom elements aligned with bQuery's security-by-default model while still allowing standard form attributes used by the default component library.
 

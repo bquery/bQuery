@@ -4,7 +4,9 @@ import {
   defineComponent,
   html,
   registerDefaultComponents,
+  safeHtml,
 } from '../src/component/index';
+import { sanitizeHtml, trusted } from '../src/security/sanitize';
 
 describe('component/html', () => {
   it('creates HTML from template literal', () => {
@@ -39,6 +41,27 @@ describe('component/html', () => {
   it('handles boolean values', () => {
     const result = html`<span>${true} ${false}</span>`;
     expect(result).toBe('<span>true false</span>');
+  });
+
+  it('escapes interpolated values in safeHtml templates', () => {
+    const result = safeHtml`<div>${'<strong>Hello</strong>'}</div>`;
+    expect(result).toBe('<div>&lt;strong&gt;Hello&lt;/strong&gt;</div>');
+  });
+
+  it('splices trusted sanitized fragments into safeHtml templates without double-escaping', () => {
+    const icon = trusted(sanitizeHtml('<svg onload="alert(1)"><circle /></svg>'));
+    const result = safeHtml`<div>${icon}</div>`;
+
+    expect(result).toBe('<div></div>');
+  });
+
+  it('can compose trusted safeHtml fragments', () => {
+    const icon = trusted(safeHtml`<span class="icon">&hearts;</span>`);
+    const result = safeHtml`<button>${icon}<span>${'Save & Close'}</span></button>`;
+
+    expect(result).toBe(
+      '<button><span class="icon">&hearts;</span><span>Save &amp; Close</span></button>'
+    );
   });
 });
 

@@ -5,6 +5,12 @@
  */
 
 export { generateNonce, hasCSPDirective } from './csp';
-export { escapeHtml, sanitizeHtml as sanitize, sanitizeHtml, stripTags } from './sanitize';
+export {
+  escapeHtml,
+  sanitizeHtml as sanitize,
+  sanitizeHtml,
+  stripTags,
+  trusted,
+} from './sanitize';
 export { createTrustedHtml, getTrustedTypesPolicy, isTrustedTypesSupported } from './trusted-types';
-export type { SanitizeOptions } from './types';
+export type { SanitizedHtml, SanitizeOptions, TrustedHtml } from './sanitize';

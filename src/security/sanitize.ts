@@ -10,6 +10,25 @@ import type { SanitizeOptions } from './types';
 export { generateNonce } from './csp';
 export { isTrustedTypesSupported } from './trusted-types';
 
+const sanitizedHtmlBrand: unique symbol = Symbol('bquery.sanitized-html');
+const trustedHtmlBrand: unique symbol = Symbol('bquery.trusted-html.brand');
+
+/**
+ * Branded HTML string that has already been sanitized for safe DOM insertion.
+ */
+export type SanitizedHtml = string & { readonly [sanitizedHtmlBrand]: true };
+
+/**
+ * Marker object that safeHtml can splice into templates without escaping again.
+ */
+export type TrustedHtml = { readonly [trustedHtmlBrand]: true; toString(): string };
+
+const TRUSTED_HTML_VALUE = Symbol('bquery.trusted-html');
+
+type TrustedHtmlValue = TrustedHtml & { readonly [TRUSTED_HTML_VALUE]: string };
+
+const toSanitizedHtml = (html: string): SanitizedHtml => html as SanitizedHtml;
+
 /**
  * Sanitize HTML string, removing dangerous elements and attributes.
  * Uses Trusted Types when available for CSP compliance.
@@ -24,8 +43,8 @@ export { isTrustedTypesSupported } from './trusted-types';
  * // Returns: '<div>Hello</div>'
  * ```
  */
-export const sanitizeHtml = (html: string, options: SanitizeOptions = {}): string => {
-  return sanitizeHtmlCore(html, options);
+export const sanitizeHtml = (html: string, options: SanitizeOptions = {}): SanitizedHtml => {
+  return toSanitizedHtml(sanitizeHtmlCore(html, options));
 };
 
 /**
@@ -51,6 +70,45 @@ export const escapeHtml = (text: string): string => {
     '`': '&#x60;',
   };
   return text.replace(/[&<>"'`]/g, (char) => escapeMap[char]);
+};
+
+/**
+ * Mark a sanitized HTML string for verbatim splicing into safeHtml templates.
+ *
+ * @param html - HTML previously produced by sanitizeHtml or another trusted bQuery helper
+ * @returns Trusted HTML marker object for safeHtml interpolations
+ *
+ * @example
+ * ```ts
+ * const icon = trusted(sanitizeHtml('<svg><circle /></svg>'));
+ * const markup = safeHtml`<span>${icon}</span>`;
+ * ```
+ */
+export const trusted = (html: SanitizedHtml): TrustedHtml => {
+  const value = String(html);
+  return Object.freeze({
+    [trustedHtmlBrand]: true as const,
+    [TRUSTED_HTML_VALUE]: value,
+    toString: () => value,
+  });
+};
+
+/**
+ * Check whether a value is a trusted HTML marker created by trusted().
+ *
+ * @internal
+ */
+export const isTrustedHtml = (value: unknown): value is TrustedHtml => {
+  return typeof value === 'object' && value !== null && TRUSTED_HTML_VALUE in value;
+};
+
+/**
+ * Unwrap the raw HTML string stored inside a trusted HTML marker.
+ *
+ * @internal
+ */
+export const unwrapTrustedHtml = (value: TrustedHtml): string => {
+  return (value as TrustedHtmlValue)[TRUSTED_HTML_VALUE];
 };
 
 /**
