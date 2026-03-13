@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'bun:test';
 import {
+  bool,
   component,
   defineComponent,
   html,
   registerDefaultComponents,
+  safeHtml,
 } from '../src/component/index';
 
 describe('component/html', () => {
@@ -39,6 +41,22 @@ describe('component/html', () => {
   it('handles boolean values', () => {
     const result = html`<span>${true} ${false}</span>`;
     expect(result).toBe('<span>true false</span>');
+  });
+
+  it('renders boolean attributes when enabled and omits them when disabled', () => {
+    const result = html`<button ${bool('disabled', true)} ${bool('loading', false)}>Save</button>`;
+    expect(result).toBe('<button disabled >Save</button>');
+  });
+
+  it('supports boolean attributes in safeHtml templates', () => {
+    const result = safeHtml`<button ${bool('disabled', true)}>${'<Save>'}</button>`;
+    expect(result).toBe('<button disabled>&lt;Save&gt;</button>');
+  });
+
+  it('rejects invalid boolean attribute names', () => {
+    expect(() => bool('disabled="true"', true)).toThrow(
+      'Invalid boolean attribute name: disabled="true"'
+    );
   });
 });
 
