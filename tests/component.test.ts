@@ -58,6 +58,11 @@ describe('component/html', () => {
     expect(result).toBe('<button disabled>&lt;Save&gt;</button>');
   });
 
+  it('does not escape boolean attribute markers in safeHtml templates', () => {
+    const result = safeHtml`<button ${bool('data-safe&sound', true)}>Save</button>`;
+    expect(result).toBe('<button data-safe&sound>Save</button>');
+  });
+
   it('rejects invalid boolean attribute names', () => {
     expect(() => bool('disabled="true"', true)).toThrow(
       'Invalid boolean attribute name: disabled="true"'

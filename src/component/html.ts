@@ -40,8 +40,13 @@ const escapeMap: Record<string, string> = {
   '`': '&#x60;',
 };
 
-const escapeTemplateValue = (value: unknown): string =>
-  stringifyTemplateValue(value).replace(/[&<>"'`]/g, (char) => escapeMap[char]);
+const escapeTemplateValue = (value: unknown): string => {
+  if (isBooleanAttributeValue(value)) {
+    return value.enabled ? value.name : '';
+  }
+
+  return stringifyTemplateValue(value).replace(/[&<>"'`]/g, (char) => escapeMap[char]);
+};
 
 /**
  * Creates a boolean-attribute marker for the {@link html} and {@link safeHtml} template tags.
