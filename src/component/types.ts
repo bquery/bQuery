@@ -131,14 +131,22 @@ export type ComponentRenderContext<
 type ComponentHook<
   TState extends Record<string, unknown> | undefined = undefined,
   TResult = void,
-> = (this: ComponentElement<TState>) => TResult;
+> = {
+  (this: ComponentElement<TState>): TResult;
+  (): TResult;
+};
 type ComponentHookWithProps<
   TProps extends Record<string, unknown>,
   TState extends Record<string, unknown> | undefined = undefined,
   TResult = void,
-> = (this: ComponentElement<TState>, props: TProps) => TResult;
-type ComponentErrorHook<TState extends Record<string, unknown> | undefined = undefined> =
-  (this: ComponentElement<TState>, error: Error) => void;
+> = {
+  (this: ComponentElement<TState>, props: TProps): TResult;
+  (props: TProps): TResult;
+};
+type ComponentErrorHook<TState extends Record<string, unknown> | undefined = undefined> = {
+  (this: ComponentElement<TState>, error: Error): void;
+  (error: Error): void;
+};
 
 type ComponentStateDefinition<TState extends Record<string, unknown> | undefined = undefined> =
   TState extends Record<string, unknown>
