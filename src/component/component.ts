@@ -8,7 +8,18 @@ import { sanitizeHtml } from '../security/sanitize';
 import { coercePropValue } from './props';
 import type { ComponentDefinition, PropDefinition } from './types';
 
+/**
+ * Base extra tags preserved for component shadow DOM renders in addition to the
+ * global sanitizer defaults. `slot` must remain allowed here because shadow DOM
+ * content projection depends on authored `<slot>` elements in component render
+ * output.
+ */
 const COMPONENT_ALLOWED_TAGS = ['slot'];
+
+/**
+ * Base extra attributes preserved for component shadow DOM renders in addition
+ * to the global sanitizer defaults.
+ */
 const COMPONENT_ALLOWED_ATTRIBUTES = [
   'part',
   // Standard form attributes required by interactive shadow DOM content

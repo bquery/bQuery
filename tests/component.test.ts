@@ -849,6 +849,8 @@ describe('component/defineComponent', () => {
     expect(dialog?.hasAttribute('open')).toBe(true);
     expect(dialog?.getAttribute('style')).toBe('--offset: 12px');
     expect(dialog?.hasAttribute('onclick')).toBe(false);
+    expect(el.shadowRoot?.innerHTML).not.toContain('onclick');
+    expect(el.shadowRoot?.innerHTML).not.toContain('alert');
     expect(el.shadowRoot?.innerHTML).toContain('Visible');
 
     el.remove();
