@@ -1,13 +1,14 @@
-const sanitizedHtmlBrand: unique symbol = Symbol('bquery.sanitized-html.brand');
+declare const sanitizedHtmlBrand: unique symbol;
 const trustedHtmlBrand: unique symbol = Symbol('bquery.trusted-html.brand');
 const TRUSTED_HTML_VALUE = Symbol('bquery.trusted-html');
 
 /**
  * Branded HTML string produced by bQuery's sanitization or escaping template helpers.
  *
- * Values returned from {@link sanitizeHtml} or {@link safeHtml} carry this brand and are safe
- * to insert as markup in the contexts those helpers produce. This brand is not intended for
- * arbitrary strings or manual concatenation outside those helpers.
+ * Values returned from {@link sanitizeHtml} carry sanitized markup. Values returned from
+ * {@link safeHtml} preserve the template's static markup while escaping normal interpolations
+ * and splicing {@link trusted} fragments verbatim. This brand is not intended for arbitrary
+ * strings or manual concatenation outside those helpers.
  */
 export type SanitizedHtml = string & { readonly [sanitizedHtmlBrand]: true };
 
@@ -18,6 +19,11 @@ export type TrustedHtml = { readonly [trustedHtmlBrand]: true; toString(): strin
 
 type TrustedHtmlValue = TrustedHtml & { readonly [TRUSTED_HTML_VALUE]: string };
 
+/**
+ * Apply the internal {@link SanitizedHtml} brand to helper output.
+ *
+ * @internal
+ */
 export const toSanitizedHtml = (html: string): SanitizedHtml => html as SanitizedHtml;
 
 /**
