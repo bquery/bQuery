@@ -186,6 +186,9 @@ export const defineComponent = <TProps extends Record<string, unknown>>(
 
     /**
      * Creates a shallow snapshot of the current props for lifecycle diffing.
+     * A shallow copy is sufficient because component props are re-derived from
+     * reflected attributes on each update, so nested object mutation is not
+     * tracked as part of this lifecycle diff.
      * @internal
      */
     private cloneProps(): TProps {
@@ -196,9 +199,14 @@ export const defineComponent = <TProps extends Record<string, unknown>>(
      * Renders the component to its shadow root.
      * @internal
      */
-    private render(triggerUpdated = false, oldProps = this.cloneProps()): void {
+    private render(): void;
+    private render(triggerUpdated: true, oldProps: TProps): void;
+    private render(triggerUpdated = false, oldProps?: TProps): void {
       try {
         if (triggerUpdated && definition.beforeUpdate) {
+          if (!oldProps) {
+            throw new Error('bQuery component: previous props are required for update renders');
+          }
           const shouldUpdate = definition.beforeUpdate.call(this, this.props, oldProps);
           if (shouldUpdate === false) return;
         }

@@ -265,7 +265,7 @@ component('user-card', {
     console.log('Mounted');
   },
   beforeUpdate(newProps, oldProps) {
-    return newProps.username !== oldProps.username && newProps.username !== '';
+    return newProps.username !== oldProps.username;
   },
   onError(error) {
     console.error('Component error:', error);

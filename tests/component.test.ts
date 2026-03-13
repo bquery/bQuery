@@ -1100,6 +1100,7 @@ describe('component/registerDefaultComponents', () => {
     ) as HTMLInputElement | null;
     expect(inputControlAfterLabelUpdate).not.toBeNull();
     expect(inputControlAfterLabelUpdate).not.toBe(inputControl);
+    expect(input.shadowRoot?.textContent).toContain('Full name');
 
     const textarea = document.createElement(tags.textarea);
     textarea.setAttribute('label', 'Notes');
@@ -1118,6 +1119,7 @@ describe('component/registerDefaultComponents', () => {
     ) as HTMLTextAreaElement | null;
     expect(textareaControlAfterRowsUpdate).not.toBeNull();
     expect(textareaControlAfterRowsUpdate).not.toBe(textareaControl);
+    expect(textareaControlAfterRowsUpdate?.getAttribute('rows')).toBe('6');
 
     input.remove();
     textarea.remove();

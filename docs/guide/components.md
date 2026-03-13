@@ -170,8 +170,9 @@ component('my-element', {
     console.log('Mounted');
   },
   beforeUpdate(newProps, oldProps) {
-    // Prevent update if count is negative
-    if (newProps.count < 0 || newProps.count === oldProps.count) return false;
+    // Prevent update if count is negative, and skip no-op updates
+    if (newProps.count < 0) return false;
+    return newProps.count !== oldProps.count;
   },
   updated() {
     console.log('Updated');
