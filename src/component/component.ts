@@ -237,14 +237,20 @@ export const defineComponent = <TProps extends Record<string, unknown>>(
             'wrap',
           ],
         });
-        const existingStyleElement =
-          definition.styles ? this.shadowRoot.querySelector('style[data-bquery-component-style]') : null;
+        let existingStyleElement: HTMLStyleElement | null = null;
+        if (definition.styles) {
+          existingStyleElement = this.shadowRoot.querySelector<HTMLStyleElement>(
+            'style[data-bquery-component-style]'
+          );
+        }
 
         this.shadowRoot.innerHTML = sanitizedMarkup;
 
         if (definition.styles) {
           const styleElement = existingStyleElement ?? document.createElement('style');
-          styleElement.setAttribute('data-bquery-component-style', '');
+          if (!existingStyleElement) {
+            styleElement.setAttribute('data-bquery-component-style', '');
+          }
           styleElement.textContent = definition.styles;
           this.shadowRoot.prepend(styleElement);
         }
