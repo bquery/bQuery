@@ -438,7 +438,7 @@ describe('component/component', () => {
         count: {
           type: Number,
           default: 0,
-          validator: (value) => value >= 0 && value <= 100,
+          validator: (value) => typeof value === 'number' && value >= 0 && value <= 100,
         },
       },
       onError(error) {
@@ -534,7 +534,7 @@ describe('component/component', () => {
         age: {
           type: Number,
           default: 18, // Valid default to allow initial mount
-          validator: (value) => value >= 18,
+          validator: (value) => typeof value === 'number' && value >= 18,
         },
       },
       onError(error) {
@@ -569,7 +569,7 @@ describe('component/component', () => {
           default: 0,
           validator: (value) => {
             validatorCallCount++;
-            return value <= 50;
+            return typeof value === 'number' && value <= 50;
           },
         },
       },
@@ -663,7 +663,7 @@ describe('component/component', () => {
         email: {
           type: String,
           default: 'default@example.com', // Valid default to allow initial mount
-          validator: (value) => value.includes('@'),
+          validator: (value) => typeof value === 'string' && value.includes('@'),
         },
       },
       onError(error) {
