@@ -123,7 +123,7 @@ export type ComponentRenderContext<
  * @template TProps - Type of the component's props
  * @template TState - Type of the component's internal state
  */
-/**
+/*
  * Lifecycle hooks use dynamic `this` when declared with method/function syntax.
  * Arrow functions capture outer scope, so component APIs like `this.getState()`
  * are only available from method/function syntax.
