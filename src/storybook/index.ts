@@ -9,30 +9,271 @@
 
 import { sanitizeHtml } from '../security/sanitize';
 
-type StoryValue =
-  | string
-  | number
-  | boolean
-  | null
-  | undefined
-  | StoryValue[]
-  | (() => StoryValue);
+type StoryValue = string | number | boolean | null | undefined | StoryValue[] | (() => StoryValue);
 
-const BOOLEAN_ATTRIBUTE_PATTERN = /(\s*)\?([^\s=/>]+)\s*=\s*$/;
-const CUSTOM_ELEMENT_TAG_PATTERN = /<\/?([a-z][a-z0-9._-]*-[a-z0-9._-]*[a-z0-9._])\b/gi;
-const ATTRIBUTE_NAME_PATTERN = /(?:^|[\s<])\??([a-z][a-z0-9:._-]*)\s*=/gi;
+const isWhitespace = (value: string): boolean => {
+  return value === ' ' || value === '\t' || value === '\n' || value === '\r' || value === '\f';
+};
+
+const isAsciiLetter = (value: string): boolean => {
+  const code = value.charCodeAt(0);
+
+  return (code >= 65 && code <= 90) || (code >= 97 && code <= 122);
+};
+
+const isAttributeNameStart = (value: string): boolean => isAsciiLetter(value);
+
+const isAttributeNameChar = (value: string): boolean => {
+  const code = value.charCodeAt(0);
+
+  return (
+    isAsciiLetter(value) ||
+    (code >= 48 && code <= 57) ||
+    value === ':' ||
+    value === '.' ||
+    value === '_' ||
+    value === '-'
+  );
+};
+
+const isTagNameChar = (value: string): boolean => {
+  const code = value.charCodeAt(0);
+
+  return (
+    isAsciiLetter(value) ||
+    (code >= 48 && code <= 57) ||
+    value === '.' ||
+    value === '_' ||
+    value === '-'
+  );
+};
+
+const hasLineBreak = (value: string): boolean => {
+  for (let index = 0; index < value.length; index += 1) {
+    if (value[index] === '\n' || value[index] === '\r') {
+      return true;
+    }
+  }
+
+  return false;
+};
+
+const getTagNameEnd = (fragment: string): number => {
+  let index = 0;
+
+  while (index < fragment.length && !isWhitespace(fragment[index]) && fragment[index] !== '/') {
+    index += 1;
+  }
+
+  return index;
+};
+
+const isCustomElementTagName = (tagName: string): boolean => {
+  if (!tagName.includes('-') || !isAsciiLetter(tagName[0])) {
+    return false;
+  }
+
+  const last = tagName[tagName.length - 1];
+  const code = last.charCodeAt(0);
+
+  return isAsciiLetter(last) || (code >= 48 && code <= 57) || last === '.' || last === '_';
+};
+
+const findBooleanAttributeSuffix = (
+  part: string
+): { attribute: string; basePart: string; spacing: string } | null => {
+  let index = part.length - 1;
+
+  while (index >= 0 && isWhitespace(part[index])) {
+    index -= 1;
+  }
+
+  if (index < 0 || part[index] !== '=') {
+    return null;
+  }
+
+  index -= 1;
+
+  while (index >= 0 && isWhitespace(part[index])) {
+    index -= 1;
+  }
+
+  const attributeEnd = index;
+
+  while (
+    index >= 0 &&
+    !isWhitespace(part[index]) &&
+    part[index] !== '?' &&
+    part[index] !== '=' &&
+    part[index] !== '/' &&
+    part[index] !== '>'
+  ) {
+    index -= 1;
+  }
+
+  const attributeStart = index + 1;
+
+  if (attributeStart > attributeEnd || part[index] !== '?') {
+    return null;
+  }
+
+  const questionMarkIndex = index;
+  let spacingStart = questionMarkIndex;
+
+  while (spacingStart > 0 && isWhitespace(part[spacingStart - 1])) {
+    spacingStart -= 1;
+  }
+
+  return {
+    attribute: part.slice(attributeStart, attributeEnd + 1),
+    basePart: part.slice(0, spacingStart),
+    spacing: part.slice(spacingStart, questionMarkIndex),
+  };
+};
+
+const collectOpeningTagFragments = (template: string): string[] => {
+  const fragments: string[] = [];
+  let index = 0;
+
+  while (index < template.length) {
+    if (template[index] !== '<') {
+      index += 1;
+      continue;
+    }
+
+    const next = template[index + 1];
+
+    if (!next || next === '/' || next === '!' || next === '?') {
+      index += 1;
+      continue;
+    }
+
+    let cursor = index + 1;
+
+    if (!isAsciiLetter(template[cursor])) {
+      index += 1;
+      continue;
+    }
+
+    while (cursor < template.length && isTagNameChar(template[cursor])) {
+      cursor += 1;
+    }
+
+    const tagStart = index + 1;
+    const tagName = template.slice(tagStart, cursor);
+
+    if (!tagName) {
+      index += 1;
+      continue;
+    }
+
+    let inQuote: '"' | "'" | null = null;
+    let tagEnd = cursor;
+
+    while (tagEnd < template.length) {
+      const char = template[tagEnd];
+
+      if (inQuote) {
+        if (char === inQuote) {
+          inQuote = null;
+        }
+
+        tagEnd += 1;
+        continue;
+      }
+
+      if (char === '"' || char === "'") {
+        inQuote = char;
+        tagEnd += 1;
+        continue;
+      }
+
+      if (char === '>') {
+        fragments.push(template.slice(index + 1, tagEnd));
+        tagEnd += 1;
+        break;
+      }
+
+      tagEnd += 1;
+    }
+
+    index = tagEnd;
+  }
+
+  return fragments;
+};
+
+const collectAttributesFromTagFragment = (fragment: string, allowAttributes: Set<string>): void => {
+  let index = 0;
+
+  while (index < fragment.length && !isWhitespace(fragment[index])) {
+    index += 1;
+  }
+
+  while (index < fragment.length) {
+    while (index < fragment.length && isWhitespace(fragment[index])) {
+      index += 1;
+    }
+
+    if (index >= fragment.length || fragment[index] === '/') {
+      return;
+    }
+
+    if (fragment[index] === ':') {
+      index += 1;
+      continue;
+    }
+
+    const hasBooleanPrefix = fragment[index] === '?';
+
+    if (hasBooleanPrefix) {
+      index += 1;
+    }
+
+    if (index >= fragment.length || !isAttributeNameStart(fragment[index])) {
+      index += 1;
+      continue;
+    }
+
+    const nameStart = index;
+
+    index += 1;
+
+    while (index < fragment.length && isAttributeNameChar(fragment[index])) {
+      index += 1;
+    }
+
+    const attributeName = fragment.slice(nameStart, index).toLowerCase();
+
+    while (index < fragment.length && isWhitespace(fragment[index])) {
+      index += 1;
+    }
+
+    if (index < fragment.length && fragment[index] === '=') {
+      allowAttributes.add(attributeName);
+      index += 1;
+      continue;
+    }
+
+    if (hasBooleanPrefix) {
+      allowAttributes.add(attributeName);
+    }
+  }
+};
 
 const collectTemplateSanitizeOptions = (strings: TemplateStringsArray) => {
   const template = strings.join('');
   const allowTags = new Set<string>();
   const allowAttributes = new Set<string>();
 
-  for (const match of template.matchAll(CUSTOM_ELEMENT_TAG_PATTERN)) {
-    allowTags.add(match[1].toLowerCase());
-  }
+  for (const fragment of collectOpeningTagFragments(template)) {
+    const tagName = fragment.slice(0, getTagNameEnd(fragment)).toLowerCase();
 
-  for (const match of template.matchAll(ATTRIBUTE_NAME_PATTERN)) {
-    allowAttributes.add(match[1].replace(/^\?/, '').toLowerCase());
+    if (isCustomElementTagName(tagName)) {
+      allowTags.add(tagName);
+    }
+
+    collectAttributesFromTagFragment(fragment, allowAttributes);
   }
 
   return {
@@ -78,12 +319,11 @@ export const storyHtml = (strings: TemplateStringsArray, ...values: StoryValue[]
       return `${acc}${part}`;
     }
 
-    const booleanAttributeMatch = part.match(BOOLEAN_ATTRIBUTE_PATTERN);
+    const booleanAttributeMatch = findBooleanAttributeSuffix(part);
 
     if (booleanAttributeMatch) {
-      const [, spacing, attribute] = booleanAttributeMatch;
-      const basePart = part.slice(0, part.length - booleanAttributeMatch[0].length);
-      const preservedSpacing = /[\r\n]/.test(spacing) ? spacing : '';
+      const { attribute, basePart, spacing } = booleanAttributeMatch;
+      const preservedSpacing = hasLineBreak(spacing) ? spacing : '';
 
       return `${acc}${basePart}${values[index] ? `${spacing}${attribute}` : preservedSpacing}`;
     }

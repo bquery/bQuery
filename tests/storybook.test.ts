@@ -19,6 +19,17 @@ describe('storybook/storyHtml', () => {
     expect(result).toBe('<bq-button>Save</bq-button>');
   });
 
+  it('preserves multiline spacing when omitting boolean attributes', () => {
+    const result = storyHtml`<bq-button
+      ?disabled=${false}
+      variant="primary"
+    >Save</bq-button>`;
+
+    expect(result).toContain('<bq-button');
+    expect(result).toContain('variant="primary"');
+    expect(result).not.toContain('disabled');
+  });
+
   it('preserves normal boolean interpolation outside attribute shorthand', () => {
     const result = storyHtml`<span>${true} ${false}</span>`;
 
@@ -51,6 +62,16 @@ describe('storybook/storyHtml', () => {
     expect(result).toContain('<bq-button');
     expect(result).toContain('variant="primary"');
     expect(result).toContain('>Save</bq-button>');
+  });
+
+  it('preserves nested custom element tags and authored attributes after sanitization', () => {
+    const result = storyHtml`<bq-card data-state=${'open'}><bq-icon aria-label=${'Info'} data-name=${'hero'}></bq-icon></bq-card>`;
+
+    expect(result).toContain('<bq-card');
+    expect(result).toContain('data-state="open"');
+    expect(result).toContain('<bq-icon');
+    expect(result).toContain('aria-label="Info"');
+    expect(result).toContain('data-name="hero"');
   });
 
   it('sanitizes dangerous interpolated markup', () => {
