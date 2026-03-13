@@ -462,6 +462,49 @@ describe('component/component', () => {
     el.remove();
   });
 
+  it('does not let beforeUpdate block signal-driven renders when props are unchanged', () => {
+    const tagName = `test-signal-before-update-${Date.now()}`;
+    const theme = signal<'light' | 'dark'>('light');
+    let renderCount = 0;
+    let beforeUpdateCount = 0;
+
+    component<{ label: string }, { theme: ComponentSignalLike<'light' | 'dark'> }>(tagName, {
+      props: {
+        label: { type: String, default: 'theme' },
+      },
+      signals: { theme },
+      beforeUpdate(newProps, oldProps) {
+        beforeUpdateCount++;
+        return newProps.label !== oldProps.label;
+      },
+      render: ({ props, signals }) => {
+        renderCount++;
+        return html`<div>${props.label}:${signals.theme.value}</div>`;
+      },
+    });
+
+    const el = document.createElement(tagName);
+    document.body.appendChild(el);
+
+    expect(renderCount).toBe(1);
+    expect(beforeUpdateCount).toBe(0);
+    expect(el.shadowRoot?.textContent).toContain('theme:light');
+
+    theme.value = 'dark';
+
+    expect(renderCount).toBe(2);
+    expect(beforeUpdateCount).toBe(0);
+    expect(el.shadowRoot?.textContent).toContain('theme:dark');
+
+    el.setAttribute('label', 'updated');
+
+    expect(beforeUpdateCount).toBe(1);
+    expect(renderCount).toBe(3);
+    expect(el.shadowRoot?.textContent).toContain('updated:dark');
+
+    el.remove();
+  });
+
   it('supports computed values as component signals', () => {
     const tagName = `test-computed-signal-${Date.now()}`;
     const theme = signal<'light' | 'dark'>('light');

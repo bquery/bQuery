@@ -253,7 +253,7 @@ const createComponentClass = <
               // previous-props snapshot is the current prop set at reconnect time.
               const previousProps = this.cloneProps();
               untrack(() => {
-                this.render(true, previousProps);
+                this.render(true, previousProps, undefined, false);
               });
             }
             return;
@@ -265,7 +265,7 @@ const createComponentClass = <
           // provides the previous-props snapshot expected by beforeUpdate().
           const previousProps = this.cloneProps();
           untrack(() => {
-            this.render(true, previousProps);
+            this.render(true, previousProps, undefined, false);
           });
         } catch (error) {
           this.handleError(error as Error);
@@ -329,9 +329,20 @@ const createComponentClass = <
      */
     private render(): void;
     private render(triggerUpdated: true, oldProps: TProps, change?: AttributeChange): void;
-    private render(triggerUpdated = false, oldProps?: TProps, change?: AttributeChange): void {
+    private render(
+      triggerUpdated: true,
+      oldProps: TProps,
+      change: AttributeChange | undefined,
+      runBeforeUpdate: boolean
+    ): void;
+    private render(
+      triggerUpdated = false,
+      oldProps?: TProps,
+      change?: AttributeChange,
+      runBeforeUpdate = true
+    ): void {
       try {
-        if (triggerUpdated && definition.beforeUpdate) {
+        if (triggerUpdated && runBeforeUpdate && definition.beforeUpdate) {
           if (!oldProps) {
             throw new Error('bQuery component: previous props are required for update renders');
           }
