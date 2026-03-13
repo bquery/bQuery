@@ -49,10 +49,10 @@ describe('component/html', () => {
   });
 
   it('splices trusted sanitized fragments into safeHtml templates without double-escaping', () => {
-    const icon = trusted(sanitizeHtml('<svg onload="alert(1)"><circle /></svg>'));
+    const icon = trusted(sanitizeHtml('<strong onclick="alert(1)">Hi</strong>'));
     const result = safeHtml`<div>${icon}</div>`;
 
-    expect(result).toBe('<div></div>');
+    expect(result).toBe('<div><strong>Hi</strong></div>');
   });
 
   it('can compose trusted safeHtml fragments', () => {

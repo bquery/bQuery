@@ -10,7 +10,7 @@ import type { SanitizeOptions } from './types';
 export { generateNonce } from './csp';
 export { isTrustedTypesSupported } from './trusted-types';
 
-const sanitizedHtmlBrand: unique symbol = Symbol('bquery.sanitized-html');
+const sanitizedHtmlBrand: unique symbol = Symbol('bquery.sanitized-html.brand');
 const trustedHtmlBrand: unique symbol = Symbol('bquery.trusted-html.brand');
 
 /**
@@ -99,7 +99,12 @@ export const trusted = (html: SanitizedHtml): TrustedHtml => {
  * @internal
  */
 export const isTrustedHtml = (value: unknown): value is TrustedHtml => {
-  return typeof value === 'object' && value !== null && TRUSTED_HTML_VALUE in value;
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    trustedHtmlBrand in value &&
+    TRUSTED_HTML_VALUE in value
+  );
 };
 
 /**

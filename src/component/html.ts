@@ -51,5 +51,8 @@ export const safeHtml = (
     return escapeHtml(String(value));
   };
 
-  return strings.reduce((acc, part, index) => `${acc}${part}${escape(values[index])}`, '') as SanitizedHtml;
+  return strings.reduce(
+    (acc, part, index) => `${acc}${part}${index < values.length ? escape(values[index]) : ''}`,
+    ''
+  ) as SanitizedHtml;
 };
