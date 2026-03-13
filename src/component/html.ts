@@ -1,3 +1,9 @@
+import {
+  isTrustedHtml,
+  type SanitizedHtml,
+  toSanitizedHtml,
+  unwrapTrustedHtml,
+} from '../security/trusted-html';
 const BOOLEAN_ATTRIBUTE_MARKER: unique symbol = Symbol('bquery.booleanAttribute');
 const BOOLEAN_ATTRIBUTE_NAME = /^[^\0-\x20"'/>=]+$/;
 
@@ -129,6 +135,19 @@ export const html = (strings: TemplateStringsArray, ...values: unknown[]): strin
  * // Result: '<div>&lt;script&gt;alert(&quot;xss&quot;)&lt;/script&gt;</div>'
  * ```
  */
-export const safeHtml = (strings: TemplateStringsArray, ...values: unknown[]): string => {
-  return strings.reduce((acc, part, index) => `${acc}${part}${escapeTemplateValue(values[index])}`, '');
+export const safeHtml = (
+  strings: TemplateStringsArray,
+  ...values: unknown[]
+): SanitizedHtml => {
+  const escape = (value: unknown): string => {
+    if (isTrustedHtml(value)) return unwrapTrustedHtml(value);
+    return escapeTemplateValue(value);
+  };
+
+  return toSanitizedHtml(
+    strings.reduce(
+      (acc, part, index) => `${acc}${part}${index < values.length ? escape(values[index]) : ''}`,
+      ''
+    )
+  );
 };

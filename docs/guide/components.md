@@ -4,7 +4,7 @@ Components are lightweight Web Components with typed props, optional state, and 
 Internally, the component module is now split into focused submodules (types, props coercion, render helpers), with no breaking API changes.
 
 ```ts
-import { bool, component, safeHtml } from '@bquery/bquery/component';
+import { component, safeHtml } from '@bquery/bquery/component';
 import { sanitizeHtml, trusted } from '@bquery/bquery/security';
 
 const activeBadge = trusted(sanitizeHtml('<em>Active</em>'));
@@ -28,12 +28,12 @@ component('user-card', {
   },
   render({ props, state }) {
     return safeHtml`
-      <button class="card ${props.active ? 'active' : ''}" ${bool('disabled', !props.active)}>
+      <div class="card ${props.active ? 'active' : ''}">
         <img src="${props.avatar}" alt="${props.username}" />
         <strong>${props.username}</strong>
         ${props.active ? activeBadge : ''}
-        <span>Clicks: ${state.clicks}</span>
-      </button>
+        <div>Clicks: ${state.clicks}</div>
+      </div>
     `;
   },
 });
