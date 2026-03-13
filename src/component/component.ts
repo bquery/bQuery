@@ -18,13 +18,16 @@ import type { ComponentDefinition, PropDefinition } from './types';
  * @param tagName - The custom element tag name (used for diagnostics)
  * @param definition - The component configuration
  */
-export const defineComponent = <TProps extends Record<string, unknown>>(
+export const defineComponent = <
+  TProps extends Record<string, unknown>,
+  TState extends Record<string, unknown> = Record<string, unknown>,
+>(
   tagName: string,
-  definition: ComponentDefinition<TProps>
+  definition: ComponentDefinition<TProps, TState>
 ): typeof HTMLElement => {
   class BQueryComponent extends HTMLElement {
     /** Internal state object for the component */
-    private readonly state = { ...(definition.state ?? {}) };
+    private readonly state: TState = { ...(definition.state ?? {}) } as TState;
     /** Typed props object populated from attributes */
     private props = {} as TProps;
     /** Tracks missing required props for validation during connectedCallback */
@@ -130,7 +133,7 @@ export const defineComponent = <TProps extends Record<string, unknown>>(
      * @param value - The new value
      */
     setState(key: string, value: unknown): void {
-      this.state[key] = value;
+      (this.state as Record<string, unknown>)[key] = value;
       this.render(true);
     }
 
@@ -141,7 +144,7 @@ export const defineComponent = <TProps extends Record<string, unknown>>(
      * @returns The current value
      */
     getState<T = unknown>(key: string): T {
-      return this.state[key] as T;
+      return (this.state as Record<string, unknown>)[key] as T;
     }
 
     /**
@@ -307,9 +310,12 @@ export const defineComponent = <TProps extends Record<string, unknown>>(
  * });
  * ```
  */
-export const component = <TProps extends Record<string, unknown>>(
+export const component = <
+  TProps extends Record<string, unknown>,
+  TState extends Record<string, unknown> = Record<string, unknown>,
+>(
   tagName: string,
-  definition: ComponentDefinition<TProps>
+  definition: ComponentDefinition<TProps, TState>
 ): void => {
   const elementClass = defineComponent(tagName, definition);
 

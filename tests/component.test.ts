@@ -5,6 +5,9 @@ import {
   html,
   registerDefaultComponents,
 } from '../src/component/index';
+import type { ComponentDefinition, ComponentRenderContext } from '../src/component/index';
+
+const assertType = <T>(_value: T): void => {};
 
 describe('component/html', () => {
   it('creates HTML from template literal', () => {
@@ -98,6 +101,52 @@ describe('component/component', () => {
     const rendered = el.shadowRoot?.innerHTML ?? '';
 
     expect(rendered).toContain('number:3|true|admin');
+
+    el.remove();
+  });
+
+  it('preserves typed state generics in component definitions', () => {
+    type Props = { label: string };
+    type State = { count: number; ready: boolean };
+
+    const definition: ComponentDefinition<Props, State> = {
+      props: {
+        label: { type: String, required: true },
+      },
+      state: {
+        count: 0,
+        ready: false,
+      },
+      render({ props, state }) {
+        assertType<string>(props.label);
+        assertType<number>(state.count);
+        assertType<boolean>(state.ready);
+        // @ts-expect-error state.count should remain a number
+        assertType<string>(state.count);
+
+        return html`<div>${props.label}:${state.count}:${state.ready}</div>`;
+      },
+    };
+
+    const tagName = `test-typed-state-${Date.now()}`;
+    component<Props, State>(tagName, definition);
+
+    const renderContext: ComponentRenderContext<Props, State> = {
+      props: { label: 'Counter' },
+      state: { count: 1, ready: true },
+      emit: () => {},
+    };
+
+    assertType<number>(renderContext.state.count);
+    assertType<boolean>(renderContext.state.ready);
+    // @ts-expect-error typed state should not widen to string fields
+    assertType<string>(renderContext.state.ready);
+
+    const el = document.createElement(tagName);
+    el.setAttribute('label', 'Counter');
+    document.body.appendChild(el);
+
+    expect(el.shadowRoot?.textContent).toContain('Counter:0:false');
 
     el.remove();
   });

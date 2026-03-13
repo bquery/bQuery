@@ -45,12 +45,18 @@ export type PropDefinition<T = unknown> = {
 
 /**
  * Render context passed into a component render function.
+ *
+ * @template TProps - Type of the component's props
+ * @template TState - Type of the component's internal state
  */
-export type ComponentRenderContext<TProps extends Record<string, unknown>> = {
+export type ComponentRenderContext<
+  TProps extends Record<string, unknown>,
+  TState extends Record<string, unknown> = Record<string, unknown>,
+> = {
   /** Typed props object populated from attributes */
   props: TProps;
   /** Internal mutable state object */
-  state: Record<string, unknown>;
+  state: TState;
   /** Emit a custom event from the component */
   emit: (event: string, detail?: unknown) => void;
 };
@@ -59,6 +65,7 @@ export type ComponentRenderContext<TProps extends Record<string, unknown>> = {
  * Complete component definition including props, state, styles, and lifecycle.
  *
  * @template TProps - Type of the component's props
+ * @template TState - Type of the component's internal state
  */
 type ComponentHook<TResult = void> = ((this: HTMLElement) => TResult) | (() => TResult);
 type ComponentHookWithProps<TProps extends Record<string, unknown>, TResult = void> =
@@ -66,12 +73,14 @@ type ComponentHookWithProps<TProps extends Record<string, unknown>, TResult = vo
   | ((props: TProps) => TResult);
 type ComponentErrorHook = ((this: HTMLElement, error: Error) => void) | ((error: Error) => void);
 
-export type ComponentDefinition<TProps extends Record<string, unknown> = Record<string, unknown>> =
-  {
+export type ComponentDefinition<
+  TProps extends Record<string, unknown> = Record<string, unknown>,
+  TState extends Record<string, unknown> = Record<string, unknown>,
+> = {
     /** Prop definitions with types and defaults */
     props?: Record<keyof TProps, PropDefinition>;
     /** Initial internal state */
-    state?: Record<string, unknown>;
+    state?: TState;
     /** CSS styles scoped to the component's shadow DOM */
     styles?: string;
     /** Lifecycle hook called before the component mounts (before first render) */
@@ -87,5 +96,5 @@ export type ComponentDefinition<TProps extends Record<string, unknown> = Record<
     /** Error handler for errors during rendering or lifecycle */
     onError?: ComponentErrorHook;
     /** Render function returning HTML string */
-    render: (context: ComponentRenderContext<TProps>) => string;
+    render: (context: ComponentRenderContext<TProps, TState>) => string;
   };
