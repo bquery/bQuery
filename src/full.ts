@@ -77,9 +77,13 @@ export type {
 // ============================================================================
 // Component Module: Web Components helper with Shadow DOM
 // ============================================================================
-export { component, html, registerDefaultComponents, safeHtml } from './component/index';
+export { bool, component, html, registerDefaultComponents, safeHtml } from './component/index';
 export type {
+  AttributeChange,
   ComponentDefinition,
+  ComponentRenderContext,
+  ComponentSignalLike,
+  ComponentSignals,
   DefaultComponentLibraryOptions,
   PropDefinition,
   RegisteredDefaultComponents,
