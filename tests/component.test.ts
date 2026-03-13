@@ -7,13 +7,7 @@ import {
   registerDefaultComponents,
   safeHtml,
 } from '../src/component/index';
-import { sanitizeHtml, trusted } from '../src/security/sanitize';
-import { computed, signal } from '../src/reactive/index';
-import type {
-  ComponentDefinition,
-  ComponentRenderContext,
-  ComponentSignalLike,
-} from '../src/component/index';
+import type { ComponentDefinition, ComponentRenderContext } from '../src/component/index';
 
 const expectType = <T>(_value: T): void => {};
 
@@ -172,7 +166,6 @@ describe('component/component', () => {
     const renderContext: ComponentRenderContext<Props, State> = {
       props: { label: 'Counter' },
       state: { count: 1, ready: true },
-      signals: {},
       emit: () => {},
     };
 
@@ -200,19 +193,6 @@ describe('component/component', () => {
         label: { type: String, required: true },
       },
       render: ({ props, state }) => html`<div>${props.label}:${state.count}</div>`,
-    };
-
-    expect(invalidDefinition).toBeDefined();
-  });
-
-  it('requires runtime signals when an explicit signal generic is used', () => {
-    type Props = Record<string, never>;
-    type ThemeSignals = { theme: ComponentSignalLike<'light' | 'dark'> };
-
-    // @ts-expect-error explicit signal generics require a matching runtime signals object
-    const invalidDefinition: ComponentDefinition<Props, undefined, ThemeSignals> = {
-      props: {},
-      render: ({ signals }) => html`<div>${signals.theme.value}</div>`,
     };
 
     expect(invalidDefinition).toBeDefined();
@@ -1271,13 +1251,8 @@ describe('component/defineComponent', () => {
       // @ts-expect-error ready expects a boolean
       element.setState('ready', 'true');
     };
-    const assertNumericStateKeyIsRejected = (element: InstanceType<typeof ElementClass>): void => {
-      // @ts-expect-error state keys must be strings
-      element.getState(0);
-    };
     void assertInvalidConnectedSetState;
     void assertInvalidInstanceSetState;
-    void assertNumericStateKeyIsRejected;
 
     expect(instance.shadowRoot?.textContent).toContain('2:false');
     instance.remove();

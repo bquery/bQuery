@@ -80,7 +80,7 @@ if (typeof globalThis.crypto === 'undefined') {
 const boundGetComputedStyle = window.getComputedStyle.bind(window) as unknown as typeof getComputedStyle;
 (globalThis as unknown as { getComputedStyle: typeof getComputedStyle }).getComputedStyle =
   (element: Element, pseudoElt?: string | null): CSSStyleDeclaration =>
-    boundGetComputedStyle(element, pseudoElt);
+    (window.getComputedStyle as unknown as typeof getComputedStyle)(element, pseudoElt);
 
 // Mock localStorage for store persistence tests
 if (typeof globalThis.localStorage === 'undefined') {
