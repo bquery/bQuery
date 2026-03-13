@@ -160,6 +160,10 @@ export const defineComponent = <
 
     /**
      * Subscribes to declared reactive sources and re-renders on change.
+     *
+     * @param renderOnInitialRun - When true, immediately re-renders after
+     * re-subscribing so detached components resync with any signal changes
+     * that happened while they were disconnected.
      * @internal
      */
     private setupSignalSubscriptions(renderOnInitialRun = false): void {
@@ -168,7 +172,8 @@ export const defineComponent = <
       let isInitialRun = true;
       this.signalEffectCleanup = effect(() => {
         for (const source of Object.values(definition.signals ?? {})) {
-          source.value;
+          // Intentionally read each source to register this effect as a subscriber.
+          void source.value;
         }
 
         if (isInitialRun) {
