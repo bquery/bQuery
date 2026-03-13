@@ -1,6 +1,20 @@
 const BOOLEAN_ATTRIBUTE_MARKER: unique symbol = Symbol('bquery.booleanAttribute');
 const BOOLEAN_ATTRIBUTE_NAME = /^[^\0-\x20"'/>=]+$/;
 
+/**
+ * Public shape of a boolean HTML attribute created by {@link bool}.
+ *
+ * This type is returned from {@link bool} and can be interpolated into
+ * {@link html} / {@link safeHtml} templates to conditionally include or omit
+ * an attribute by name. The internal marker property used for runtime checks
+ * remains private and is not part of the public API.
+ *
+ * @example
+ * ```ts
+ * const disabled = bool('disabled', isDisabled);
+ * const button = html`<button ${disabled}>Click</button>`;
+ * ```
+ */
 export interface BooleanAttribute {
   readonly enabled: boolean;
   readonly name: string;
