@@ -84,10 +84,12 @@ export type ComponentElement<
 /**
  * Constructor returned by `defineComponent()`.
  */
-export type ComponentClass<TState extends Record<string, unknown> | undefined = undefined> = {
-  new (): ComponentElement<TState>;
-  readonly observedAttributes: string[];
-};
+export type ComponentClass<TState extends Record<string, unknown> | undefined = undefined> =
+  CustomElementConstructor & {
+    new (): ComponentElement<TState>;
+    prototype: ComponentElement<TState>;
+    readonly observedAttributes: string[];
+  };
 
 /**
  * Render context passed into a component render function.
