@@ -16,6 +16,53 @@ import type {
   PropDefinition,
 } from './types';
 
+/**
+ * Base extra tags preserved for component shadow DOM renders in addition to the
+ * global sanitizer defaults. `slot` must remain allowed here because shadow DOM
+ * content projection depends on authored `<slot>` elements in component render
+ * output.
+ */
+const COMPONENT_ALLOWED_TAGS = ['slot'];
+
+/**
+ * Base extra attributes preserved for component shadow DOM renders in addition
+ * to the global sanitizer defaults.
+ */
+const COMPONENT_ALLOWED_ATTRIBUTES = [
+  'part',
+  // Standard form attributes required by interactive shadow DOM content
+  'disabled',
+  'checked',
+  'placeholder',
+  'value',
+  'rows',
+  'cols',
+  'readonly',
+  'required',
+  'maxlength',
+  'minlength',
+  'max',
+  'min',
+  'step',
+  'pattern',
+  'autocomplete',
+  'autofocus',
+  'for',
+  'multiple',
+  'selected',
+  'wrap',
+];
+
+/**
+ * Creates a custom element class for a component definition.
+ *
+ * This is useful when you want to extend or register the class manually
+ * (e.g. with different tag names in tests or custom registries).
+ *
+ * @template TProps - Type of the component's props
+ * @param tagName - The custom element tag name (used for diagnostics)
+ * @param definition - The component configuration
+ */
 const createComponentClass = <
   TProps extends Record<string, unknown>,
   TState extends Record<string, unknown> | undefined = undefined,
@@ -23,6 +70,12 @@ const createComponentClass = <
   tagName: string,
   definition: ComponentDefinition<TProps, TState>
 ): ComponentClass<TState> => {
+  const componentAllowedTags = [...COMPONENT_ALLOWED_TAGS, ...(definition.sanitize?.allowTags ?? [])];
+  const componentAllowedAttributes = [
+    ...COMPONENT_ALLOWED_ATTRIBUTES,
+    ...(definition.sanitize?.allowAttributes ?? []),
+  ];
+
   class BQueryComponent extends HTMLElement {
     /** Internal state object for the component */
     private readonly state: ComponentStateShape<TState> = {

@@ -142,6 +142,7 @@ export type AttributeChange = {
  * Arrow functions capture outer scope, so component APIs like `this.getState()`
  * are only available from method/function syntax.
  */
+type ComponentSanitizeOptions = Pick<SanitizeOptions, 'allowTags' | 'allowAttributes'>;
 type ComponentHook<
   TState extends Record<string, unknown> | undefined = undefined,
   TResult = void,
