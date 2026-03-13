@@ -200,6 +200,18 @@ describe('component/component', () => {
     expect(invalidDefinition).toBeDefined();
   });
 
+  it('requires runtime signals when an explicit signal generic is used', () => {
+    const theme = signal<'light' | 'dark'>('light');
+
+    // @ts-expect-error explicit signal generics require a matching runtime signals object
+    const invalidDefinition: ComponentDefinition<{}, undefined, { theme: typeof theme }> = {
+      props: {},
+      render: ({ signals }) => html`<div>${signals.theme.value}</div>`,
+    };
+
+    expect(invalidDefinition).toBeDefined();
+  });
+
   it('keeps inferred state untyped when TState is not explicit', () => {
     const tagName = `test-untyped-inferred-state-${Date.now()}`;
 
@@ -504,6 +516,34 @@ describe('component/component', () => {
     document.body.appendChild(el);
     expect(renderCount).toBe(renderCountBeforeRemove + 1);
     expect(el.shadowRoot?.textContent).toContain('declared-3:undeclared-2');
+  });
+
+  it('skips signal effect setup when the signals map is empty', () => {
+    const tagName = `test-empty-signals-${Date.now()}`;
+    let renderCount = 0;
+
+    component(tagName, {
+      props: {},
+      signals: {},
+      render: () => {
+        renderCount++;
+        return html`<div>Static</div>`;
+      },
+    });
+
+    const el = document.createElement(tagName);
+    document.body.appendChild(el);
+
+    expect(renderCount).toBe(1);
+    expect(el.shadowRoot?.textContent).toContain('Static');
+
+    el.remove();
+    document.body.appendChild(el);
+
+    expect(renderCount).toBe(1);
+    expect(el.shadowRoot?.textContent).toContain('Static');
+
+    el.remove();
   });
 
   it('restores signal subscriptions after reconnecting with missing required props', () => {

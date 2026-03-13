@@ -199,15 +199,25 @@ type ComponentStateDefinition<TState extends Record<string, unknown> | undefined
         state?: Record<string, unknown>;
       };
 
+type ComponentSignalsDefinition<TSignals extends ComponentSignals = Record<string, never>> =
+  TSignals extends Record<string, never>
+    ? {
+        /** External signals/computed values that should trigger re-renders */
+        signals?: TSignals;
+      }
+    : {
+        /** External signals/computed values that should trigger re-renders */
+        signals: TSignals;
+      };
+
 export type ComponentDefinition<
   TProps extends Record<string, unknown> = Record<string, unknown>,
   TState extends Record<string, unknown> | undefined = undefined,
   TSignals extends ComponentSignals = Record<string, never>,
-> = ComponentStateDefinition<TState> & {
+> = ComponentStateDefinition<TState> &
+  ComponentSignalsDefinition<TSignals> & {
     /** Prop definitions with types and defaults */
     props?: Record<keyof TProps, PropDefinition>;
-    /** External signals/computed values that should trigger re-renders */
-    signals?: TSignals;
     /** CSS styles scoped to the component's shadow DOM */
     styles?: string;
     /**

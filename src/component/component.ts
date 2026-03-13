@@ -12,6 +12,7 @@ import type {
   AttributeChange,
   ComponentClass,
   ComponentDefinition,
+  ComponentSignalLike,
   ComponentSignals,
   ComponentStateShape,
   PropDefinition,
@@ -77,6 +78,7 @@ const createComponentClass = <
     ...COMPONENT_ALLOWED_ATTRIBUTES,
     ...(definition.sanitize?.allowAttributes ?? []),
   ];
+  const signalSources = Object.values(definition.signals ?? {}) as ComponentSignalLike<unknown>[];
 
   class BQueryComponent extends HTMLElement {
     /** Internal state object for the component */
@@ -229,11 +231,11 @@ const createComponentClass = <
      * @internal
      */
     private setupSignalSubscriptions(renderOnInitialRun = false): void {
-      if (this.signalEffectCleanup || !definition.signals) return;
+      if (this.signalEffectCleanup || signalSources.length === 0) return;
 
       let isInitialRun = true;
       this.signalEffectCleanup = effect(() => {
-        for (const source of Object.values(definition.signals ?? {})) {
+        for (const source of signalSources) {
           // Intentionally read each source to register this effect as a subscriber.
           void source.value;
         }
