@@ -150,11 +150,12 @@ const createComponentClass = <
       newValue: string | null
     ): void {
       try {
+        const previousProps = this.cloneProps();
         this.syncProps();
 
         if (this.hasMounted) {
           // Component already mounted - trigger update render
-          this.render(true, { name, oldValue, newValue });
+          this.render(true, previousProps, { name, oldValue, newValue });
         } else if (this.isConnected && this.missingRequiredProps.size === 0) {
           // All required props are now satisfied and element is connected
           // Trigger the deferred initial mount
@@ -188,7 +189,7 @@ const createComponentClass = <
       value: ComponentStateShape<TState>[TKey]
     ): void {
       this.state[key] = value;
-      this.render(true);
+      this.render(true, this.cloneProps());
     }
 
     /**
@@ -245,13 +246,29 @@ const createComponentClass = <
     }
 
     /**
+     * Creates a shallow snapshot of the current props for lifecycle diffing.
+     * A shallow copy is sufficient because component props are re-derived from
+     * reflected attributes on each update, so nested object mutation is not
+     * tracked as part of this lifecycle diff.
+     * @internal
+     */
+    private cloneProps(): TProps {
+      return { ...(this.props as Record<string, unknown>) } as TProps;
+    }
+
+    /**
      * Renders the component to its shadow root.
      * @internal
      */
-    private render(triggerUpdated = false, change?: AttributeChange): void {
+    private render(): void;
+    private render(triggerUpdated: true, oldProps: TProps, change?: AttributeChange): void;
+    private render(triggerUpdated = false, oldProps?: TProps, change?: AttributeChange): void {
       try {
         if (triggerUpdated && definition.beforeUpdate) {
-          const shouldUpdate = definition.beforeUpdate.call(this, this.props);
+          if (!oldProps) {
+            throw new Error('bQuery component: previous props are required for update renders');
+          }
+          const shouldUpdate = definition.beforeUpdate.call(this, this.props, oldProps);
           if (shouldUpdate === false) return;
         }
 

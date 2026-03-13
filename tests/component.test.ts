@@ -282,17 +282,17 @@ describe('component/component', () => {
     el.remove();
   });
 
-  it('calls beforeUpdate before re-renders and receives props', () => {
+  it('calls beforeUpdate before re-renders and receives new and previous props', () => {
     const tagName = `test-before-update-${Date.now()}`;
-    const receivedProps: unknown[] = [];
+    const receivedProps: Array<{ newProps: { count: number }; oldProps: { count: number } }> = [];
     let renderCount = 0;
 
     component<{ count: number }>(tagName, {
       props: {
         count: { type: Number, default: 0 },
       },
-      beforeUpdate(props) {
-        receivedProps.push({ ...props });
+      beforeUpdate(newProps, oldProps) {
+        receivedProps.push({ newProps: { ...newProps }, oldProps: { ...oldProps } });
         return true; // allow update
       },
       render: ({ props }) => {
@@ -312,7 +312,10 @@ describe('component/component', () => {
 
     expect(renderCount).toBe(2);
     expect(receivedProps).toHaveLength(1);
-    expect(receivedProps[0]).toEqual({ count: 10 });
+    expect(receivedProps[0]).toEqual({
+      newProps: { count: 10 },
+      oldProps: { count: 0 },
+    });
 
     el.remove();
   });
@@ -1330,6 +1333,50 @@ describe('component/registerDefaultComponents', () => {
     expect(textareaControlAfterUpdate).toBe(textareaControl);
     expect(textarea.getAttribute('value')).toBe('Updated notes');
     expect(textareaControlAfterUpdate?.value).toBe('Updated notes');
+
+    input.remove();
+    textarea.remove();
+  });
+
+  it('re-renders input and textarea controls when non-value props change', () => {
+    const prefix = `rerender${Date.now()}`;
+    const tags = registerDefaultComponents({ prefix });
+
+    const input = document.createElement(tags.input);
+    input.setAttribute('label', 'Name');
+    document.body.appendChild(input);
+
+    const inputControl = input.shadowRoot?.querySelector('input') as HTMLInputElement | null;
+    expect(inputControl).not.toBeNull();
+    if (!inputControl) throw new Error('Expected input control to exist');
+
+    input.setAttribute('label', 'Full name');
+
+    const inputControlAfterLabelUpdate = input.shadowRoot?.querySelector(
+      'input'
+    ) as HTMLInputElement | null;
+    expect(inputControlAfterLabelUpdate).not.toBeNull();
+    expect(inputControlAfterLabelUpdate).not.toBe(inputControl);
+    expect(input.shadowRoot?.textContent).toContain('Full name');
+
+    const textarea = document.createElement(tags.textarea);
+    textarea.setAttribute('label', 'Notes');
+    document.body.appendChild(textarea);
+
+    const textareaControl = textarea.shadowRoot?.querySelector(
+      'textarea'
+    ) as HTMLTextAreaElement | null;
+    expect(textareaControl).not.toBeNull();
+    if (!textareaControl) throw new Error('Expected textarea control to exist');
+
+    textarea.setAttribute('rows', '6');
+
+    const textareaControlAfterRowsUpdate = textarea.shadowRoot?.querySelector(
+      'textarea'
+    ) as HTMLTextAreaElement | null;
+    expect(textareaControlAfterRowsUpdate).not.toBeNull();
+    expect(textareaControlAfterRowsUpdate).not.toBe(textareaControl);
+    expect(textareaControlAfterRowsUpdate?.getAttribute('rows')).toBe('6');
 
     input.remove();
     textarea.remove();
