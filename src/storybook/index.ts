@@ -234,14 +234,16 @@ const collectOpeningTagFragments = (template: string): string[] => {
  * Consumes a literal HTML attribute value starting at the given index.
  *
  * Returns the position immediately after a quoted or unquoted value. When the
- * current position only contains template-gap whitespace before the next
- * attribute, the original index is returned so interpolated attributes do not
- * swallow following authored attributes during sanitizer allowlist inference.
+ * current position reaches an interpolation boundary (optionally after
+ * whitespace), the returned index advances past the boundary marker so
+ * interpolated attributes do not swallow following authored attributes during
+ * sanitizer allowlist inference.
  *
  * @param fragment - The opening-tag fragment currently being scanned
  * @param index - The position immediately after the `=` sign
- * @returns The index after the consumed literal value, or the original index
- * when no literal value should be consumed from the template fragment.
+ * @returns The index after the consumed literal value, or just past an
+ * interpolation boundary when no literal value should be consumed from the
+ * current template fragment.
  */
 const skipAttributeValue = (fragment: string, index: number): number => {
   if (index >= fragment.length) {
