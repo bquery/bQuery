@@ -135,6 +135,8 @@ const escaped = escapeHtml('<b>bold</b>');
 
 When you need to reuse sanitized markup inside `safeHtml`, wrap the sanitized string with `trusted()` so the fragment is inserted verbatim instead of being escaped again.
 
+This is especially useful for component templates and Storybook stories where some fragments are framework-authored and already sanitized, while normal user data should still be escaped on interpolation.
+
 ```ts
 import { safeHtml } from '@bquery/bquery/component';
 import { sanitizeHtml, trusted } from '@bquery/bquery/security';

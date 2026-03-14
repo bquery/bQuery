@@ -4,7 +4,7 @@ Components are lightweight Web Components with typed props, optional state, and 
 Internally, the component module is now split into focused submodules (types, props coercion, render helpers), with no breaking API changes.
 
 ```ts
-import { component, safeHtml } from '@bquery/bquery/component';
+import { bool, component, safeHtml } from '@bquery/bquery/component';
 import { sanitizeHtml, trusted } from '@bquery/bquery/security';
 
 const activeBadge = trusted(sanitizeHtml('<em>Active</em>'));
@@ -28,12 +28,12 @@ component('user-card', {
   },
   render({ props, state }) {
     return safeHtml`
-      <div class="card ${props.active ? 'active' : ''}">
+      <button class="card ${props.active ? 'active' : ''}" ${bool('disabled', !props.active)}>
         <img src="${props.avatar}" alt="${props.username}" />
         <strong>${props.username}</strong>
         ${props.active ? activeBadge : ''}
-        <div>Clicks: ${state.clicks}</div>
-      </div>
+        <span>Clicks: ${state.clicks}</span>
+      </button>
     `;
   },
 });
@@ -207,7 +207,7 @@ Only declared signals trigger re-renders, which keeps component updates predicta
 - `beforeMount()` – runs before the element renders (can modify initial state)
 - `connected()` – runs when the element mounts
 - `beforeUpdate(newProps, oldProps)` – runs before re-render; return `false` to prevent update
-- `updated()` – runs after re-render on prop changes
+- `updated(change?)` – runs after re-render; receives attribute-change metadata for prop-driven updates and `undefined` for state/signal updates
 - `disconnected()` – runs on teardown
 - `onError(error)` – handles errors during lifecycle/render
 
