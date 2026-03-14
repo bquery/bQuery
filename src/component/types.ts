@@ -68,7 +68,7 @@ export type ComponentElement<
    * @param key - The state property key
    * @param value - The new value
    */
-  setState<TKey extends keyof ComponentStateShape<TState>>(
+  setState<TKey extends keyof ComponentStateShape<TState> & string>(
     key: TKey,
     value: ComponentStateShape<TState>[TKey]
   ): void;
@@ -78,7 +78,7 @@ export type ComponentElement<
    * @param key - The state property key
    * @returns The current value
    */
-  getState<TKey extends keyof ComponentStateShape<TState>>(
+  getState<TKey extends keyof ComponentStateShape<TState> & string>(
     key: TKey
   ): ComponentStateShape<TState>[TKey];
   /**
