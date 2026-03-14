@@ -56,7 +56,7 @@ export const mapGetters = <G extends Record<string, unknown>, K extends keyof G>
  * @returns Object with mapped actions
  */
 export const mapActions = <
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- actions may declare specific parameter types
   A extends Record<string, (...args: any[]) => any>,
   K extends keyof A,
 >(

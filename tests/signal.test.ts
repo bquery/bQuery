@@ -13,6 +13,7 @@ const asMockFetch = (
   handler: (...args: Parameters<typeof fetch>) => ReturnType<typeof fetch>
 ): typeof fetch =>
   Object.assign(handler, {
+    // Bun augments fetch with a preconnect helper; tests only need the call signature.
     preconnect: (_url: string | URL, _options?: { dns?: boolean; tcp?: boolean; tls?: boolean }) =>
       undefined,
   }) as typeof fetch;

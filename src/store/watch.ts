@@ -26,7 +26,7 @@ export type WatchStoreOptions<T> = {
 export const watchStore = <
   S extends Record<string, unknown>,
   G extends Record<string, unknown>,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- actions may declare specific parameter types
   A extends Record<string, (...args: any[]) => any>,
   T,
 >(

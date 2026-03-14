@@ -15,7 +15,7 @@ import type { Store, StoreDefinition } from './types';
 export const createPersistedStore = <
   S extends Record<string, unknown>,
   G extends Record<string, unknown> = Record<string, never>,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- actions may declare specific parameter types
   A extends Record<string, (...args: any[]) => any> = Record<string, never>,
 >(
   definition: StoreDefinition<S, G, A>,
