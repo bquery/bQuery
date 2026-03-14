@@ -11,8 +11,24 @@ import { sanitizeHtml } from '../security/sanitize';
 
 type StoryValue = string | number | boolean | null | undefined | StoryValue[] | (() => StoryValue);
 
+/**
+ * Marks template interpolation boundaries while inferring sanitizer allowlists.
+ * Uses the null character because authored HTML/template strings should not
+ * contain it, making it a safe internal sentinel during parsing.
+ */
+const INTERPOLATION_BOUNDARY_MARKER = '\u0000';
+
 const isWhitespace = (value: string): boolean => {
   return value === ' ' || value === '\t' || value === '\n' || value === '\r' || value === '\f';
+};
+
+/**
+ * Detects interpolation boundaries embedded into joined template string fragments.
+ */
+const isInterpolationBoundaryMarker = (value: string): boolean => value === INTERPOLATION_BOUNDARY_MARKER;
+
+const isAttributeSeparator = (value: string): boolean => {
+  return isWhitespace(value) || isInterpolationBoundaryMarker(value);
 };
 
 const isAsciiLetter = (value: string): boolean => {
@@ -65,7 +81,7 @@ const getTagNameEnd = (fragment: string): number => {
 
   while (
     index < fragment.length &&
-    !isWhitespace(fragment[index]) &&
+    !isAttributeSeparator(fragment[index]) &&
     fragment[index] !== '/' &&
     fragment[index] !== '>'
   ) {
@@ -225,57 +241,61 @@ const collectOpeningTagFragments = (template: string): string[] => {
  * @param fragment - The opening-tag fragment currently being scanned
  * @param index - The position immediately after the `=` sign
  * @returns The index after the consumed literal value, or the original index
- * when no literal value should be consumed from the template fragment
+ * when no literal value should be consumed from the template fragment.
  */
 const skipAttributeValue = (fragment: string, index: number): number => {
   if (index >= fragment.length) {
     return index;
   }
 
-  let whitespaceIndex = index;
+  let cursor = index;
 
-  while (whitespaceIndex < fragment.length && isWhitespace(fragment[whitespaceIndex])) {
-    whitespaceIndex += 1;
+  if (isInterpolationBoundaryMarker(fragment[cursor])) {
+    return cursor + 1;
   }
 
-  if (whitespaceIndex !== index) {
-    if (whitespaceIndex >= fragment.length || !isQuoteChar(fragment[whitespaceIndex])) {
-      return index;
-    }
-
-    index = whitespaceIndex;
+  while (cursor < fragment.length && isWhitespace(fragment[cursor])) {
+    cursor += 1;
   }
 
-  if (index >= fragment.length) {
-    return index;
+  if (cursor >= fragment.length) {
+    return cursor;
   }
 
-  const quote = fragment[index];
+  if (isInterpolationBoundaryMarker(fragment[cursor])) {
+    return cursor + 1;
+  }
+
+  const quote = fragment[cursor];
 
   if (isQuoteChar(quote)) {
-    index += 1;
+    cursor += 1;
 
-    while (index < fragment.length) {
-      if (fragment[index] === quote) {
-        return index + 1;
+    while (cursor < fragment.length) {
+      if (fragment[cursor] === quote) {
+        return cursor + 1;
       }
 
-      index += 1;
+      cursor += 1;
     }
 
-    return index;
+    return cursor;
   }
 
   while (
-    index < fragment.length &&
-    !isWhitespace(fragment[index]) &&
-    fragment[index] !== '/' &&
-    fragment[index] !== '>'
+    cursor < fragment.length &&
+    !isAttributeSeparator(fragment[cursor]) &&
+    fragment[cursor] !== '/' &&
+    fragment[cursor] !== '>'
   ) {
-    index += 1;
+    cursor += 1;
   }
 
-  return index;
+  if (cursor < fragment.length && isInterpolationBoundaryMarker(fragment[cursor])) {
+    return cursor + 1;
+  }
+
+  return cursor;
 };
 
 const collectAttributesFromTagFragment = (
@@ -285,12 +305,12 @@ const collectAttributesFromTagFragment = (
 ): void => {
   let index = 0;
 
-  while (index < fragment.length && !isWhitespace(fragment[index])) {
+  while (index < fragment.length && !isAttributeSeparator(fragment[index])) {
     index += 1;
   }
 
   while (index < fragment.length) {
-    while (index < fragment.length && isWhitespace(fragment[index])) {
+    while (index < fragment.length && isAttributeSeparator(fragment[index])) {
       index += 1;
     }
 
@@ -326,7 +346,7 @@ const collectAttributesFromTagFragment = (
 
     const attributeName = fragment.slice(nameStart, index).toLowerCase();
 
-    while (index < fragment.length && isWhitespace(fragment[index])) {
+    while (index < fragment.length && isAttributeSeparator(fragment[index])) {
       index += 1;
     }
 
@@ -345,7 +365,7 @@ const collectAttributesFromTagFragment = (
 };
 
 const collectTemplateSanitizeOptions = (strings: TemplateStringsArray) => {
-  const template = strings.join('');
+  const template = strings.join(INTERPOLATION_BOUNDARY_MARKER);
   const allowTags = new Set<string>();
   const allowAttributes = new Set<string>();
 
@@ -387,15 +407,19 @@ const resolveBooleanStoryValue = (value: StoryValue): boolean => {
     return false;
   }
 
-  if (Array.isArray(value)) {
-    return value.some((item) => resolveBooleanStoryValue(item));
-  }
-
   if (typeof value === 'function') {
     return resolveBooleanStoryValue(value());
   }
 
-  return value === true;
+  if (Array.isArray(value)) {
+    return Boolean(resolveStoryValue(value));
+  }
+
+  if (typeof value === 'boolean') {
+    return value;
+  }
+
+  return Boolean(value);
 };
 
 /**

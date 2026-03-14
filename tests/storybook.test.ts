@@ -89,8 +89,8 @@ describe('storybook/storyHtml', () => {
     expect(result).not.toContain('<span foo=');
   });
 
-  it('does not treat unquoted literal attribute values as additional allowlisted attributes', () => {
-    const result = storyHtml`<bq-card data-token=foo=bar>${'<span foo="bar">Visible</span>'}</bq-card>`;
+  it('does not treat whitespace-padded unquoted literal values as additional allowlisted attributes', () => {
+    const result = storyHtml`<bq-card data-token= foo=bar>${'<span foo="bar">Visible</span>'}</bq-card>`;
 
     expect(result).toContain('<bq-card');
     expect(result).toContain('data-token=');
@@ -113,5 +113,17 @@ describe('storybook/storyHtml', () => {
 
     expect(disabled).toBe('<bq-button disabled="">Save</bq-button>');
     expect(enabled).toBe('<bq-button>Save</bq-button>');
+  });
+
+  it('preserves truthy boolean shorthand semantics for resolved values', () => {
+    const numeric = storyHtml`<bq-button ?disabled=${() => 1}>Save</bq-button>`;
+    const stringValue = storyHtml`<bq-button ?disabled=${'true'}>Save</bq-button>`;
+    const arrayValue = storyHtml`<bq-button ?disabled=${() => ['yes']}>Save</bq-button>`;
+    const zeroValue = storyHtml`<bq-button ?disabled=${() => 0}>Save</bq-button>`;
+
+    expect(numeric).toBe('<bq-button disabled="">Save</bq-button>');
+    expect(stringValue).toBe('<bq-button disabled="">Save</bq-button>');
+    expect(arrayValue).toBe('<bq-button disabled="">Save</bq-button>');
+    expect(zeroValue).toBe('<bq-button>Save</bq-button>');
   });
 });
