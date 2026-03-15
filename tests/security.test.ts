@@ -5,6 +5,7 @@ import {
   isTrustedTypesSupported,
   sanitizeHtml,
   stripTags,
+  trusted,
 } from '../src/security/sanitize';
 
 describe('security/sanitizeHtml', () => {
@@ -82,7 +83,7 @@ describe('security/sanitizeHtml', () => {
     const result = sanitizeHtml('<div><b>Bold</b> text</div>', {
       stripAllTags: true,
     });
-    expect(result).toBe('Bold text');
+    expect(String(result)).toBe('Bold text');
   });
 
   it('disables data attributes when allowDataAttributes is false', () => {
@@ -117,6 +118,14 @@ describe('security/escapeHtml', () => {
   it('handles mixed content', () => {
     const result = escapeHtml('<div class="test">Hello & Goodbye</div>');
     expect(result).toBe('&lt;div class=&quot;test&quot;&gt;Hello &amp; Goodbye&lt;/div&gt;');
+  });
+});
+
+describe('security/trusted', () => {
+  it('wraps sanitized HTML for reuse in safeHtml templates', () => {
+    const value = trusted(sanitizeHtml('<strong onclick="alert(1)">Hi</strong>'));
+
+    expect(String(value)).toBe('<strong>Hi</strong>');
   });
 });
 

@@ -77,8 +77,10 @@ if (typeof globalThis.crypto === 'undefined') {
   window.MouseEvent as unknown as typeof MouseEvent;
 
 // Register getComputedStyle for CSS getter tests
+const boundGetComputedStyle = window.getComputedStyle.bind(window) as unknown as typeof getComputedStyle;
 (globalThis as unknown as { getComputedStyle: typeof getComputedStyle }).getComputedStyle =
-  window.getComputedStyle.bind(window) as typeof getComputedStyle;
+  (element: Element, pseudoElt?: string | null): CSSStyleDeclaration =>
+    boundGetComputedStyle(element, pseudoElt);
 
 // Mock localStorage for store persistence tests
 if (typeof globalThis.localStorage === 'undefined') {
