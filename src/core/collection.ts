@@ -382,6 +382,81 @@ export class BQueryCollection {
   }
 
   /**
+   * Removes all elements from the DOM while keeping the wrapped nodes available
+   * for later reuse.
+   *
+   * @returns The instance for method chaining
+   */
+  detach(): this {
+    applyAll(this.elements, (el) => el.remove());
+    return this;
+  }
+
+  /**
+   * Gets the zero-based sibling index of the first element in the collection.
+   *
+   * @returns Index of the first element, or -1 when unavailable
+   */
+  index(): number {
+    const first = this.first();
+    if (!first?.parentElement) {
+      return -1;
+    }
+    return Array.from(first.parentElement.children).indexOf(first);
+  }
+
+  /**
+   * Returns the child nodes of the first element, including text nodes and comments.
+   *
+   * @returns Array of child nodes from the first element
+   */
+  contents(): ChildNode[] {
+    return Array.from(this.first()?.childNodes ?? []);
+  }
+
+  /**
+   * Gets the offset parent of the first element in the collection.
+   *
+   * @returns Offset parent element, or null when unavailable
+   */
+  offsetParent(): Element | null {
+    return ((this.first() as HTMLElement | undefined)?.offsetParent as Element | null | undefined) ?? null;
+  }
+
+  /**
+   * Gets the position of the first element relative to its offset parent.
+   *
+   * @returns Position object with top and left coordinates
+   */
+  position(): { top: number; left: number } {
+    const first = this.first() as HTMLElement | undefined;
+    return {
+      top: first?.offsetTop ?? 0,
+      left: first?.offsetLeft ?? 0,
+    };
+  }
+
+  /**
+   * Gets the outer width of the first element, optionally including margins.
+   *
+   * @param includeMargin - When true, include horizontal margins
+   * @returns Outer width in pixels
+   */
+  outerWidth(includeMargin: boolean = false): number {
+    return this.getOuterSize('width', includeMargin);
+  }
+
+  /**
+   * Gets the outer height of the first element, optionally including margins.
+   *
+   * @param includeMargin - When true, include vertical margins
+   * @returns Outer height in pixels
+   */
+  outerHeight(includeMargin: boolean = false): number {
+    return this.getOuterSize('height', includeMargin);
+  }
+
+  /**
    * Shows all elements.
    *
    * @param display - Optional display value (default: '')
@@ -624,5 +699,35 @@ export class BQueryCollection {
         index === 0 ? elements : elements.map((node) => node.cloneNode(true) as Element);
       insertContent(el, nodes, position);
     });
+  }
+
+  /** @internal */
+  private getOuterSize(dimension: 'width' | 'height', includeMargin: boolean): number {
+    const first = this.first() as HTMLElement | undefined;
+    if (!first) {
+      return 0;
+    }
+
+    const rect = first.getBoundingClientRect();
+    const size =
+      dimension === 'width' ? rect.width || first.offsetWidth : rect.height || first.offsetHeight;
+    if (!includeMargin) {
+      return size;
+    }
+
+    const view = first.ownerDocument?.defaultView;
+    if (!view || typeof view.getComputedStyle !== 'function') {
+      return size;
+    }
+
+    const computedStyle = view.getComputedStyle(first);
+    const startMargin = Number.parseFloat(
+      computedStyle.getPropertyValue(dimension === 'width' ? 'margin-left' : 'margin-top')
+    );
+    const endMargin = Number.parseFloat(
+      computedStyle.getPropertyValue(dimension === 'width' ? 'margin-right' : 'margin-bottom')
+    );
+
+    return size + (Number.isNaN(startMargin) ? 0 : startMargin) + (Number.isNaN(endMargin) ? 0 : endMargin);
   }
 }

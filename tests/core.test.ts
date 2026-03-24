@@ -681,6 +681,93 @@ describe('core/BQueryElement - new methods', () => {
     container.remove();
   });
 
+  it('detach removes element but keeps wrapper and listeners reusable', () => {
+    const container = document.createElement('div');
+    const child = document.createElement('button');
+    container.appendChild(child);
+    document.body.appendChild(container);
+
+    const wrapped = new BQueryElement(child);
+    let clicks = 0;
+    wrapped.on('click', () => clicks++);
+
+    const result = wrapped.detach();
+    expect(result).toBe(wrapped);
+    expect(container.contains(child)).toBe(false);
+
+    child.dispatchEvent(new Event('click'));
+    expect(clicks).toBe(1);
+
+    container.appendChild(child);
+    child.dispatchEvent(new Event('click'));
+    expect(clicks).toBe(2);
+
+    container.remove();
+  });
+
+  it('index returns zero-based sibling position and -1 when detached', () => {
+    const container = document.createElement('div');
+    const first = document.createElement('span');
+    const second = document.createElement('span');
+    const third = document.createElement('span');
+    container.appendChild(first);
+    container.appendChild(second);
+    container.appendChild(third);
+
+    expect(new BQueryElement(second).index()).toBe(1);
+    expect(new BQueryElement(document.createElement('div')).index()).toBe(-1);
+  });
+
+  it('contents includes text nodes and elements', () => {
+    const div = document.createElement('div');
+    div.append('hello');
+    const span = document.createElement('span');
+    span.textContent = 'world';
+    div.appendChild(span);
+
+    const contents = new BQueryElement(div).contents();
+
+    expect(contents).toHaveLength(2);
+    expect(contents[0]?.nodeType).toBe(Node.TEXT_NODE);
+    expect(contents[1]).toBe(span);
+  });
+
+  it('offsetParent and position use element layout properties', () => {
+    const parent = document.createElement('section');
+    const child = document.createElement('div');
+    parent.appendChild(child);
+
+    Object.defineProperty(child, 'offsetParent', { configurable: true, get: () => parent });
+    Object.defineProperty(child, 'offsetTop', { configurable: true, get: () => 24 });
+    Object.defineProperty(child, 'offsetLeft', { configurable: true, get: () => 12 });
+
+    const wrapped = new BQueryElement(child);
+
+    expect(wrapped.offsetParent()).toBe(parent);
+    expect(wrapped.position()).toEqual({ top: 24, left: 12 });
+  });
+
+  it('outerWidth and outerHeight optionally include margins', () => {
+    const div = document.createElement('div') as HTMLElement;
+    div.style.marginLeft = '5px';
+    div.style.marginRight = '7px';
+    div.style.marginTop = '3px';
+    div.style.marginBottom = '11px';
+    document.body.appendChild(div);
+
+    Object.defineProperty(div, 'offsetWidth', { configurable: true, get: () => 100 });
+    Object.defineProperty(div, 'offsetHeight', { configurable: true, get: () => 40 });
+
+    const wrapped = new BQueryElement(div);
+
+    expect(wrapped.outerWidth()).toBe(100);
+    expect(wrapped.outerWidth(true)).toBe(112);
+    expect(wrapped.outerHeight()).toBe(40);
+    expect(wrapped.outerHeight(true)).toBe(54);
+
+    div.remove();
+  });
+
   it('scrollTo calls scrollIntoView', () => {
     const div = document.createElement('div');
     let scrollCalled = false;
@@ -844,6 +931,75 @@ describe('core/BQueryCollection - delegate/undelegate', () => {
 
     container1.remove();
     container2.remove();
+  });
+});
+
+describe('core/BQueryCollection parity getters', () => {
+  it('detach removes all elements but keeps wrappers reusable', () => {
+    const parent = document.createElement('div');
+    const child1 = document.createElement('button');
+    const child2 = document.createElement('button');
+    parent.appendChild(child1);
+    parent.appendChild(child2);
+
+    const collection = new BQueryCollection([child1, child2]);
+    let count = 0;
+    collection.on('click', () => count++);
+
+    const result = collection.detach();
+    expect(result).toBe(collection);
+    expect(parent.children).toHaveLength(0);
+
+    child1.dispatchEvent(new Event('click'));
+    child2.dispatchEvent(new Event('click'));
+    expect(count).toBe(2);
+  });
+
+  it('index, contents, offsetParent, position, and outer size use the first element', () => {
+    const parent = document.createElement('div');
+    const first = document.createElement('div') as HTMLElement;
+    const second = document.createElement('div') as HTMLElement;
+    first.append('hello');
+    const span = document.createElement('span');
+    first.appendChild(span);
+    first.style.marginLeft = '4px';
+    first.style.marginRight = '6px';
+    first.style.marginTop = '2px';
+    first.style.marginBottom = '8px';
+    parent.appendChild(document.createElement('i'));
+    parent.appendChild(first);
+    parent.appendChild(second);
+    document.body.appendChild(parent);
+
+    Object.defineProperty(first, 'offsetParent', { configurable: true, get: () => parent });
+    Object.defineProperty(first, 'offsetTop', { configurable: true, get: () => 18 });
+    Object.defineProperty(first, 'offsetLeft', { configurable: true, get: () => 9 });
+    Object.defineProperty(first, 'offsetWidth', { configurable: true, get: () => 80 });
+    Object.defineProperty(first, 'offsetHeight', { configurable: true, get: () => 30 });
+
+    const collection = new BQueryCollection([first, second]);
+
+    expect(collection.index()).toBe(1);
+    expect(collection.contents()).toHaveLength(2);
+    expect(collection.offsetParent()).toBe(parent);
+    expect(collection.position()).toEqual({ top: 18, left: 9 });
+    expect(collection.outerWidth()).toBe(80);
+    expect(collection.outerWidth(true)).toBe(90);
+    expect(collection.outerHeight()).toBe(30);
+    expect(collection.outerHeight(true)).toBe(40);
+
+    parent.remove();
+  });
+
+  it('empty collection parity getters return safe defaults', () => {
+    const collection = new BQueryCollection([]);
+
+    expect(collection.index()).toBe(-1);
+    expect(collection.contents()).toEqual([]);
+    expect(collection.offsetParent()).toBeNull();
+    expect(collection.position()).toEqual({ top: 0, left: 0 });
+    expect(collection.outerWidth()).toBe(0);
+    expect(collection.outerHeight(true)).toBe(0);
   });
 });
 

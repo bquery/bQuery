@@ -128,6 +128,12 @@ $('#el').matches('.active');
 - `val(newValue?)`
 - `rect()`
 - `offset()`
+- `index()`
+- `contents()`
+- `offsetParent()`
+- `position()`
+- `outerWidth(includeMargin?)`
+- `outerHeight(includeMargin?)`
 - `focus()` / `blur()`
 - `raw` (getter) / `node` (getter)
 
@@ -136,6 +142,7 @@ $('#el').matches('.active');
 - `wrap(wrapper)` – wrap element with new parent (accepts tag name or Element)
 - `unwrap()` – remove parent, keeping element
 - `replaceWith(content)` – replace element with new content
+- `detach()` – remove element from DOM without discarding the wrapper
 - `scrollTo(options?)` – scroll element into view
 
 ```ts
@@ -152,6 +159,10 @@ $('#content').unwrap();
 
 // Replace element
 $('#old').replaceWith('<div id="new">New content</div>');
+
+// Detach and reinsert later
+const item = $('#item').detach();
+document.body.appendChild(item.raw);
 
 // Smooth scroll to element
 $('#section').scrollTo({ behavior: 'smooth', block: 'center' });
@@ -212,6 +223,13 @@ $$('.container').find('.item').addClass('highlight');
 - `wrap(wrapper)`
 - `unwrap()`
 - `replaceWith(content)`
+- `detach()`
+- `index()`
+- `contents()`
+- `offsetParent()`
+- `position()`
+- `outerWidth(includeMargin?)`
+- `outerHeight(includeMargin?)`
 - `css(property)` – getter: returns computed style value (first element)
 - `css(property, value)` – setter: sets a single CSS property
 - `css(properties)` – setter: sets an object of properties

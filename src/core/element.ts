@@ -308,6 +308,119 @@ export class BQueryElement {
   }
 
   /**
+   * Removes the element from the DOM while keeping the wrapped node available
+   * for later reuse.
+   *
+   * @returns The instance for method chaining
+   *
+   * @example
+   * ```ts
+   * const item = $('#item').detach();
+   * document.body.appendChild(item.raw);
+   * ```
+   */
+  detach(): this {
+    this.element.remove();
+    return this;
+  }
+
+  /**
+   * Gets the zero-based index of the element among its element siblings.
+   *
+   * @returns Index within the parent element, or -1 when detached
+   *
+   * @example
+   * ```ts
+   * const index = $('#item').index();
+   * ```
+   */
+  index(): number {
+    const parent = this.element.parentElement;
+    if (!parent) {
+      return -1;
+    }
+    return Array.from(parent.children).indexOf(this.element);
+  }
+
+  /**
+   * Returns all child nodes, including text nodes and comments.
+   *
+   * @returns Array of child nodes
+   *
+   * @example
+   * ```ts
+   * const nodes = $('#content').contents();
+   * ```
+   */
+  contents(): ChildNode[] {
+    return Array.from(this.element.childNodes);
+  }
+
+  /**
+   * Gets the nearest positioned ancestor used for offset calculations.
+   *
+   * @returns The offset parent element, or null when unavailable
+   *
+   * @example
+   * ```ts
+   * const parent = $('#item').offsetParent();
+   * ```
+   */
+  offsetParent(): Element | null {
+    return (this.element as HTMLElement).offsetParent;
+  }
+
+  /**
+   * Gets the current position relative to the offset parent.
+   *
+   * @returns Position object with top and left coordinates
+   *
+   * @example
+   * ```ts
+   * const { top, left } = $('#item').position();
+   * ```
+   */
+  position(): { top: number; left: number } {
+    const el = this.element as HTMLElement;
+    return {
+      top: el.offsetTop,
+      left: el.offsetLeft,
+    };
+  }
+
+  /**
+   * Gets the outer width of the element, optionally including margins.
+   *
+   * @param includeMargin - When true, include horizontal margins
+   * @returns Outer width in pixels
+   *
+   * @example
+   * ```ts
+   * const width = $('#panel').outerWidth();
+   * const widthWithMargin = $('#panel').outerWidth(true);
+   * ```
+   */
+  outerWidth(includeMargin: boolean = false): number {
+    return this.getOuterSize('width', includeMargin);
+  }
+
+  /**
+   * Gets the outer height of the element, optionally including margins.
+   *
+   * @param includeMargin - When true, include vertical margins
+   * @returns Outer height in pixels
+   *
+   * @example
+   * ```ts
+   * const height = $('#panel').outerHeight();
+   * const heightWithMargin = $('#panel').outerHeight(true);
+   * ```
+   */
+  outerHeight(includeMargin: boolean = false): number {
+    return this.getOuterSize('height', includeMargin);
+  }
+
+  /**
    * Scrolls the element into view with configurable behavior.
    *
    * @param options - ScrollIntoView options or boolean for legacy behavior
@@ -770,5 +883,30 @@ export class BQueryElement {
    */
   private insertContent(content: string | Element | Element[], position: InsertPosition) {
     insertContent(this.element, content, position);
+  }
+
+  /** @internal */
+  private getOuterSize(dimension: 'width' | 'height', includeMargin: boolean): number {
+    const el = this.element as HTMLElement;
+    const rect = el.getBoundingClientRect();
+    const size = dimension === 'width' ? rect.width || el.offsetWidth : rect.height || el.offsetHeight;
+    if (!includeMargin) {
+      return size;
+    }
+
+    const view = el.ownerDocument?.defaultView;
+    if (!view || typeof view.getComputedStyle !== 'function') {
+      return size;
+    }
+
+    const computedStyle = view.getComputedStyle(el);
+    const startMargin = Number.parseFloat(
+      computedStyle.getPropertyValue(dimension === 'width' ? 'margin-left' : 'margin-top')
+    );
+    const endMargin = Number.parseFloat(
+      computedStyle.getPropertyValue(dimension === 'width' ? 'margin-right' : 'margin-bottom')
+    );
+
+    return size + (Number.isNaN(startMargin) ? 0 : startMargin) + (Number.isNaN(endMargin) ? 0 : endMargin);
   }
 }
