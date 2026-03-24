@@ -14,7 +14,6 @@ export * from './string';
 export * from './type-guards';
 
 import { chunk, compact, ensureArray, flatten, unique } from './array';
-import type { DebouncedFn, ThrottledFn } from './function';
 import { debounce, noop, once, throttle } from './function';
 import { isEmpty, parseJson, sleep, uid } from './misc';
 import { clamp, inRange, randomInt, toNumber } from './number';
@@ -53,17 +52,9 @@ export interface BQueryUtils {
   readonly isPlainObject: typeof isPlainObject;
 
   // ── function ────────────────────────────────────────────────────────
-  readonly debounce: <TArgs extends unknown[]>(
-    fn: (...args: TArgs) => void,
-    delayMs: number,
-  ) => DebouncedFn<TArgs>;
-  readonly throttle: <TArgs extends unknown[]>(
-    fn: (...args: TArgs) => void,
-    intervalMs: number,
-  ) => ThrottledFn<TArgs>;
-  readonly once: <TArgs extends unknown[], TResult>(
-    fn: (...args: TArgs) => TResult,
-  ) => (...args: TArgs) => TResult;
+  readonly debounce: typeof debounce;
+  readonly throttle: typeof throttle;
+  readonly once: typeof once;
   readonly noop: typeof noop;
 
   // ── misc ────────────────────────────────────────────────────────────
