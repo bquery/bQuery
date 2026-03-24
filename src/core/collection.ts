@@ -5,7 +5,7 @@ import {
   type InsertableContent,
 } from './dom';
 import { BQueryElement } from './element';
-import { applyAll, toElementList } from './shared';
+import { applyAll, getOuterSize, toElementList } from './shared';
 
 /** Handler signature for delegated events */
 type DelegatedHandler = (event: Event, target: Element) => void;
@@ -443,7 +443,8 @@ export class BQueryCollection {
    * @returns Outer width in pixels
    */
   outerWidth(includeMargin: boolean = false): number {
-    return this.getOuterSize('width', includeMargin);
+    const first = this.first() as HTMLElement | undefined;
+    return first ? getOuterSize(first, 'width', includeMargin) : 0;
   }
 
   /**
@@ -453,7 +454,8 @@ export class BQueryCollection {
    * @returns Outer height in pixels
    */
   outerHeight(includeMargin: boolean = false): number {
-    return this.getOuterSize('height', includeMargin);
+    const first = this.first() as HTMLElement | undefined;
+    return first ? getOuterSize(first, 'height', includeMargin) : 0;
   }
 
   /**
@@ -699,35 +701,5 @@ export class BQueryCollection {
         index === 0 ? elements : elements.map((node) => node.cloneNode(true) as Element);
       insertContent(el, nodes, position);
     });
-  }
-
-  /** @internal */
-  private getOuterSize(dimension: 'width' | 'height', includeMargin: boolean): number {
-    const first = this.first() as HTMLElement | undefined;
-    if (!first) {
-      return 0;
-    }
-
-    const rect = first.getBoundingClientRect();
-    const size =
-      dimension === 'width' ? rect.width || first.offsetWidth : rect.height || first.offsetHeight;
-    if (!includeMargin) {
-      return size;
-    }
-
-    const view = first.ownerDocument?.defaultView;
-    if (!view || typeof view.getComputedStyle !== 'function') {
-      return size;
-    }
-
-    const computedStyle = view.getComputedStyle(first);
-    const startMargin = Number.parseFloat(
-      computedStyle.getPropertyValue(dimension === 'width' ? 'margin-left' : 'margin-top')
-    );
-    const endMargin = Number.parseFloat(
-      computedStyle.getPropertyValue(dimension === 'width' ? 'margin-right' : 'margin-bottom')
-    );
-
-    return size + (Number.isNaN(startMargin) ? 0 : startMargin) + (Number.isNaN(endMargin) ? 0 : endMargin);
   }
 }

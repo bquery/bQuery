@@ -1,4 +1,5 @@
 import { createElementFromHtml, insertContent, setHtml } from './dom';
+import { getOuterSize } from './shared';
 
 /**
  * Wrapper for a single DOM element.
@@ -401,7 +402,7 @@ export class BQueryElement {
    * ```
    */
   outerWidth(includeMargin: boolean = false): number {
-    return this.getOuterSize('width', includeMargin);
+    return getOuterSize(this.element as HTMLElement, 'width', includeMargin);
   }
 
   /**
@@ -417,7 +418,7 @@ export class BQueryElement {
    * ```
    */
   outerHeight(includeMargin: boolean = false): number {
-    return this.getOuterSize('height', includeMargin);
+    return getOuterSize(this.element as HTMLElement, 'height', includeMargin);
   }
 
   /**
@@ -883,30 +884,5 @@ export class BQueryElement {
    */
   private insertContent(content: string | Element | Element[], position: InsertPosition) {
     insertContent(this.element, content, position);
-  }
-
-  /** @internal */
-  private getOuterSize(dimension: 'width' | 'height', includeMargin: boolean): number {
-    const el = this.element as HTMLElement;
-    const rect = el.getBoundingClientRect();
-    const size = dimension === 'width' ? rect.width || el.offsetWidth : rect.height || el.offsetHeight;
-    if (!includeMargin) {
-      return size;
-    }
-
-    const view = el.ownerDocument?.defaultView;
-    if (!view || typeof view.getComputedStyle !== 'function') {
-      return size;
-    }
-
-    const computedStyle = view.getComputedStyle(el);
-    const startMargin = Number.parseFloat(
-      computedStyle.getPropertyValue(dimension === 'width' ? 'margin-left' : 'margin-top')
-    );
-    const endMargin = Number.parseFloat(
-      computedStyle.getPropertyValue(dimension === 'width' ? 'margin-right' : 'margin-bottom')
-    );
-
-    return size + (Number.isNaN(startMargin) ? 0 : startMargin) + (Number.isNaN(endMargin) ? 0 : endMargin);
   }
 }
