@@ -384,9 +384,9 @@ export class BQueryCollection {
   /**
    * Removes all elements from the DOM while keeping the wrapped nodes available
    * for later reuse.
-  *
-  * @returns The instance for method chaining
-  */
+   *
+   * @returns The instance for method chaining
+   */
   detach(): this {
     return this.remove();
   }
