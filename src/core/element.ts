@@ -1,4 +1,5 @@
 import { createElementFromHtml, insertContent, setHtml } from './dom';
+import { getOuterSize, isHTMLElement } from './shared';
 
 /**
  * Wrapper for a single DOM element.
@@ -305,6 +306,122 @@ export class BQueryElement {
     const newEl = typeof content === 'string' ? createElementFromHtml(content) : content;
     this.element.replaceWith(newEl);
     return new BQueryElement(newEl);
+  }
+
+  /**
+   * Removes the element from the DOM while keeping the wrapped node available
+   * for later reuse.
+   *
+   * @returns The instance for method chaining
+   *
+   * @example
+   * ```ts
+   * const item = $('#item').detach();
+   * document.body.appendChild(item.raw);
+   * ```
+   */
+  detach(): this {
+    return this.remove();
+  }
+
+  /**
+   * Gets the zero-based index of the element among its element siblings.
+   *
+   * @returns Index within the parent element, or -1 when detached
+   *
+   * @example
+   * ```ts
+   * const index = $('#item').index();
+   * ```
+   */
+  index(): number {
+    const parent = this.element.parentElement;
+    if (!parent) {
+      return -1;
+    }
+    return Array.from(parent.children).indexOf(this.element);
+  }
+
+  /**
+   * Returns all child nodes, including text nodes and comments.
+   *
+   * @returns Array of child nodes
+   *
+   * @example
+   * ```ts
+   * const nodes = $('#content').contents();
+   * ```
+   */
+  contents(): ChildNode[] {
+    return Array.from(this.element.childNodes);
+  }
+
+  /**
+   * Gets the nearest positioned ancestor used for offset calculations.
+   *
+   * @returns The offset parent element, or null when unavailable
+   *
+   * @example
+   * ```ts
+   * const parent = $('#item').offsetParent();
+   * ```
+   */
+  offsetParent(): Element | null {
+    return isHTMLElement(this.element) ? this.element.offsetParent : null;
+  }
+
+  /**
+   * Gets the current position relative to the offset parent.
+   *
+   * @returns Position object with top and left coordinates
+   *
+   * @example
+   * ```ts
+   * const { top, left } = $('#item').position();
+   * ```
+   */
+  position(): { top: number; left: number } {
+    if (!isHTMLElement(this.element)) {
+      return { top: 0, left: 0 };
+    }
+
+    const el = this.element;
+    return {
+      top: el.offsetTop,
+      left: el.offsetLeft,
+    };
+  }
+
+  /**
+   * Gets the outer width of the element, optionally including margins.
+   *
+   * @param includeMargin - When true, include horizontal margins
+   * @returns Outer width in pixels
+   *
+   * @example
+   * ```ts
+   * const width = $('#panel').outerWidth();
+   * const widthWithMargin = $('#panel').outerWidth(true);
+   * ```
+   */
+  outerWidth(includeMargin: boolean = false): number {
+    return getOuterSize(this.element, 'width', includeMargin);
+  }
+
+  /**
+   * Gets the outer height of the element, optionally including margins.
+   *
+   * @param includeMargin - When true, include vertical margins
+   * @returns Outer height in pixels
+   *
+   * @example
+   * ```ts
+   * const height = $('#panel').outerHeight();
+   * const heightWithMargin = $('#panel').outerHeight(true);
+   * ```
+   */
+  outerHeight(includeMargin: boolean = false): number {
+    return getOuterSize(this.element, 'height', includeMargin);
   }
 
   /**
