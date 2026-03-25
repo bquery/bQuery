@@ -5,7 +5,7 @@ import {
   type InsertableContent,
 } from './dom';
 import { BQueryElement } from './element';
-import { applyAll, toElementList } from './shared';
+import { applyAll, getOuterSize, isHTMLElement, toElementList } from './shared';
 
 /** Handler signature for delegated events */
 type DelegatedHandler = (event: Event, target: Element) => void;
@@ -379,6 +379,85 @@ export class BQueryCollection {
       replacements.push(replacement);
     });
     return new BQueryCollection(replacements);
+  }
+
+  /**
+   * Removes all elements from the DOM while keeping the wrapped nodes available
+   * for later reuse.
+   *
+   * @returns The instance for method chaining
+   */
+  detach(): this {
+    return this.remove();
+  }
+
+  /**
+   * Gets the zero-based sibling index of the first element in the collection.
+   *
+   * @returns Index of the first element, or -1 when unavailable
+   */
+  index(): number {
+    const first = this.first();
+    if (!first?.parentElement) {
+      return -1;
+    }
+    return Array.from(first.parentElement.children).indexOf(first);
+  }
+
+  /**
+   * Returns the child nodes of the first element, including text nodes and comments.
+   *
+   * @returns Array of child nodes from the first element
+   */
+  contents(): ChildNode[] {
+    return Array.from(this.first()?.childNodes ?? []);
+  }
+
+  /**
+   * Gets the offset parent of the first element in the collection.
+   *
+   * @returns Offset parent element, or null when unavailable
+   */
+  offsetParent(): Element | null {
+    const first = this.first();
+    return isHTMLElement(first) ? first.offsetParent : null;
+  }
+
+  /**
+   * Gets the position of the first element relative to its offset parent.
+   *
+   * @returns Position object with top and left coordinates
+   */
+  position(): { top: number; left: number } {
+    const first = this.first();
+    if (!isHTMLElement(first)) {
+      return { top: 0, left: 0 };
+    }
+
+    return {
+      top: first.offsetTop,
+      left: first.offsetLeft,
+    };
+  }
+
+  /**
+   * Gets the outer width of the first element, optionally including margins.
+   *
+   * @param includeMargin - When true, include horizontal margins
+   * @returns Outer width in pixels
+   */
+  outerWidth(includeMargin: boolean = false): number {
+    return getOuterSize(this.first(), 'width', includeMargin);
+  }
+
+  /**
+   * Gets the outer height of the first element, optionally including margins.
+   *
+   * @param includeMargin - When true, include vertical margins
+   * @returns Outer height in pixels
+   */
+  outerHeight(includeMargin: boolean = false): number {
+    return getOuterSize(this.first(), 'height', includeMargin);
   }
 
   /**
