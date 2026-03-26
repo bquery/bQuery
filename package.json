@@ -66,6 +66,10 @@
     "./i18n": {
       "import": "./dist/i18n.es.mjs",
       "types": "./dist/i18n/index.d.ts"
+    },
+    "./a11y": {
+      "import": "./dist/a11y.es.mjs",
+      "types": "./dist/a11y/index.d.ts"
     }
   },
   "files": [

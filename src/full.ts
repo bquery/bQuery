@@ -306,3 +306,36 @@ export type {
   NumberFormatOptions,
   TranslateParams,
 } from './i18n/index';
+
+// ============================================================================
+// a11y Module: Accessibility utilities
+// ============================================================================
+// Note: prefersReducedMotion is not re-exported here to avoid naming conflict
+// with the motion module's prefersReducedMotion(). Use @bquery/bquery/a11y for
+// the reactive signal version.
+export {
+  announceToScreenReader,
+  auditA11y,
+  clearAnnouncements,
+  getFocusableElements,
+  prefersColorScheme,
+  prefersContrast,
+  releaseFocus,
+  rovingTabIndex,
+  skipLink,
+  trapFocus,
+} from './a11y/index';
+export type {
+  AnnouncePriority,
+  AuditFinding,
+  AuditResult,
+  AuditSeverity,
+  ColorScheme,
+  ContrastPreference,
+  FocusTrapHandle,
+  RovingTabIndexHandle,
+  RovingTabIndexOptions,
+  SkipLinkHandle,
+  SkipLinkOptions,
+  TrapFocusOptions,
+} from './a11y/index';

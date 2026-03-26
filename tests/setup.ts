@@ -76,6 +76,14 @@ if (typeof globalThis.crypto === 'undefined') {
 (globalThis as unknown as { MouseEvent: typeof MouseEvent }).MouseEvent =
   window.MouseEvent as unknown as typeof MouseEvent;
 
+// Register KeyboardEvent for a11y tests
+(globalThis as unknown as { KeyboardEvent: typeof KeyboardEvent }).KeyboardEvent =
+  window.KeyboardEvent as unknown as typeof KeyboardEvent;
+
+// Register HTMLAnchorElement for a11y tests
+(globalThis as unknown as { HTMLAnchorElement: typeof HTMLAnchorElement }).HTMLAnchorElement =
+  window.HTMLAnchorElement as unknown as typeof HTMLAnchorElement;
+
 // Register getComputedStyle for CSS getter tests
 const boundGetComputedStyle = window.getComputedStyle.bind(window) as unknown as typeof getComputedStyle;
 (globalThis as unknown as { getComputedStyle: typeof getComputedStyle }).getComputedStyle =
