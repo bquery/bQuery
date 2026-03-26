@@ -179,8 +179,7 @@ const createComponentClass = <
      */
     private mount(): void {
       if (this.hasMounted) return;
-      this.scope ??= createComponentScope();
-      const previousScope = setCurrentScope(this.scope);
+      const previousScope = setCurrentScope(this.ensureScope());
       try {
         definition.beforeMount?.call(this);
         definition.connected?.call(this);
@@ -222,10 +221,9 @@ const createComponentClass = <
 
         // Fire the user-facing onAttributeChanged hook for every observed attribute change
         if (definition.onAttributeChanged) {
-          if (!this.scope && this.isConnected && !this.hasMounted) {
-            this.scope = createComponentScope();
-          }
-          const previousScope = setCurrentScope(this.scope);
+          const previousScope = setCurrentScope(
+            this.isConnected && !this.hasMounted ? this.ensureScope() : this.scope
+          );
           try {
             definition.onAttributeChanged.call(this, name, oldValue, newValue);
           } finally {
@@ -267,6 +265,14 @@ const createComponentClass = <
       } else {
         console.error(`bQuery component error in <${tagName}>:`, error);
       }
+    }
+
+    /**
+     * Ensures the component has an active scope for scoped reactive primitives.
+     * @internal
+     */
+    private ensureScope(): ComponentScope {
+      return (this.scope ??= createComponentScope());
     }
 
     /**
