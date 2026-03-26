@@ -2390,24 +2390,48 @@ describe('Router', () => {
       el.remove();
     });
 
-    it('should match with startsWith by default (not exact)', async () => {
+    it('should match with path prefix by default (not exact)', async () => {
       router = createRouter({
         routes: [
           { path: '/', component: () => null },
           { path: '/about', component: () => null },
+          { path: '/about/team', component: () => null },
         ],
       });
 
-      await router.push('/about');
+      await router.push('/about/team');
 
       const el = document.createElement('bq-link') as BqLinkElement;
-      el.to = '/';
+      el.to = '/about';
       document.body.appendChild(el);
 
       await new Promise((r) => setTimeout(r, 10));
 
-      // '/about'.startsWith('/') is true
+      // '/about/team' starts with '/about/' so it matches
       expect(el.classList.contains('active')).toBe(true);
+
+      el.remove();
+    });
+
+    it('should not match partial path segments in non-exact mode', async () => {
+      router = createRouter({
+        routes: [
+          { path: '/', component: () => null },
+          { path: '/user', component: () => null },
+          { path: '/user-profile', component: () => null },
+        ],
+      });
+
+      await router.push('/user-profile');
+
+      const el = document.createElement('bq-link') as BqLinkElement;
+      el.to = '/user';
+      document.body.appendChild(el);
+
+      await new Promise((r) => setTimeout(r, 10));
+
+      // '/user-profile' should NOT match '/user' (different segment)
+      expect(el.classList.contains('active')).toBe(false);
 
       el.remove();
     });

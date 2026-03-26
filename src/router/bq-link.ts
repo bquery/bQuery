@@ -165,7 +165,8 @@ export class BqLinkElement extends HTMLElement {
       const current = routeSignal.value.path;
       const isMatch = exactMatch
         ? current === targetPath
-        : current.startsWith(targetPath);
+        : current === targetPath ||
+          current.startsWith(targetPath.endsWith('/') ? targetPath : targetPath + '/');
 
       this.classList.toggle(cssClass, isMatch);
 
