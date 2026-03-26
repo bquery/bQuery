@@ -1833,6 +1833,19 @@ describe('Router', () => {
       expect(currentRoute.value.matched?.path).toBe('*');
     });
 
+    it('should ignore nested capturing groups inside param constraints when extracting params', async () => {
+      router = createRouter({
+        routes: [
+          { path: '/item/:slug((foo|bar)-\\d+)', component: () => null },
+          { path: '*', component: () => null },
+        ],
+      });
+
+      await router.push('/item/foo-42');
+      expect(currentRoute.value.params).toEqual({ slug: 'foo-42' });
+      expect(currentRoute.value.matched?.path).toBe('/item/:slug((foo|bar)-\\d+)');
+    });
+
     it('should mix constrained and unconstrained params', async () => {
       router = createRouter({
         routes: [
@@ -2208,6 +2221,29 @@ describe('Router', () => {
       const lastEntry = stack[stack.length - 1];
       expect(lastEntry.state).toHaveProperty('__bqScrollKey');
       expect(typeof (lastEntry.state as Record<string, unknown>).__bqScrollKey).toBe('string');
+    });
+
+    it('should preserve the same scroll key when using replace navigation', async () => {
+      router = createRouter({
+        routes: [
+          { path: '/', component: () => null },
+          { path: '/page1', component: () => null },
+          { path: '/page2', component: () => null },
+        ],
+        scrollRestoration: true,
+      });
+
+      await router.push('/page1');
+      const stackAfterPush = mockHistory.getStack();
+      const keyAfterPush =
+        (stackAfterPush[mockHistory.getCurrentIndex()].state as Record<string, unknown>).__bqScrollKey;
+
+      await router.replace('/page2');
+      const stackAfterReplace = mockHistory.getStack();
+      const keyAfterReplace =
+        (stackAfterReplace[mockHistory.getCurrentIndex()].state as Record<string, unknown>).__bqScrollKey;
+
+      expect(keyAfterReplace).toBe(keyAfterPush);
     });
 
     it('should save scroll for the entry being left on popstate and restore the destination entry', async () => {
@@ -2766,6 +2802,28 @@ describe('Router', () => {
       el.dispatchEvent(event);
 
       await new Promise((r) => setTimeout(r, 50));
+
+      el.remove();
+    });
+
+    it('should normalize empty "to" attributes to "/" without matching every route', async () => {
+      router = createRouter({
+        routes: [
+          { path: '/', component: () => null },
+          { path: '/about', component: () => null },
+        ],
+      });
+
+      await router.push('/about');
+
+      const el = document.createElement('bq-link') as BqLinkElement;
+      el.setAttribute('to', '');
+      document.body.appendChild(el);
+
+      await new Promise((r) => setTimeout(r, 10));
+
+      expect(el.to).toBe('/');
+      expect(el.classList.contains('active')).toBe(false);
 
       el.remove();
     });

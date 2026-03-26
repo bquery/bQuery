@@ -2,7 +2,7 @@
  * Tests for the bQuery media module.
  */
 
-import { afterEach, describe, expect, it } from 'bun:test';
+import { afterEach, describe, expect, it, spyOn } from 'bun:test';
 import { mediaQuery } from '../src/media/media-query';
 import { breakpoints } from '../src/media/breakpoints';
 import { useViewport } from '../src/media/viewport';
@@ -53,6 +53,36 @@ describe('media/mediaQuery', () => {
       (sig as { value: boolean }).value = true;
     }).toThrow();
   });
+
+  it('removes the media query listener when destroyed', () => {
+    let registeredHandler: ((event: MediaQueryListEvent) => void) | undefined;
+    let removedHandler: ((event: MediaQueryListEvent) => void) | undefined;
+    const originalMatchMedia = window.matchMedia;
+
+    window.matchMedia = ((query: string) =>
+      ({
+        matches: query === '(min-width: 768px)',
+        media: query,
+        onchange: null,
+        addEventListener: (_type: string, handler: (event: MediaQueryListEvent) => void) => {
+          registeredHandler = handler;
+        },
+        removeEventListener: (_type: string, handler: (event: MediaQueryListEvent) => void) => {
+          removedHandler = handler;
+        },
+        addListener: () => {},
+        removeListener: () => {},
+        dispatchEvent: () => true,
+      }) as MediaQueryList) as typeof window.matchMedia;
+
+    try {
+      const sig = mediaQuery('(min-width: 768px)');
+      sig.destroy();
+      expect(removedHandler).toBe(registeredHandler);
+    } finally {
+      window.matchMedia = originalMatchMedia;
+    }
+  });
 });
 
 // ─── breakpoints ─────────────────────────────────────────────────────────────
@@ -93,6 +123,38 @@ describe('media/breakpoints', () => {
     // TypeScript should correctly type these keys
     expect('small' in bp).toBe(true);
     expect('medium' in bp).toBe(true);
+  });
+
+  it('removes all breakpoint listeners when destroyed', () => {
+    const handlers = new Map<string, (event: MediaQueryListEvent) => void>();
+    const removed = new Set<string>();
+    const originalMatchMedia = window.matchMedia;
+
+    window.matchMedia = ((query: string) =>
+      ({
+        matches: false,
+        media: query,
+        onchange: null,
+        addEventListener: (_type: string, handler: (event: MediaQueryListEvent) => void) => {
+          handlers.set(query, handler);
+        },
+        removeEventListener: (_type: string, handler: (event: MediaQueryListEvent) => void) => {
+          if (handlers.get(query) === handler) {
+            removed.add(query);
+          }
+        },
+        addListener: () => {},
+        removeListener: () => {},
+        dispatchEvent: () => true,
+      }) as MediaQueryList) as typeof window.matchMedia;
+
+    try {
+      const bp = breakpoints({ sm: 640, lg: 1024 });
+      bp.destroy();
+      expect(removed).toEqual(new Set(['(min-width: 640px)', '(min-width: 1024px)']));
+    } finally {
+      window.matchMedia = originalMatchMedia;
+    }
   });
 });
 
@@ -198,6 +260,58 @@ describe('media/useNetworkStatus', () => {
     expect(() => {
       (net as { value: unknown }).value = { online: false, effectiveType: '4g', downlink: 10, rtt: 50 };
     }).toThrow();
+  });
+
+  it('removes network listeners when destroyed', () => {
+    let onlineHandler: (() => void) | undefined;
+    let offlineHandler: (() => void) | undefined;
+    let connectionHandler: (() => void) | undefined;
+    let removedOnlineHandler: (() => void) | undefined;
+    let removedOfflineHandler: (() => void) | undefined;
+    let removedConnectionHandler: (() => void) | undefined;
+    const originalConnection = (navigator as Navigator & { connection?: unknown }).connection;
+
+    const connection = {
+      addEventListener: (_type: string, handler: () => void) => {
+        connectionHandler = handler;
+      },
+      removeEventListener: (_type: string, handler: () => void) => {
+        removedConnectionHandler = handler;
+      },
+    };
+
+    Object.defineProperty(navigator, 'connection', {
+      configurable: true,
+      value: connection,
+    });
+
+    const addSpy = spyOn(window, 'addEventListener').mockImplementation((type: string, listener: EventListenerOrEventListenerObject) => {
+      if (typeof listener === 'function') {
+        if (type === 'online') onlineHandler = listener as () => void;
+        if (type === 'offline') offlineHandler = listener as () => void;
+      }
+    });
+    const removeSpy = spyOn(window, 'removeEventListener').mockImplementation((type: string, listener: EventListenerOrEventListenerObject) => {
+      if (typeof listener === 'function') {
+        if (type === 'online') removedOnlineHandler = listener as () => void;
+        if (type === 'offline') removedOfflineHandler = listener as () => void;
+      }
+    });
+
+    try {
+      const net = useNetworkStatus();
+      net.destroy();
+      expect(removedOnlineHandler).toBe(onlineHandler);
+      expect(removedOfflineHandler).toBe(offlineHandler);
+      expect(removedConnectionHandler).toBe(connectionHandler);
+    } finally {
+      addSpy.mockRestore();
+      removeSpy.mockRestore();
+      Object.defineProperty(navigator, 'connection', {
+        configurable: true,
+        value: originalConnection,
+      });
+    }
   });
 });
 

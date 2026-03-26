@@ -27,6 +27,29 @@ const escapeRegexLiteral = (value: string): string => {
   return escaped;
 };
 
+const normalizeConstraintCaptures = (constraint: string): string => {
+  let normalized = '';
+
+  for (let i = 0; i < constraint.length; i++) {
+    const char = constraint[i];
+
+    if (char === '\\' && i + 1 < constraint.length) {
+      normalized += char + constraint[i + 1];
+      i++;
+      continue;
+    }
+
+    if (char === '(') {
+      normalized += constraint[i + 1] === '?' ? '(' : '(?:';
+      continue;
+    }
+
+    normalized += char;
+  }
+
+  return normalized;
+};
+
 const readConstraint = (
   path: string,
   startIndex: number
@@ -101,7 +124,7 @@ const pathToRegex = (path: string): RegExp => {
         }
       }
 
-      pattern += `(${constraint})`;
+      pattern += `(${normalizeConstraintCaptures(constraint)})`;
       i = nextIndex;
       continue;
     }

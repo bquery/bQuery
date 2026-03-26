@@ -213,7 +213,12 @@ export const createRouter = (options: RouterOptions): Router => {
     saveScrollPosition();
 
     // Update browser history
-    const scrollKey = String(Date.now());
+    const existingScrollKey =
+      history.state && typeof history.state === 'object' && typeof history.state.__bqScrollKey === 'string'
+        ? history.state.__bqScrollKey
+        : undefined;
+    const scrollKey =
+      method === 'replaceState' && existingScrollKey ? existingScrollKey : String(Date.now());
     const fullPath = useHash ? `#${path}` : `${base}${path}`;
     const state = scrollRestoration ? { __bqScrollKey: scrollKey } : {};
     history[method](state, '', fullPath);

@@ -50,6 +50,11 @@ export interface NetworkState {
 }
 
 /**
+ * Network status signal handle returned by {@link useNetworkStatus}.
+ */
+export type NetworkSignal = MediaSignalHandle<NetworkState>;
+
+/**
  * Battery status information returned by {@link useBattery}.
  */
 export interface BatteryState {

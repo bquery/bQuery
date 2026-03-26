@@ -8,8 +8,7 @@
  */
 
 import { signal, readonly } from '../reactive/index';
-import type { ReadonlySignal } from '../reactive/index';
-import type { BreakpointMap } from './types';
+import type { BreakpointMap, MediaSignalHandle } from './types';
 
 /**
  * Defines named breakpoints and returns reactive boolean signals for each.
@@ -19,7 +18,8 @@ import type { BreakpointMap } from './types';
  * the viewport width is at or above the breakpoint value.
  *
  * @param bp - An object mapping breakpoint names to minimum widths in pixels
- * @returns An object with the same keys, each a reactive boolean signal
+ * @returns An object with the same keys, each a reactive boolean signal with
+ * `destroy()`, plus a top-level `destroy()` method to clean up all listeners
  *
  * @example
  * ```ts
@@ -43,12 +43,14 @@ import type { BreakpointMap } from './types';
  */
 export const breakpoints = <T extends BreakpointMap>(
   bp: T
-): { [K in keyof T]: ReadonlySignal<boolean> } => {
-  const result = {} as { [K in keyof T]: ReadonlySignal<boolean> };
+): { [K in keyof T]: MediaSignalHandle<boolean> } & { destroy(): void } => {
+  const signals = {} as { [K in keyof T]: MediaSignalHandle<boolean> };
+  const destroyers: Array<() => void> = [];
 
   for (const key of Object.keys(bp) as Array<keyof T>) {
     const width = bp[key];
     const s = signal(false);
+    let cleanup: (() => void) | undefined;
 
     if (typeof window !== 'undefined' && typeof window.matchMedia === 'function') {
       try {
@@ -60,13 +62,35 @@ export const breakpoints = <T extends BreakpointMap>(
         };
 
         mql.addEventListener('change', handler);
+        cleanup = () => {
+          mql.removeEventListener('change', handler);
+        };
       } catch {
         // matchMedia may throw in non-browser environments
       }
     }
 
-    result[key] = readonly(s);
+    const ro = readonly(s) as MediaSignalHandle<boolean>;
+    let destroyed = false;
+    ro.destroy = (): void => {
+      if (destroyed) return;
+      destroyed = true;
+      cleanup?.();
+      s.dispose();
+    };
+    destroyers.push(ro.destroy);
+    signals[key] = ro;
   }
 
-  return result;
+  let destroyed = false;
+  return Object.defineProperty(signals, 'destroy', {
+    enumerable: false,
+    value: (): void => {
+      if (destroyed) return;
+      destroyed = true;
+      destroyers.forEach((destroy) => {
+        destroy();
+      });
+    },
+  }) as { [K in keyof T]: MediaSignalHandle<boolean> } & { destroy(): void };
 };

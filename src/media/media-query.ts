@@ -7,7 +7,7 @@
  */
 
 import { signal, readonly } from '../reactive/index';
-import type { ReadonlySignal } from '../reactive/index';
+import type { MediaSignalHandle } from './types';
 
 /**
  * Creates a reactive signal that tracks whether a CSS media query matches.
@@ -16,7 +16,8 @@ import type { ReadonlySignal } from '../reactive/index';
  * when the match state changes (e.g., on window resize, device orientation change).
  *
  * @param query - A valid CSS media query string (e.g., `'(min-width: 768px)'`)
- * @returns A readonly reactive signal that is `true` when the query matches
+ * @returns A readonly reactive signal that is `true` when the query matches,
+ * plus a `destroy()` method to remove the media query listener
  *
  * @example
  * ```ts
@@ -34,8 +35,9 @@ import type { ReadonlySignal } from '../reactive/index';
  * });
  * ```
  */
-export const mediaQuery = (query: string): ReadonlySignal<boolean> => {
+export const mediaQuery = (query: string): MediaSignalHandle<boolean> => {
   const s = signal(false);
+  let cleanup: (() => void) | undefined;
 
   if (typeof window !== 'undefined' && typeof window.matchMedia === 'function') {
     try {
@@ -47,10 +49,22 @@ export const mediaQuery = (query: string): ReadonlySignal<boolean> => {
       };
 
       mql.addEventListener('change', handler);
+      cleanup = () => {
+        mql.removeEventListener('change', handler);
+      };
     } catch {
       // matchMedia may throw in non-browser environments
     }
   }
 
-  return readonly(s);
+  const ro = readonly(s) as MediaSignalHandle<boolean>;
+  let destroyed = false;
+  ro.destroy = (): void => {
+    if (destroyed) return;
+    destroyed = true;
+    cleanup?.();
+    s.dispose();
+  };
+
+  return ro;
 };

@@ -60,7 +60,8 @@ export class BqLinkElement extends HTMLElement {
 
   /** The target path for navigation. */
   get to(): string {
-    return this.getAttribute('to') ?? '/';
+    const to = this.getAttribute('to');
+    return to == null || to.trim() === '' ? '/' : to;
   }
 
   set to(value: string) {
@@ -165,7 +166,7 @@ export class BqLinkElement extends HTMLElement {
 
     this._cleanup = effect(() => {
       const current = routeSignal.value.path;
-      const isMatch = exactMatch
+      const isMatch = exactMatch || targetPath === '/'
         ? current === targetPath
         : current === targetPath ||
           current.startsWith(targetPath.endsWith('/') ? targetPath : targetPath + '/');

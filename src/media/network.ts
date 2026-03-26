@@ -8,8 +8,7 @@
  */
 
 import { signal, readonly } from '../reactive/index';
-import type { ReadonlySignal } from '../reactive/index';
-import type { NetworkState } from './types';
+import type { NetworkSignal, NetworkState } from './types';
 
 /**
  * Navigator connection interface for the Network Information API.
@@ -60,6 +59,7 @@ const getNetworkState = (): NetworkState => {
  * via the Network Information API.
  *
  * @returns A readonly reactive signal with `{ online, effectiveType, downlink, rtt }`
+ * and a `destroy()` method to remove attached listeners
  *
  * @example
  * ```ts
@@ -75,8 +75,9 @@ const getNetworkState = (): NetworkState => {
  * });
  * ```
  */
-export const useNetworkStatus = (): ReadonlySignal<NetworkState> => {
+export const useNetworkStatus = (): NetworkSignal => {
   const s = signal<NetworkState>(getNetworkState());
+  let cleanup: (() => void) | undefined;
 
   if (typeof window !== 'undefined') {
     const update = (): void => {
@@ -90,7 +91,22 @@ export const useNetworkStatus = (): ReadonlySignal<NetworkState> => {
     if (nav.connection) {
       nav.connection.addEventListener('change', update);
     }
+
+    cleanup = () => {
+      window.removeEventListener('online', update);
+      window.removeEventListener('offline', update);
+      nav.connection?.removeEventListener('change', update);
+    };
   }
 
-  return readonly(s);
+  const ro = readonly(s) as NetworkSignal;
+  let destroyed = false;
+  ro.destroy = (): void => {
+    if (destroyed) return;
+    destroyed = true;
+    cleanup?.();
+    s.dispose();
+  };
+
+  return ro;
 };

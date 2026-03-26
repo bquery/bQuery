@@ -66,6 +66,7 @@ export type {
   GeolocationSignal,
   GeolocationState,
   MediaSignalHandle,
+  NetworkSignal,
   NetworkState,
   ViewportSignal,
   ViewportState,
