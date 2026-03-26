@@ -179,7 +179,7 @@ const createComponentClass = <
      */
     private mount(): void {
       if (this.hasMounted) return;
-      this.scope = createComponentScope();
+      this.scope ??= createComponentScope();
       const previousScope = setCurrentScope(this.scope);
       try {
         definition.beforeMount?.call(this);
@@ -222,6 +222,9 @@ const createComponentClass = <
 
         // Fire the user-facing onAttributeChanged hook for every observed attribute change
         if (definition.onAttributeChanged) {
+          if (!this.scope && this.isConnected && !this.hasMounted) {
+            this.scope = createComponentScope();
+          }
           const previousScope = setCurrentScope(this.scope);
           try {
             definition.onAttributeChanged.call(this, name, oldValue, newValue);
