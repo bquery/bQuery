@@ -28,6 +28,7 @@ const entries = {
   view: resolve(__dirname, 'src/view/index.ts'),
   storybook: resolve(__dirname, 'src/storybook/index.ts'),
   forms: resolve(__dirname, 'src/forms/index.ts'),
+  i18n: resolve(__dirname, 'src/i18n/index.ts'),
 };
 
 /**
@@ -75,6 +76,7 @@ export default defineConfig({
       'bquery/view': resolve(__dirname, 'src/view/index.ts'),
       'bquery/storybook': resolve(__dirname, 'src/storybook/index.ts'),
       'bquery/forms': resolve(__dirname, 'src/forms/index.ts'),
+      'bquery/i18n': resolve(__dirname, 'src/i18n/index.ts'),
     },
   },
 });

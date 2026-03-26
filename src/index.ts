@@ -37,3 +37,6 @@ export * from './view/index';
 
 // Forms module: reactive form handling and validation
 export * from './forms/index';
+
+// i18n module: internationalization, translations, formatting
+export * from './i18n/index';

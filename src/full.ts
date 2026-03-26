@@ -291,3 +291,18 @@ export type {
   ValidationResult,
   Validator,
 } from './forms/index';
+
+// ============================================================================
+// i18n Module: Internationalization, translations, formatting
+// ============================================================================
+export { createI18n, formatDate, formatNumber } from './i18n/index';
+export type {
+  DateFormatOptions,
+  I18nConfig,
+  I18nInstance,
+  LocaleLoader,
+  LocaleMessages,
+  Messages,
+  NumberFormatOptions,
+  TranslateParams,
+} from './i18n/index';

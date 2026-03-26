@@ -62,6 +62,10 @@
     "./forms": {
       "import": "./dist/forms.es.mjs",
       "types": "./dist/forms/index.d.ts"
+    },
+    "./i18n": {
+      "import": "./dist/i18n.es.mjs",
+      "types": "./dist/i18n/index.d.ts"
     }
   },
   "files": [
