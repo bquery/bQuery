@@ -2757,7 +2757,7 @@ describe('Router', () => {
       el.remove();
     });
 
-    it('should navigate on ctrl+click because bq-link has no native browser fallback', async () => {
+    it('should ignore ctrl+click so modified clicks are not swallowed', async () => {
       router = createRouter({
         routes: [
           { path: '/', component: () => null },
@@ -2778,12 +2778,13 @@ describe('Router', () => {
 
       await new Promise((r) => setTimeout(r, 50));
 
-      expect(currentRoute.value.path).toBe('/about');
+      expect(currentRoute.value.path).toBe('/');
+      expect(event.defaultPrevented).toBe(false);
 
       el.remove();
     });
 
-    it('should navigate on meta+click because bq-link has no native browser fallback', async () => {
+    it('should ignore meta+click so modified clicks are not swallowed', async () => {
       router = createRouter({
         routes: [
           { path: '/', component: () => null },
@@ -2804,8 +2805,36 @@ describe('Router', () => {
 
       await new Promise((r) => setTimeout(r, 50));
 
-      expect(currentRoute.value.path).toBe('/about');
+      expect(currentRoute.value.path).toBe('/');
+      expect(event.defaultPrevented).toBe(false);
 
+      el.remove();
+    });
+
+    it('should ignore clicks that were already prevented', async () => {
+      router = createRouter({
+        routes: [
+          { path: '/', component: () => null },
+          { path: '/about', component: () => null },
+        ],
+      });
+
+      const el = document.createElement('bq-link') as BqLinkElement;
+      el.to = '/about';
+      document.body.appendChild(el);
+
+      const capturingPreventListener = (event: Event) => event.preventDefault();
+      document.body.addEventListener('click', capturingPreventListener, { capture: true });
+
+      const event = new MouseEvent('click', { button: 0, bubbles: true, cancelable: true });
+      el.dispatchEvent(event);
+
+      await new Promise((r) => setTimeout(r, 50));
+
+      expect(currentRoute.value.path).toBe('/');
+      expect(event.defaultPrevented).toBe(true);
+
+      document.body.removeEventListener('click', capturingPreventListener, { capture: true });
       el.remove();
     });
 

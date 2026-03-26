@@ -2,6 +2,7 @@
  * Store persistence helpers.
  */
 
+import { isPrototypePollutionKey } from '../core/utils/object';
 import { createStore } from './create-store';
 import type { PersistedStoreOptions, Store, StoreDefinition } from './types';
 
@@ -17,6 +18,24 @@ const defaultSerializer = {
 /** @internal Check whether a value can be merged into store state. */
 const isPersistedStateObject = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
+
+/**
+ * Applies persisted state onto the default state while ignoring dangerous
+ * prototype-pollution keys such as `__proto__`, `constructor`, and `prototype`.
+ *
+ * @internal
+ */
+const mergePersistedState = <S extends Record<string, unknown>>(
+  defaultState: S,
+  persisted: Record<string, unknown>
+): S => {
+  const merged = { ...defaultState };
+  for (const [key, value] of Object.entries(persisted)) {
+    if (isPrototypePollutionKey(key)) continue;
+    merged[key as keyof S] = value as S[keyof S];
+  }
+  return merged;
+};
 
 /** @internal Resolve the default storage backend safely. */
 const getDefaultStorage = (): Storage | undefined => {
@@ -134,7 +153,7 @@ export const createPersistedStore = <
           }
         }
 
-        return { ...defaultState, ...persisted } as S;
+        return mergePersistedState(defaultState, persisted);
       } catch {
         // Ignore parse errors
         return defaultState;

@@ -109,9 +109,9 @@ export const use = <TOptions = unknown>(
   // Deduplicate
   if (installedPlugins.has(plugin.name)) return;
 
-  installedPlugins.add(plugin.name);
   const ctx = createInstallContext();
   plugin.install(ctx, options);
+  installedPlugins.add(plugin.name);
 };
 
 /**

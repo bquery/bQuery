@@ -962,6 +962,40 @@ describe('Store', () => {
         consoleErrorSpy.mockRestore();
       }
     });
+
+    it('should report async rejections from action listeners without affecting the action', async () => {
+      const store = createStore<
+        { count: number },
+        Record<string, never>,
+        { increment(): number }
+      >({
+        id: 'on-action-async-listener-safe',
+        state: () => ({ count: 0 }),
+        actions: {
+          increment() {
+            (this as { count: number }).count++;
+            return (this as { count: number }).count;
+          },
+        },
+      });
+      const consoleErrorSpy = spyOn(console, 'error').mockImplementation(() => {});
+
+      try {
+        store.$onAction(async () => {
+          throw new Error('async listener boom');
+        });
+
+        expect(store.increment()).toBe(1);
+        await Promise.resolve();
+
+        expect(consoleErrorSpy).toHaveBeenCalledWith(
+          expect.stringContaining('store "on-action-async-listener-safe" action "increment"'),
+          expect.objectContaining({ message: 'async listener boom' })
+        );
+      } finally {
+        consoleErrorSpy.mockRestore();
+      }
+    });
   });
 
   describe('createPersistedStore advanced options', () => {
@@ -1188,6 +1222,41 @@ describe('Store', () => {
         expect(store.val).toBe('fallback');
         destroyStore('invalid-persisted');
       }
+    });
+
+    it('should ignore prototype-pollution keys from persisted state', () => {
+      const mem = createMemoryStorage();
+      mem.store.set('bquery-store-safe-persisted', '{"val":"persisted"}');
+      const persisted = Object.create(null) as Record<string, unknown>;
+      Object.defineProperty(persisted, '__proto__', {
+        value: { polluted: true },
+        enumerable: true,
+      });
+      Object.defineProperty(persisted, 'constructor', {
+        value: { polluted: true },
+        enumerable: true,
+      });
+      persisted.val = 'persisted';
+
+      const store = createPersistedStore(
+        { id: 'safe-persisted', state: () => ({ val: 'default' }) },
+        {
+          storage: mem,
+          serializer: {
+            serialize: (state: unknown) => JSON.stringify(state),
+            deserialize: () => persisted,
+          },
+        }
+      );
+
+      expect(store.val).toBe('persisted');
+      expect(Object.getPrototypeOf(store)).not.toEqual(
+        expect.objectContaining({ polluted: true })
+      );
+      expect(Object.prototype.hasOwnProperty.call(store, '__proto__')).toBe(false);
+      expect(Object.prototype.hasOwnProperty.call(store, 'constructor')).toBe(false);
+
+      destroyStore('safe-persisted');
     });
 
     it('should fall back gracefully when default localStorage access throws', () => {

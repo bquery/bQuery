@@ -112,6 +112,26 @@ describe('Plugin System', () => {
       expect(installCount).toBe(1);
     });
 
+    it('should not mark a plugin as installed if install throws', () => {
+      let shouldThrow = true;
+      let installCount = 0;
+      const plugin = makePlugin('unstable', () => {
+        installCount++;
+        if (shouldThrow) {
+          throw new Error('boom');
+        }
+      });
+
+      expect(() => use(plugin)).toThrow('boom');
+      expect(isInstalled('unstable')).toBe(false);
+
+      shouldThrow = false;
+      use(plugin);
+
+      expect(isInstalled('unstable')).toBe(true);
+      expect(installCount).toBe(2);
+    });
+
     it('should throw for null/undefined plugin', () => {
       expect(() => use(null as unknown as BQueryPlugin)).toThrow(
         'bQuery plugin: use() expects a plugin object'

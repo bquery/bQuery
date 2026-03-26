@@ -189,9 +189,10 @@ export class BqLinkElement extends HTMLElement {
    * @internal
    */
   private _handleClick = (e: Event): void => {
-    if (e instanceof MouseEvent) {
-      if (e.button !== 0) return; // Only left clicks
-    }
+    if (!(e instanceof MouseEvent)) return;
+    if (e.defaultPrevented) return;
+    if (e.button !== 0) return; // Only left clicks
+    if (e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
 
     e.preventDefault();
     this._navigate();

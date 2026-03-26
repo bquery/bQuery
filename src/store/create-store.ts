@@ -75,6 +75,30 @@ export const createStore = <
   };
 
   /**
+   * Executes an action observer callback without allowing observer failures to
+   * affect the action result. Handles both synchronous exceptions and async
+   * rejections, routing all failures through the standard $onAction logger.
+   *
+   * @internal
+   */
+  const runOnActionCallback = (
+    phase: 'listener' | 'after' | 'onError',
+    actionName: string,
+    callback: () => unknown
+  ): void => {
+    try {
+      const result = callback();
+      if (isPromise(result)) {
+        void result.catch((error) => {
+          reportOnActionError(phase, actionName, error);
+        });
+      }
+    } catch (error) {
+      reportOnActionError(phase, actionName, error);
+    }
+  };
+
+  /**
    * Gets the current state.
    *
    * For subscriber notifications (where a plain object snapshot is needed),
@@ -230,17 +254,15 @@ export const createStore = <
 
       // Notify all action listeners (before phase)
       for (const listener of actionListeners) {
-        try {
+        runOnActionCallback('listener', actionName, () =>
           listener({
             name: actionName,
             store,
             args,
             after: (cb) => afterHooks.push(cb),
             onError: (cb) => errorHooks.push(cb),
-          });
-        } catch (error) {
-          reportOnActionError('listener', actionName, error);
-        }
+          })
+        );
       }
 
       let result: unknown;
@@ -248,11 +270,7 @@ export const createStore = <
         result = actionFn.apply(context, args);
       } catch (error) {
         for (const hook of errorHooks) {
-          try {
-            hook(error);
-          } catch (hookError) {
-            reportOnActionError('onError', actionName, hookError);
-          }
+          runOnActionCallback('onError', actionName, () => hook(error));
         }
         throw error;
       }
@@ -262,21 +280,13 @@ export const createStore = <
         return result.then(
           (resolved) => {
             for (const hook of afterHooks) {
-              try {
-                hook(resolved);
-              } catch (hookError) {
-                reportOnActionError('after', actionName, hookError);
-              }
+              runOnActionCallback('after', actionName, () => hook(resolved));
             }
             return resolved;
           },
           (error) => {
             for (const hook of errorHooks) {
-              try {
-                hook(error);
-              } catch (hookError) {
-                reportOnActionError('onError', actionName, hookError);
-              }
+              runOnActionCallback('onError', actionName, () => hook(error));
             }
             throw error;
           }
@@ -285,11 +295,7 @@ export const createStore = <
 
       // Sync action — run after hooks immediately
       for (const hook of afterHooks) {
-        try {
-          hook(result);
-        } catch (hookError) {
-          reportOnActionError('after', actionName, hookError);
-        }
+        runOnActionCallback('after', actionName, () => hook(result));
       }
       return result;
     };
