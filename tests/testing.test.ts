@@ -224,6 +224,21 @@ describe('mockSignal', () => {
     s.dispose();
   });
 
+  it('should have an immutable initialValue property', () => {
+    const s = mockSignal(42);
+    // initialValue is defined with writable: false — in strict mode
+    // (which TypeScript/Bun uses), assigning to it throws a TypeError
+    let threw = false;
+    try {
+      (s as Record<string, unknown>).initialValue = 999;
+    } catch {
+      threw = true;
+    }
+    // Whether it throws or silently ignores, the value must remain unchanged
+    expect(s.initialValue).toBe(42);
+    s.dispose();
+  });
+
   it('should have a set() method', () => {
     const s = mockSignal(0);
     s.set(99);
