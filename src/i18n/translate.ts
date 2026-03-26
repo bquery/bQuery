@@ -154,6 +154,11 @@ export const translate = (
  */
 export const deepMerge = (target: LocaleMessages, source: LocaleMessages): LocaleMessages => {
   for (const key of Object.keys(source)) {
+    // Guard against prototype pollution — skip __proto__, constructor, prototype
+    if (key === '__proto__' || key === 'constructor' || key === 'prototype') {
+      continue;
+    }
+
     const targetVal = target[key];
     const sourceVal = source[key];
 
