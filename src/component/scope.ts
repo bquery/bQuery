@@ -25,7 +25,7 @@ export interface ComponentScope {
   dispose(): void;
 }
 
-/** Stack of active component scopes (supports nesting). @internal */
+/** Currently active component scope. @internal */
 let currentScope: ComponentScope | undefined;
 
 /**

@@ -2643,7 +2643,7 @@ describe('Router', () => {
       el.remove();
     });
 
-    it('should navigate on Space keypress', async () => {
+    it('should not navigate on Space keypress', async () => {
       router = createRouter({
         routes: [
           { path: '/', component: () => null },
@@ -2661,7 +2661,7 @@ describe('Router', () => {
 
       await new Promise((r) => setTimeout(r, 50));
 
-      expect(currentRoute.value.path).toBe('/contact');
+      expect(currentRoute.value.path).toBe('/');
 
       el.remove();
     });
@@ -2856,7 +2856,7 @@ describe('Router', () => {
       el.remove();
     });
 
-    it('should not navigate on non-Enter/Space key', async () => {
+    it('should not navigate on non-Enter key', async () => {
       router = createRouter({
         routes: [
           { path: '/', component: () => null },

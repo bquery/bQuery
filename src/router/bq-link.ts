@@ -200,11 +200,11 @@ export class BqLinkElement extends HTMLElement {
   };
 
   /**
-   * Handles keyboard activation (Enter/Space).
+   * Handles keyboard activation (Enter).
    * @internal
    */
   private _handleKeydown = (e: Event): void => {
-    if (e instanceof KeyboardEvent && (e.key === 'Enter' || e.key === ' ')) {
+    if (e instanceof KeyboardEvent && e.key === 'Enter') {
       e.preventDefault();
       this._navigate();
     }

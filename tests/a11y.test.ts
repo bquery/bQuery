@@ -564,11 +564,43 @@ describe('a11y/prefersReducedMotion', () => {
   it('should return a signal with a boolean value', () => {
     const sig = prefersReducedMotion();
     expect(typeof sig.value).toBe('boolean');
+    sig.destroy();
   });
 
   it('should have a peek method', () => {
     const sig = prefersReducedMotion();
     expect(typeof sig.peek()).toBe('boolean');
+    sig.destroy();
+  });
+
+  it('should remove its media-query listener on destroy', () => {
+    let registeredHandler: ((event: MediaQueryListEvent) => void) | undefined;
+    let removedHandler: ((event: MediaQueryListEvent) => void) | undefined;
+    const originalMatchMedia = window.matchMedia;
+
+    window.matchMedia = (() =>
+      ({
+        matches: false,
+        media: '(prefers-reduced-motion: reduce)',
+        onchange: null,
+        addEventListener: (_type: string, handler: (event: MediaQueryListEvent) => void) => {
+          registeredHandler = handler;
+        },
+        removeEventListener: (_type: string, handler: (event: MediaQueryListEvent) => void) => {
+          removedHandler = handler;
+        },
+        addListener: () => {},
+        removeListener: () => {},
+        dispatchEvent: () => true,
+      }) as MediaQueryList) as typeof window.matchMedia;
+
+    try {
+      const sig = prefersReducedMotion();
+      sig.destroy();
+      expect(removedHandler).toBe(registeredHandler);
+    } finally {
+      window.matchMedia = originalMatchMedia;
+    }
   });
 });
 
@@ -578,11 +610,43 @@ describe('a11y/prefersColorScheme', () => {
   it('should return a signal with light or dark', () => {
     const sig = prefersColorScheme();
     expect(['light', 'dark']).toContain(sig.value);
+    sig.destroy();
   });
 
   it('should have a peek method', () => {
     const sig = prefersColorScheme();
     expect(['light', 'dark']).toContain(sig.peek());
+    sig.destroy();
+  });
+
+  it('should remove its media-query listener on destroy', () => {
+    let registeredHandler: ((event: MediaQueryListEvent) => void) | undefined;
+    let removedHandler: ((event: MediaQueryListEvent) => void) | undefined;
+    const originalMatchMedia = window.matchMedia;
+
+    window.matchMedia = (() =>
+      ({
+        matches: true,
+        media: '(prefers-color-scheme: dark)',
+        onchange: null,
+        addEventListener: (_type: string, handler: (event: MediaQueryListEvent) => void) => {
+          registeredHandler = handler;
+        },
+        removeEventListener: (_type: string, handler: (event: MediaQueryListEvent) => void) => {
+          removedHandler = handler;
+        },
+        addListener: () => {},
+        removeListener: () => {},
+        dispatchEvent: () => true,
+      }) as MediaQueryList) as typeof window.matchMedia;
+
+    try {
+      const sig = prefersColorScheme();
+      sig.destroy();
+      expect(removedHandler).toBe(registeredHandler);
+    } finally {
+      window.matchMedia = originalMatchMedia;
+    }
   });
 });
 
@@ -592,11 +656,47 @@ describe('a11y/prefersContrast', () => {
   it('should return a signal with a valid contrast preference', () => {
     const sig = prefersContrast();
     expect(['no-preference', 'more', 'less', 'custom']).toContain(sig.value);
+    sig.destroy();
   });
 
   it('should have a peek method', () => {
     const sig = prefersContrast();
     expect(['no-preference', 'more', 'less', 'custom']).toContain(sig.peek());
+    sig.destroy();
+  });
+
+  it('should remove its media-query listeners on destroy', () => {
+    const registeredHandlers = new Map<string, (event: MediaQueryListEvent) => void>();
+    const removedQueries = new Set<string>();
+    const originalMatchMedia = window.matchMedia;
+
+    window.matchMedia = ((query: string) =>
+      ({
+        matches: query === '(prefers-contrast: more)',
+        media: query,
+        onchange: null,
+        addEventListener: (_type: string, handler: (event: MediaQueryListEvent) => void) => {
+          registeredHandlers.set(query, handler);
+        },
+        removeEventListener: (_type: string, handler: (event: MediaQueryListEvent) => void) => {
+          if (registeredHandlers.get(query) === handler) {
+            removedQueries.add(query);
+          }
+        },
+        addListener: () => {},
+        removeListener: () => {},
+        dispatchEvent: () => true,
+      }) as MediaQueryList) as typeof window.matchMedia;
+
+    try {
+      const sig = prefersContrast();
+      sig.destroy();
+      expect(removedQueries).toEqual(
+        new Set(['(prefers-contrast: more)', '(prefers-contrast: less)'])
+      );
+    } finally {
+      window.matchMedia = originalMatchMedia;
+    }
   });
 });
 

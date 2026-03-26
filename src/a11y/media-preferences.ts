@@ -9,19 +9,22 @@
 
 import { signal } from '../reactive/index';
 import { readonly } from '../reactive/index';
-import type { ReadonlySignal } from '../reactive/index';
-import type { ColorScheme, ContrastPreference } from './types';
+import type { ColorScheme, ContrastPreference, MediaPreferenceSignal } from './types';
 
 /**
  * Creates a reactive signal that tracks a CSS media query.
  *
  * @param query - The media query string
  * @param initialValue - Fallback value when `matchMedia` is unavailable
- * @returns A readonly signal that updates when the query match changes
+ * @returns A readonly signal handle that updates when the query match changes
  * @internal
  */
-const createMediaSignal = (query: string, initialValue: boolean): ReadonlySignal<boolean> => {
+const createMediaSignal = (query: string, initialValue: boolean): MediaPreferenceSignal<boolean> => {
   const s = signal(initialValue);
+  let destroy = (): void => {
+    s.dispose();
+  };
+  const ro = readonly(s);
 
   if (typeof window !== 'undefined' && typeof window.matchMedia === 'function') {
     try {
@@ -33,12 +36,28 @@ const createMediaSignal = (query: string, initialValue: boolean): ReadonlySignal
       };
 
       mql.addEventListener('change', handler);
+      destroy = (): void => {
+        mql.removeEventListener('change', handler);
+        s.dispose();
+      };
     } catch {
       // matchMedia may throw in non-browser environments
     }
   }
 
-  return readonly(s);
+  return {
+    get value(): boolean {
+      return ro.value;
+    },
+    peek(): boolean {
+      return ro.peek();
+    },
+    destroy: (): void => {
+      const cleanup = destroy;
+      destroy = (): void => {};
+      cleanup();
+    },
+  };
 };
 
 /**
@@ -47,7 +66,7 @@ const createMediaSignal = (query: string, initialValue: boolean): ReadonlySignal
  * Tracks the `(prefers-reduced-motion: reduce)` media query. Returns `true`
  * when the user has requested reduced motion in their system settings.
  *
- * @returns A readonly reactive signal
+ * @returns A readonly reactive signal handle. Call `destroy()` to remove listeners.
  *
  * @example
  * ```ts
@@ -62,7 +81,7 @@ const createMediaSignal = (query: string, initialValue: boolean): ReadonlySignal
  * });
  * ```
  */
-export const prefersReducedMotion = (): ReadonlySignal<boolean> => {
+export const prefersReducedMotion = (): MediaPreferenceSignal<boolean> => {
   return createMediaSignal('(prefers-reduced-motion: reduce)', false);
 };
 
@@ -72,7 +91,7 @@ export const prefersReducedMotion = (): ReadonlySignal<boolean> => {
  * Tracks the `(prefers-color-scheme: dark)` media query. Returns `'dark'`
  * when the user prefers a dark color scheme, `'light'` otherwise.
  *
- * @returns A readonly reactive signal with `'light'` or `'dark'`
+ * @returns A readonly reactive signal handle with `'light'` or `'dark'`
  *
  * @example
  * ```ts
@@ -85,8 +104,12 @@ export const prefersReducedMotion = (): ReadonlySignal<boolean> => {
  * });
  * ```
  */
-export const prefersColorScheme = (): ReadonlySignal<ColorScheme> => {
+export const prefersColorScheme = (): MediaPreferenceSignal<ColorScheme> => {
   const s = signal<ColorScheme>('light');
+  let destroy = (): void => {
+    s.dispose();
+  };
+  const ro = readonly(s);
 
   if (typeof window !== 'undefined' && typeof window.matchMedia === 'function') {
     try {
@@ -98,12 +121,28 @@ export const prefersColorScheme = (): ReadonlySignal<ColorScheme> => {
       };
 
       mql.addEventListener('change', handler);
+      destroy = (): void => {
+        mql.removeEventListener('change', handler);
+        s.dispose();
+      };
     } catch {
       // matchMedia may throw in non-browser environments
     }
   }
 
-  return readonly(s);
+  return {
+    get value(): ColorScheme {
+      return ro.value;
+    },
+    peek(): ColorScheme {
+      return ro.peek();
+    },
+    destroy: (): void => {
+      const cleanup = destroy;
+      destroy = (): void => {};
+      cleanup();
+    },
+  };
 };
 
 /**
@@ -115,7 +154,7 @@ export const prefersColorScheme = (): ReadonlySignal<ColorScheme> => {
  * - `'custom'` — user has set a custom contrast level
  * - `'no-preference'` — no explicit preference
  *
- * @returns A readonly reactive signal
+ * @returns A readonly reactive signal handle
  *
  * @example
  * ```ts
@@ -130,8 +169,12 @@ export const prefersColorScheme = (): ReadonlySignal<ColorScheme> => {
  * });
  * ```
  */
-export const prefersContrast = (): ReadonlySignal<ContrastPreference> => {
+export const prefersContrast = (): MediaPreferenceSignal<ContrastPreference> => {
   const s = signal<ContrastPreference>('no-preference');
+  let destroy = (): void => {
+    s.dispose();
+  };
+  const ro = readonly(s);
 
   if (typeof window !== 'undefined' && typeof window.matchMedia === 'function') {
     const update = (): void => {
@@ -159,10 +202,27 @@ export const prefersContrast = (): ReadonlySignal<ContrastPreference> => {
 
       const mqlLess = window.matchMedia('(prefers-contrast: less)');
       mqlLess.addEventListener('change', update);
+      destroy = (): void => {
+        mql.removeEventListener('change', update);
+        mqlLess.removeEventListener('change', update);
+        s.dispose();
+      };
     } catch {
       // matchMedia may throw in non-browser environments
     }
   }
 
-  return readonly(s);
+  return {
+    get value(): ContrastPreference {
+      return ro.value;
+    },
+    peek(): ContrastPreference {
+      return ro.peek();
+    },
+    destroy: (): void => {
+      const cleanup = destroy;
+      destroy = (): void => {};
+      cleanup();
+    },
+  };
 };

@@ -59,6 +59,7 @@ export type {
   ColorScheme,
   ContrastPreference,
   FocusTrapHandle,
+  MediaPreferenceSignal,
   RovingTabIndexHandle,
   RovingTabIndexOptions,
   SkipLinkHandle,

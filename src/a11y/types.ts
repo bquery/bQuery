@@ -1,3 +1,5 @@
+import type { ReadonlySignal } from '../reactive/index';
+
 /**
  * Type definitions for the bQuery accessibility (a11y) module.
  *
@@ -133,6 +135,14 @@ export type ColorScheme = 'light' | 'dark';
  * Contrast preference value.
  */
 export type ContrastPreference = 'no-preference' | 'more' | 'less' | 'custom';
+
+/**
+ * Readonly media preference signal with an explicit cleanup hook.
+ */
+export interface MediaPreferenceSignal<T> extends ReadonlySignal<T> {
+  /** Releases underlying media-query listeners. Safe to call multiple times. */
+  destroy(): void;
+}
 
 // ─── Accessibility Audit ─────────────────────────────────────────────────────
 
