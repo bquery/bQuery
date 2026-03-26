@@ -938,6 +938,26 @@ describe('Store', () => {
           expect.stringContaining('store "on-action-safe-hooks" action "failAsync"'),
           expect.any(Error)
         );
+        expect(consoleErrorSpy.mock.calls).toEqual(
+          expect.arrayContaining([
+            [
+              expect.stringContaining('store "on-action-safe-hooks" action "increment"'),
+              expect.objectContaining({ message: 'listener boom' }),
+            ],
+            [
+              expect.stringContaining('store "on-action-safe-hooks" action "increment"'),
+              expect.objectContaining({ message: 'after hook boom' }),
+            ],
+            [
+              expect.stringContaining('store "on-action-safe-hooks" action "failAsync"'),
+              expect.objectContaining({ message: 'listener boom' }),
+            ],
+            [
+              expect.stringContaining('store "on-action-safe-hooks" action "failAsync"'),
+              expect.objectContaining({ message: 'error hook boom' }),
+            ],
+          ])
+        );
       } finally {
         consoleErrorSpy.mockRestore();
       }

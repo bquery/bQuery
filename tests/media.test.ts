@@ -283,8 +283,7 @@ describe('media/useNetworkStatus', () => {
           value: originalNavigator,
         });
       } else {
-        // @ts-expect-error cleanup for test-only global mutation
-        delete globalThis.navigator;
+        Reflect.deleteProperty(globalThis, 'navigator');
       }
     }
   });

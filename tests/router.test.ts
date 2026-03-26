@@ -1011,9 +1011,7 @@ describe('Router', () => {
       expectType<RouteDefinition[]>(validRoutes);
 
       // @ts-expect-error route definitions must provide a component or redirectTo
-      const invalidRoute: RouteDefinition = { path: '/broken' };
-
-      void invalidRoute;
+      expectType<RouteDefinition>({ path: '/broken' });
       expect(validRoutes).toHaveLength(2);
     });
   });
@@ -2310,6 +2308,7 @@ describe('Router', () => {
         }
 
         expect(deleteSpy).toHaveBeenCalled();
+        expect(deleteSpy).toHaveBeenCalledWith('0');
       } finally {
         deleteSpy.mockRestore();
       }

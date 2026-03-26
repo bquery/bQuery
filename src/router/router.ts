@@ -102,6 +102,7 @@ export const createRouter = (options: RouterOptions): Router => {
   const saveScrollPosition = (key = getScrollKey()): void => {
     if (!scrollRestoration) return;
     if (scrollPositions.has(key)) {
+      // Refresh the insertion order so pruning behaves like an LRU cache.
       scrollPositions.delete(key);
     }
     scrollPositions.set(key, { x: window.scrollX, y: window.scrollY });
