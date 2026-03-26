@@ -86,7 +86,8 @@ export const serializeStoreState = (options: SerializeOptions = {}): SerializeRe
 
   const stateJson = serialize(stateMap);
   const escapedJson = escapeForScript(stateJson);
-  const scriptTag = `<script id="${scriptId}">window.${globalKey}=${escapedJson}</script>`;
+  const escapedGlobalKey = escapeForScript(JSON.stringify(globalKey));
+  const scriptTag = `<script id="${scriptId}">window[${escapedGlobalKey}]=${escapedJson}</script>`;
 
   return { stateJson, scriptTag };
 };

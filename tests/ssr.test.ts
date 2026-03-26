@@ -375,6 +375,18 @@ describe('serializeStoreState', () => {
     expect(result.scriptTag).toContain('MY_STATE');
   });
 
+  it('supports custom globalKey values that are not valid identifiers', () => {
+    createStore({ id: 'serialize-custom-key', state: () => ({ z: 1 }) });
+
+    const result = serializeStoreState({
+      storeIds: ['serialize-custom-key'],
+      globalKey: 'my-state',
+    });
+
+    expect(result.scriptTag).toContain('window["my-state"]=');
+    expect(result.scriptTag).not.toContain('window.my-state=');
+  });
+
   it('uses custom serializer', () => {
     createStore({ id: 'serialize-ser', state: () => ({ k: 'v' }) });
 
