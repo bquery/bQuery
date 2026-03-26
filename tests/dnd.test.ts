@@ -335,6 +335,27 @@ describe('dnd/draggable', () => {
     firePointerEvent(box, 'pointerup', { clientX: 50, clientY: 50 });
     handle.destroy();
   });
+
+  it('should update ghost position using accumulated drag offset', () => {
+    const handle = draggable(box, { ghost: true });
+    firePointerEvent(box, 'pointerdown', { clientX: 50, clientY: 50 });
+
+    const ghost = document.querySelector('.bq-drag-ghost') as HTMLElement | null;
+    expect(ghost).not.toBeNull();
+    expect(ghost!.style.left).toBe('0px');
+    expect(ghost!.style.top).toBe('0px');
+
+    firePointerEvent(box, 'pointermove', { clientX: 60, clientY: 65 });
+    expect(ghost!.style.left).toBe('10px');
+    expect(ghost!.style.top).toBe('15px');
+
+    firePointerEvent(box, 'pointermove', { clientX: 80, clientY: 90 });
+    expect(ghost!.style.left).toBe('30px');
+    expect(ghost!.style.top).toBe('40px');
+
+    firePointerEvent(box, 'pointerup', { clientX: 80, clientY: 90 });
+    handle.destroy();
+  });
 });
 
 // ─── droppable() ─────────────────────────────────────────────────────────────

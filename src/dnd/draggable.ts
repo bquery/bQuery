@@ -143,6 +143,7 @@ export const draggable = (
   let currentPosition: DragPosition = { x: 0, y: 0 };
   let previousPosition: DragPosition = { x: 0, y: 0 };
   let ghostEl: HTMLElement | null = null;
+  let ghostStartPosition: DragPosition | null = null;
 
   const createEventData = (event: PointerEvent): DragEventData => ({
     element: el,
@@ -176,6 +177,7 @@ export const draggable = (
       ghostEl.remove();
       ghostEl = null;
     }
+    ghostStartPosition = null;
   };
 
   const onPointerDown = (e: PointerEvent): void => {
@@ -196,6 +198,8 @@ export const draggable = (
     el.setPointerCapture(e.pointerId);
 
     if (ghost) {
+      const rect = el.getBoundingClientRect();
+      ghostStartPosition = { x: rect.left, y: rect.top };
       ghostEl = createGhost();
     }
 
@@ -236,9 +240,12 @@ export const draggable = (
 
     // Apply the position
     if (ghost && ghostEl) {
-      const rect = el.getBoundingClientRect();
-      ghostEl.style.left = `${rect.left + (currentPosition.x - previousPosition.x)}px`;
-      ghostEl.style.top = `${rect.top + (currentPosition.y - previousPosition.y)}px`;
+      const start = ghostStartPosition ?? {
+        x: el.getBoundingClientRect().left,
+        y: el.getBoundingClientRect().top,
+      };
+      ghostEl.style.left = `${start.x + currentPosition.x}px`;
+      ghostEl.style.top = `${start.y + currentPosition.y}px`;
     } else {
       el.style.transform = `translate(${currentPosition.x}px, ${currentPosition.y}px)`;
     }
