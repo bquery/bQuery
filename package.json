@@ -58,6 +58,10 @@
     "./storybook": {
       "import": "./dist/storybook.es.mjs",
       "types": "./dist/storybook/index.d.ts"
+    },
+    "./forms": {
+      "import": "./dist/forms.es.mjs",
+      "types": "./dist/forms/index.d.ts"
     }
   },
   "files": [

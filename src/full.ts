@@ -239,3 +239,34 @@ export type { StateFactory, Store, StoreDefinition, StorePlugin } from './store/
 // ============================================================================
 export { createTemplate, mount } from './view/index';
 export type { BindingContext, MountOptions, View } from './view/index';
+
+// ============================================================================
+// Forms Module: Reactive form handling and validation
+// ============================================================================
+export {
+  createForm,
+  custom,
+  customAsync,
+  email,
+  max,
+  maxLength,
+  min,
+  minLength,
+  pattern,
+  required,
+  url,
+} from './forms/index';
+export type {
+  AsyncValidator,
+  CrossFieldValidator,
+  FieldConfig,
+  Form,
+  FormConfig,
+  FormErrors,
+  FormField,
+  FormFields,
+  SubmitHandler,
+  SyncValidator,
+  ValidationResult,
+  Validator,
+} from './forms/index';

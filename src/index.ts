@@ -34,3 +34,6 @@ export * from './store/index';
 
 // View module: declarative DOM bindings
 export * from './view/index';
+
+// Forms module: reactive form handling and validation
+export * from './forms/index';
