@@ -563,6 +563,29 @@ describe('a11y/skipLink', () => {
     handle.destroy();
     target.remove();
   });
+
+  it('should support general selectors without forcing them into ids', () => {
+    const main = document.createElement('main');
+    const section = document.createElement('section');
+    document.body.append(main, section);
+
+    const mainHandle = skipLink('main');
+    const sectionHandle = skipLink('section');
+
+    expect(mainHandle.element.href).toMatch(/#bq-skip-target-\d+$/);
+    expect(sectionHandle.element.href).toMatch(/#bq-skip-target-\d+$/);
+    expect(mainHandle.element.href).not.toBe(sectionHandle.element.href);
+
+    mainHandle.element.click();
+    expect(document.activeElement).toBe(main);
+    sectionHandle.element.click();
+    expect(document.activeElement).toBe(section);
+
+    mainHandle.destroy();
+    sectionHandle.destroy();
+    main.remove();
+    section.remove();
+  });
 });
 
 // ─── prefersReducedMotion ────────────────────────────────────────────────────

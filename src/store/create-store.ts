@@ -63,6 +63,10 @@ export const createStore = <
   // Action lifecycle hooks for $onAction
   const actionListeners: Array<OnActionCallback> = [];
 
+  const reportOnActionError = (phase: 'listener' | 'after' | 'onError', error: unknown): void => {
+    console.error(`bQuery store: Error in $onAction ${phase}`, error);
+  };
+
   /**
    * Gets the current state.
    *
@@ -219,13 +223,17 @@ export const createStore = <
 
       // Notify all action listeners (before phase)
       for (const listener of actionListeners) {
-        listener({
-          name: actionName,
-          store,
-          args,
-          after: (cb) => afterHooks.push(cb),
-          onError: (cb) => errorHooks.push(cb),
-        });
+        try {
+          listener({
+            name: actionName,
+            store,
+            args,
+            after: (cb) => afterHooks.push(cb),
+            onError: (cb) => errorHooks.push(cb),
+          });
+        } catch (error) {
+          reportOnActionError('listener', error);
+        }
       }
 
       let result: unknown;
@@ -233,7 +241,11 @@ export const createStore = <
         result = actionFn.apply(context, args);
       } catch (error) {
         for (const hook of errorHooks) {
-          hook(error);
+          try {
+            hook(error);
+          } catch (hookError) {
+            reportOnActionError('onError', hookError);
+          }
         }
         throw error;
       }
@@ -243,13 +255,21 @@ export const createStore = <
         return result.then(
           (resolved) => {
             for (const hook of afterHooks) {
-              hook(resolved);
+              try {
+                hook(resolved);
+              } catch (hookError) {
+                reportOnActionError('after', hookError);
+              }
             }
             return resolved;
           },
           (error) => {
             for (const hook of errorHooks) {
-              hook(error);
+              try {
+                hook(error);
+              } catch (hookError) {
+                reportOnActionError('onError', hookError);
+              }
             }
             throw error;
           }
@@ -258,7 +278,11 @@ export const createStore = <
 
       // Sync action — run after hooks immediately
       for (const hook of afterHooks) {
-        hook(result);
+        try {
+          hook(result);
+        } catch (hookError) {
+          reportOnActionError('after', hookError);
+        }
       }
       return result;
     };

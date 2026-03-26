@@ -2218,6 +2218,25 @@ describe('component/useSignal', () => {
     // all subscribers are removed, preventing memory leaks.
     expect(createdSignal!.peek()).toBe(0);
   });
+
+  it('keeps the component scope active during render()', () => {
+    const tagName = `test-use-signal-render-${Date.now()}`;
+
+    component(tagName, {
+      props: {},
+      render() {
+        const count = useSignal(7);
+        return html`<div>${count.value}</div>`;
+      },
+    });
+
+    const el = document.createElement(tagName);
+    document.body.appendChild(el);
+
+    expect(el.shadowRoot?.textContent).toContain('7');
+
+    el.remove();
+  });
 });
 
 describe('component/useComputed', () => {

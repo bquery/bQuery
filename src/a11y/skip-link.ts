@@ -31,6 +31,11 @@ const FOCUSED_STYLES = `
   left: 0;
 `;
 
+let skipTargetIdCounter = 0;
+const generatedSkipTargetRefs = new Map<string, number>();
+/** Matches a bare element id value (not a general CSS selector). */
+const BARE_ID_SELECTOR_RE = /^[A-Za-z][\w-]*$/;
+
 /**
  * Creates a skip navigation link that jumps to the specified target.
  *
@@ -61,10 +66,63 @@ export const skipLink = (
   options: SkipLinkOptions = {}
 ): SkipLinkHandle => {
   const { text = 'Skip to main content', className = 'bq-skip-link' } = options;
-  const normalizedTargetSelector = targetSelector.startsWith('#') ? targetSelector : `#${targetSelector}`;
+  let trackedGeneratedTargetId: string | undefined;
+  const isBareIdSelector = BARE_ID_SELECTOR_RE.test(targetSelector);
+  const releaseTrackedGeneratedTargetId = (): void => {
+    if (!trackedGeneratedTargetId) return;
+
+    const remainingRefs = (generatedSkipTargetRefs.get(trackedGeneratedTargetId) ?? 0) - 1;
+    if (remainingRefs <= 0) {
+      generatedSkipTargetRefs.delete(trackedGeneratedTargetId);
+      const target = document.getElementById(trackedGeneratedTargetId);
+      if (target) {
+        target.removeAttribute('id');
+      }
+    } else {
+      generatedSkipTargetRefs.set(trackedGeneratedTargetId, remainingRefs);
+    }
+
+    trackedGeneratedTargetId = undefined;
+  };
+  const trackGeneratedTargetId = (id: string): void => {
+    if (trackedGeneratedTargetId === id) return;
+    releaseTrackedGeneratedTargetId();
+    generatedSkipTargetRefs.set(id, (generatedSkipTargetRefs.get(id) ?? 0) + 1);
+    trackedGeneratedTargetId = id;
+  };
+  const resolveTarget = (): HTMLElement | null => {
+    if (targetSelector.startsWith('#')) {
+      return document.querySelector(targetSelector) as HTMLElement | null;
+    }
+
+    return (
+      (isBareIdSelector ? document.getElementById(targetSelector) : null) ??
+      (document.querySelector(targetSelector) as HTMLElement | null)
+    );
+  };
+
+  const ensureTargetId = (target: HTMLElement): string => {
+    if (target.id) {
+      if (generatedSkipTargetRefs.has(target.id)) {
+        trackGeneratedTargetId(target.id);
+      }
+      return target.id;
+    }
+
+    skipTargetIdCounter += 1;
+    const generatedTargetId = `bq-skip-target-${skipTargetIdCounter}`;
+    target.id = generatedTargetId;
+    trackGeneratedTargetId(generatedTargetId);
+    return generatedTargetId;
+  };
 
   const link = document.createElement('a');
-  link.href = normalizedTargetSelector;
+  const initialTarget = resolveTarget();
+  link.href = targetSelector.startsWith('#')
+    ? targetSelector
+    : initialTarget
+      ? `#${ensureTargetId(initialTarget)}`
+      : `#${targetSelector}`;
   link.textContent = text;
   link.className = className;
   link.setAttribute('style', DEFAULT_STYLES);
@@ -79,8 +137,9 @@ export const skipLink = (
 
   link.addEventListener('click', (e) => {
     e.preventDefault();
-    const target = document.querySelector(normalizedTargetSelector) as HTMLElement | null;
+    const target = resolveTarget();
     if (target) {
+      link.href = `#${ensureTargetId(target)}`;
       // Make the target focusable if it isn't already
       if (!target.hasAttribute('tabindex')) {
         target.setAttribute('tabindex', '-1');
@@ -98,6 +157,7 @@ export const skipLink = (
 
   return {
     destroy: () => {
+      releaseTrackedGeneratedTargetId();
       link.remove();
     },
     element: link,

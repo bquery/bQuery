@@ -895,6 +895,39 @@ describe('Store', () => {
       expect(callsA).toEqual(['increment']);
       expect(callsB).toEqual(['increment']);
     });
+
+    it('should ignore errors thrown by action listeners and hooks', async () => {
+      const store = createStore<
+        { count: number },
+        Record<string, never>,
+        { increment(): number; failAsync(): Promise<void> }
+      >({
+        id: 'on-action-safe-hooks',
+        state: () => ({ count: 0 }),
+        actions: {
+          increment() {
+            (this as { count: number }).count++;
+            return (this as { count: number }).count;
+          },
+          async failAsync() {
+            throw new Error('async boom');
+          },
+        },
+      });
+
+      store.$onAction(({ after, onError }) => {
+        after(() => {
+          throw new Error('after hook boom');
+        });
+        onError(() => {
+          throw new Error('error hook boom');
+        });
+        throw new Error('listener boom');
+      });
+
+      expect(store.increment()).toBe(1);
+      await expect(store.failAsync()).rejects.toThrow('async boom');
+    });
   });
 
   describe('createPersistedStore advanced options', () => {

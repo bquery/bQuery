@@ -404,6 +404,7 @@ const createComponentClass = <
       runBeforeUpdate = true
     ): void {
       try {
+        setCurrentScope(this.scope);
         if (triggerUpdated && runBeforeUpdate && definition.beforeUpdate) {
           if (!oldProps) {
             throw new Error('bQuery component: previous props are required for update renders');
@@ -456,6 +457,8 @@ const createComponentClass = <
         }
       } catch (error) {
         this.handleError(error as Error);
+      } finally {
+        setCurrentScope(undefined);
       }
     }
   }
