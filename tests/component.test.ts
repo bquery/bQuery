@@ -2034,6 +2034,32 @@ describe('component/onAttributeChanged hook', () => {
     el.remove();
   });
 
+  it('keeps component-scoped primitives available inside onAttributeChanged', () => {
+    const tagName = `test-attr-scope-${Date.now()}`;
+    const seenValues: string[] = [];
+
+    component<{ label: string }>(tagName, {
+      props: {
+        label: { type: String, default: '' },
+      },
+      onAttributeChanged(_name, _oldValue, newValue) {
+        const attrSignal = useSignal(newValue ?? '');
+        seenValues.push(attrSignal.value);
+      },
+      render: ({ props }) => html`<span>${props.label}</span>`,
+    });
+
+    const el = document.createElement(tagName);
+    document.body.appendChild(el);
+
+    el.setAttribute('label', 'Hello');
+    el.setAttribute('label', 'World');
+
+    expect(seenValues).toEqual(['Hello', 'World']);
+
+    el.remove();
+  });
+
   it('deduplicates observeAttributes with props keys', () => {
     const tagName = `test-dedup-observe-${Date.now()}`;
 

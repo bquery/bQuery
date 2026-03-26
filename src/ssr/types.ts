@@ -1,3 +1,5 @@
+import type { HydrateMountOptions } from './hydrate';
+
 /**
  * Public types for the SSR / Pre-rendering module.
  */
@@ -40,28 +42,8 @@ export type SSRResult = {
   storeState?: string;
 };
 
-/**
- * Options for hydrating a server-rendered DOM element.
- */
-export type HydrationOptions = {
-  /**
-   * Prefix for directive attributes.
-   * @default 'bq'
-   */
-  prefix?: string;
-
-  /**
-   * Whether to sanitize bq-html content.
-   * @default true
-   */
-  sanitize?: boolean;
-
-  /**
-   * Enable hydration mode — reuse existing server-rendered DOM
-   * and attach reactivity without re-rendering.
-   */
-  hydrate: true;
-};
+/** @deprecated Use `HydrateMountOptions` instead. */
+export type HydrationOptions = HydrateMountOptions;
 
 /**
  * Options for serializing store state.

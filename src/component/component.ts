@@ -155,13 +155,13 @@ const createComponentClass = <
         if (this.hasMounted) {
           // Recreate scope for reconnected component
           this.scope = createComponentScope();
-          setCurrentScope(this.scope);
+          const previousScope = setCurrentScope(this.scope);
           try {
             definition.connected?.call(this);
           } catch (error) {
             this.handleError(error as Error);
           } finally {
-            setCurrentScope(undefined);
+            setCurrentScope(previousScope);
           }
           this.setupSignalSubscriptions(true);
           return;
@@ -180,12 +180,12 @@ const createComponentClass = <
     private mount(): void {
       if (this.hasMounted) return;
       this.scope = createComponentScope();
-      setCurrentScope(this.scope);
+      const previousScope = setCurrentScope(this.scope);
       try {
         definition.beforeMount?.call(this);
         definition.connected?.call(this);
       } finally {
-        setCurrentScope(undefined);
+        setCurrentScope(previousScope);
       }
       this.render();
       this.setupSignalSubscriptions();
@@ -222,7 +222,12 @@ const createComponentClass = <
 
         // Fire the user-facing onAttributeChanged hook for every observed attribute change
         if (definition.onAttributeChanged) {
-          definition.onAttributeChanged.call(this, name, oldValue, newValue);
+          const previousScope = setCurrentScope(this.scope);
+          try {
+            definition.onAttributeChanged.call(this, name, oldValue, newValue);
+          } finally {
+            setCurrentScope(previousScope);
+          }
         }
 
         if (this.hasMounted) {
@@ -403,8 +408,8 @@ const createComponentClass = <
       change?: AttributeChange,
       runBeforeUpdate = true
     ): void {
+      const previousScope = setCurrentScope(this.scope);
       try {
-        setCurrentScope(this.scope);
         if (triggerUpdated && runBeforeUpdate && definition.beforeUpdate) {
           if (!oldProps) {
             throw new Error('bQuery component: previous props are required for update renders');
@@ -458,7 +463,7 @@ const createComponentClass = <
       } catch (error) {
         this.handleError(error as Error);
       } finally {
-        setCurrentScope(undefined);
+        setCurrentScope(previousScope);
       }
     }
   }
