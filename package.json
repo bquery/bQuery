@@ -86,6 +86,10 @@
     "./devtools": {
       "import": "./dist/devtools.es.mjs",
       "types": "./dist/devtools/index.d.ts"
+    },
+    "./testing": {
+      "import": "./dist/testing.es.mjs",
+      "types": "./dist/testing/index.d.ts"
     }
   },
   "files": [

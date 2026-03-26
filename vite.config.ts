@@ -34,6 +34,7 @@ const entries = {
   media: resolve(__dirname, 'src/media/index.ts'),
   plugin: resolve(__dirname, 'src/plugin/index.ts'),
   devtools: resolve(__dirname, 'src/devtools/index.ts'),
+  testing: resolve(__dirname, 'src/testing/index.ts'),
 };
 
 /**
@@ -87,6 +88,7 @@ export default defineConfig({
       'bquery/media': resolve(__dirname, 'src/media/index.ts'),
       'bquery/plugin': resolve(__dirname, 'src/plugin/index.ts'),
       'bquery/devtools': resolve(__dirname, 'src/devtools/index.ts'),
+      'bquery/testing': resolve(__dirname, 'src/testing/index.ts'),
     },
   },
 });

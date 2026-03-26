@@ -83,3 +83,22 @@ export * from './plugin/index';
 
 // DevTools module: runtime debugging utilities
 export * from './devtools/index';
+
+// Testing module: test helpers for signals, components, router, and events
+export {
+  renderComponent,
+  flushEffects,
+  mockSignal,
+  mockRouter,
+  fireEvent,
+  waitFor,
+} from './testing/index';
+export type {
+  FireEventOptions,
+  MockRouter,
+  MockRouterOptions,
+  MockSignal,
+  RenderComponentOptions,
+  RenderResult,
+  WaitForOptions,
+} from './testing/index';

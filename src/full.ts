@@ -423,3 +423,25 @@ export type {
   TimelineEntry,
   TimelineEventType,
 } from './devtools/index';
+
+// ---------------------------------------------------------------------------
+// Testing module
+// ---------------------------------------------------------------------------
+export {
+  renderComponent,
+  flushEffects,
+  mockSignal,
+  mockRouter,
+  fireEvent,
+  waitFor,
+} from './testing/index';
+export type {
+  FireEventOptions,
+  MockRouter,
+  MockRouterOptions,
+  MockSignal,
+  RenderComponentOptions,
+  RenderResult,
+  WaitForOptions,
+} from './testing/index';
+export type { Route as TestRoute } from './testing/types';
