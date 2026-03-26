@@ -602,23 +602,27 @@ describe('forms/createForm', () => {
       const form = createForm({
         fields: { name: { initialValue: 'Ada' } },
         onSubmit: () => {
+          // Capture state inside the handler — must be true here
+          states.push(form.isSubmitting.value);
           return new Promise<void>((resolve) => {
             resolveSubmit = resolve;
           });
         },
       });
 
+      // isSubmitting becomes true synchronously
       const submitPromise = form.handleSubmit();
-      // isSubmitting should be true after validation passes
-      // Use a microtask to let the async submit start
-      await new Promise((r) => setTimeout(r, 0));
       states.push(form.isSubmitting.value);
 
-      resolveSubmit!();
+      // Wait for validation to complete and onSubmit to be called
+      await new Promise<void>((r) => queueMicrotask(r));
+      // Resolve the onSubmit promise
+      resolveSubmit?.();
       await submitPromise;
       states.push(form.isSubmitting.value);
 
-      expect(states).toEqual([true, false]);
+      // [true (sync after call), true (inside onSubmit), false (after complete)]
+      expect(states).toEqual([true, true, false]);
     });
 
     it('resets isSubmitting even if onSubmit throws', async () => {
