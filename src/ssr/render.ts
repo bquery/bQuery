@@ -377,7 +377,7 @@ export const renderToString = (
   // Create a DOM document for processing
   // Use globalThis.document if available, otherwise DOMParser
   const parser = new DOMParser();
-  const doc = parser.parseFromString(`<body>${template.trim()}</body>`, 'text/html');
+  const doc = parser.parseFromString(template.trim(), 'text/html');
   const body = doc.body || doc.documentElement;
 
   if (!body) {

@@ -4,6 +4,7 @@
  * @internal
  */
 
+import { merge } from '../core/utils/object';
 import type { LocaleMessages, TranslateParams } from './types';
 
 /**
@@ -153,28 +154,11 @@ export const translate = (
  * @internal
  */
 export const deepMerge = (target: LocaleMessages, source: LocaleMessages): LocaleMessages => {
-  for (const key of Object.keys(source)) {
-    // Guard against prototype pollution — skip __proto__, constructor, prototype
-    if (key === '__proto__' || key === 'constructor' || key === 'prototype') {
-      continue;
-    }
+  const merged = merge(
+    target as Record<string, unknown>,
+    source as Record<string, unknown>
+  ) as LocaleMessages;
 
-    const targetVal = target[key];
-    const sourceVal = source[key];
-
-    if (
-      typeof targetVal === 'object' &&
-      targetVal !== null &&
-      typeof sourceVal === 'object' &&
-      sourceVal !== null
-    ) {
-      target[key] = deepMerge(
-        targetVal as LocaleMessages,
-        sourceVal as LocaleMessages
-      );
-    } else {
-      target[key] = sourceVal;
-    }
-  }
+  Object.assign(target, merged);
   return target;
 };

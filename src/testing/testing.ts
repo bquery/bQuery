@@ -26,6 +26,46 @@ import type { RouteDefinition } from '../router/types';
 // renderComponent
 // ============================================================================
 
+const isWordChar = (char: string | undefined): boolean =>
+  char !== undefined &&
+  ((char >= 'a' && char <= 'z') ||
+    (char >= 'A' && char <= 'Z') ||
+    (char >= '0' && char <= '9') ||
+    char === '_');
+
+const readRouteConstraint = (
+  pattern: string,
+  startIndex: number
+): { constraint: string; endIndex: number } | null => {
+  let depth = 1;
+  let constraint = '';
+  let i = startIndex + 1;
+
+  while (i < pattern.length) {
+    const char = pattern[i];
+
+    if (char === '\\' && i + 1 < pattern.length) {
+      constraint += char + pattern[i + 1];
+      i += 2;
+      continue;
+    }
+
+    if (char === '(') {
+      depth++;
+    } else if (char === ')') {
+      depth--;
+      if (depth === 0) {
+        return { constraint, endIndex: i + 1 };
+      }
+    }
+
+    constraint += char;
+    i++;
+  }
+
+  return null;
+};
+
 /**
  * Mounts a custom element by tag name for testing and returns a handle
  * to interact with it.
@@ -270,22 +310,41 @@ function buildRouteRegex(pattern: string): { regex: RegExp; paramNames: string[]
     return { regex: /^.*$/, paramNames: [] };
   }
 
-  let regexStr = pattern
-    // Named params with regex constraint: :name(pattern)
-    .replace(/:(\w+)\(([^)]+)\)/g, (_m, name, constraint) => {
-      paramNames.push(name);
-      return `(${constraint})`;
-    })
-    // Wildcard catch-all: :name*
-    .replace(/:(\w+)\*/g, (_m, name) => {
-      paramNames.push(name);
-      return '(.*)';
-    })
-    // Simple named params: :name
-    .replace(/:(\w+)/g, (_m, name) => {
-      paramNames.push(name);
-      return '([^/]+)';
-    });
+  let regexStr = '';
+
+  for (let i = 0; i < pattern.length; ) {
+    if (pattern[i] !== ':' || !isWordChar(pattern[i + 1])) {
+      regexStr += pattern[i];
+      i++;
+      continue;
+    }
+
+    let nameEnd = i + 2;
+    while (nameEnd < pattern.length && isWordChar(pattern[nameEnd])) {
+      nameEnd++;
+    }
+
+    const name = pattern.slice(i + 1, nameEnd);
+    paramNames.push(name);
+
+    if (pattern[nameEnd] === '(') {
+      const parsedConstraint = readRouteConstraint(pattern, nameEnd);
+      if (parsedConstraint) {
+        regexStr += `(${parsedConstraint.constraint})`;
+        i = parsedConstraint.endIndex;
+        continue;
+      }
+    }
+
+    if (pattern[nameEnd] === '*') {
+      regexStr += '(.*)';
+      i = nameEnd + 1;
+      continue;
+    }
+
+    regexStr += '([^/]+)';
+    i = nameEnd;
+  }
 
   return { regex: new RegExp(`^${regexStr}$`), paramNames };
 }

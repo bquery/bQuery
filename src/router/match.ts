@@ -10,6 +10,56 @@ import type { Route, RouteDefinition } from './types';
 // Route Matching
 // ============================================================================
 
+const REGEX_META_CHARS = new Set(['\\', '^', '$', '.', '*', '+', '?', '(', ')', '[', ']', '{', '}', '|']);
+
+const isParamStart = (char: string | undefined): boolean =>
+  char !== undefined &&
+  ((char >= 'a' && char <= 'z') || (char >= 'A' && char <= 'Z') || char === '_');
+
+const isParamChar = (char: string | undefined): boolean =>
+  isParamStart(char) || (char !== undefined && char >= '0' && char <= '9');
+
+const escapeRegexLiteral = (value: string): string => {
+  let escaped = '';
+  for (const char of value) {
+    escaped += REGEX_META_CHARS.has(char) ? `\\${char}` : char;
+  }
+  return escaped;
+};
+
+const readConstraint = (
+  path: string,
+  startIndex: number
+): { constraint: string; endIndex: number } | null => {
+  let depth = 1;
+  let constraint = '';
+  let i = startIndex + 1;
+
+  while (i < path.length) {
+    const char = path[i];
+
+    if (char === '\\' && i + 1 < path.length) {
+      constraint += char + path[i + 1];
+      i += 2;
+      continue;
+    }
+
+    if (char === '(') {
+      depth++;
+    } else if (char === ')') {
+      depth--;
+      if (depth === 0) {
+        return { constraint, endIndex: i + 1 };
+      }
+    }
+
+    constraint += char;
+    i++;
+  }
+
+  return null;
+};
+
 /**
  * Converts a route path pattern to a RegExp for matching.
  * Supports `:param` patterns, `:param(regex)` constraints, and `*` wildcards.
@@ -23,35 +73,42 @@ const pathToRegex = (path: string): RegExp => {
     return /^.*$/;
   }
 
-  // Unique placeholders using null chars (won't appear in normal paths)
-  const paramPlaceholders: string[] = [];
-  const WILDCARD_MARKER = '\u0000W\u0000';
+  let pattern = '';
 
-  // Step 1: Extract :param and :param(regex) patterns before escaping
-  // Match :paramName optionally followed by (constraint)
-  let idx = 0;
-  let pattern = path.replace(/:([a-zA-Z_][a-zA-Z0-9_]*)(?:\(([^)]+)\))?/g, (_match, _name, constraint) => {
-    const marker = `\u0000P${idx}\u0000`;
-    // Store the constraint or default [^/]+ for this param
-    paramPlaceholders.push(constraint || '[^/]+');
-    idx++;
-    return marker;
-  });
+  for (let i = 0; i < path.length; ) {
+    const char = path[i];
 
-  // Step 2: Extract * wildcards before escaping
-  pattern = pattern.replace(/\*/g, WILDCARD_MARKER);
+    if (char === '*') {
+      pattern += '.*';
+      i++;
+      continue;
+    }
 
-  // Step 3: Escape ALL regex metacharacters: \ ^ $ . * + ? ( ) [ ] { } |
-  pattern = pattern.replace(/[\\^$.*+?()[\]{}|]/g, '\\$&');
+    if (char === ':' && isParamStart(path[i + 1])) {
+      let nameEnd = i + 2;
+      while (nameEnd < path.length && isParamChar(path[nameEnd])) {
+        nameEnd++;
+      }
 
-  // Step 4: Restore param capture groups with their constraints
-  for (let i = 0; i < paramPlaceholders.length; i++) {
-    const marker = `\u0000P${i}\u0000`;
-    pattern = pattern.replace(marker, `(${paramPlaceholders[i]})`);
+      let nextIndex = nameEnd;
+      let constraint = '[^/]+';
+
+      if (path[nameEnd] === '(') {
+        const parsedConstraint = readConstraint(path, nameEnd);
+        if (parsedConstraint) {
+          constraint = parsedConstraint.constraint;
+          nextIndex = parsedConstraint.endIndex;
+        }
+      }
+
+      pattern += `(${constraint})`;
+      i = nextIndex;
+      continue;
+    }
+
+    pattern += escapeRegexLiteral(char);
+    i++;
   }
-
-  // Step 5: Restore wildcards as .*
-  pattern = pattern.replace(/\u0000W\u0000/g, '.*');
 
   return new RegExp(`^${pattern}$`);
 };
@@ -62,8 +119,33 @@ const pathToRegex = (path: string): RegExp => {
  * @internal
  */
 const extractParamNames = (path: string): string[] => {
-  const matches = path.match(/:([a-zA-Z_][a-zA-Z0-9_]*)(?:\([^)]+\))?/g);
-  return matches ? matches.map((m) => m.replace(/\([^)]+\)$/, '').slice(1)) : [];
+  const names: string[] = [];
+
+  for (let i = 0; i < path.length; ) {
+    if (path[i] !== ':' || !isParamStart(path[i + 1])) {
+      i++;
+      continue;
+    }
+
+    let nameEnd = i + 2;
+    while (nameEnd < path.length && isParamChar(path[nameEnd])) {
+      nameEnd++;
+    }
+
+    names.push(path.slice(i + 1, nameEnd));
+
+    if (path[nameEnd] === '(') {
+      const parsedConstraint = readConstraint(path, nameEnd);
+      if (parsedConstraint) {
+        i = parsedConstraint.endIndex;
+        continue;
+      }
+    }
+
+    i = nameEnd;
+  }
+
+  return names;
 };
 
 /**
