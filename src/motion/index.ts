@@ -1,5 +1,6 @@
 /**
- * Motion module providing view transitions, FLIP animations, and spring physics.
+ * Motion module providing view transitions, FLIP animations, spring physics,
+ * parallax, typewriter effects, and more.
  * Designed to work with modern browser APIs while providing smooth fallbacks.
  *
  * @module bquery/motion
@@ -11,6 +12,9 @@ export type {
   ElementBounds,
   FlipGroupOptions,
   FlipOptions,
+  MorphOptions,
+  ParallaxCleanup,
+  ParallaxOptions,
   ScrollAnimateCleanup,
   ScrollAnimateOptions,
   SequenceOptions,
@@ -23,6 +27,8 @@ export type {
   TimelineControls,
   TimelineStep,
   TransitionOptions,
+  TypewriterControls,
+  TypewriterOptions,
 } from './types';
 
 export { animate } from './animate';
@@ -40,9 +46,12 @@ export {
 } from './easing';
 export { capturePosition, flip, flipElements, flipList } from './flip';
 export { keyframePresets } from './keyframes';
-export { prefersReducedMotion } from './reduced-motion';
+export { morphElement } from './morph';
+export { parallax } from './parallax';
+export { prefersReducedMotion, setReducedMotion } from './reduced-motion';
 export { scrollAnimate } from './scroll';
 export { spring, springPresets } from './spring';
 export { stagger } from './stagger';
 export { sequence, timeline } from './timeline';
 export { transition } from './transition';
+export { typewriter } from './typewriter';

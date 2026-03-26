@@ -206,3 +206,66 @@ export interface ScrollAnimateOptions extends AnimateOptions {
  * Cleanup function for scroll animations.
  */
 export type ScrollAnimateCleanup = () => void;
+
+/**
+ * Options for the `morphElement` FLIP-based morph animation.
+ */
+export interface MorphOptions {
+  /** Animation duration in milliseconds (default: 300) */
+  duration?: number;
+  /** CSS easing function (default: 'ease') */
+  easing?: string;
+  /** Whether to respect prefers-reduced-motion (default: true) */
+  respectReducedMotion?: boolean;
+  /** Callback when morph completes */
+  onComplete?: () => void;
+}
+
+/**
+ * Options for the `parallax` scroll-linked effect.
+ */
+export interface ParallaxOptions {
+  /** Parallax speed multiplier (default: 0.5). Values < 1 are slower, > 1 are faster. */
+  speed?: number;
+  /** Direction of the parallax effect (default: 'vertical') */
+  direction?: 'vertical' | 'horizontal' | 'both';
+  /** Whether to respect prefers-reduced-motion (default: true) */
+  respectReducedMotion?: boolean;
+}
+
+/**
+ * Cleanup function for the parallax effect.
+ */
+export type ParallaxCleanup = () => void;
+
+/**
+ * Options for the `typewriter` text animation.
+ */
+export interface TypewriterOptions {
+  /** Time in milliseconds between each character (default: 50) */
+  speed?: number;
+  /** Initial delay before starting, in milliseconds (default: 0) */
+  delay?: number;
+  /** Whether to show a blinking cursor (default: false) */
+  cursor?: boolean;
+  /** Cursor character (default: '|') */
+  cursorChar?: string;
+  /** Whether to loop the animation (default: false) */
+  loop?: boolean;
+  /** Pause duration at end before looping, in ms (default: 1000) */
+  loopDelay?: number;
+  /** Whether to respect prefers-reduced-motion (default: true) */
+  respectReducedMotion?: boolean;
+  /** Callback when typing completes (per-loop) */
+  onComplete?: () => void;
+}
+
+/**
+ * Controls for an active typewriter animation.
+ */
+export interface TypewriterControls {
+  /** Stop the animation and clean up */
+  stop(): void;
+  /** Promise that resolves when the animation finishes (or after first loop iteration) */
+  done: Promise<void>;
+}

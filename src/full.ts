@@ -122,14 +122,18 @@ export {
   flipList,
   keyframePresets,
   linear,
+  morphElement,
+  parallax,
   prefersReducedMotion,
   scrollAnimate,
   sequence,
+  setReducedMotion,
   spring,
   springPresets,
   stagger,
   timeline,
   transition,
+  typewriter,
 } from './motion/index';
 export type {
   AnimateOptions,
@@ -137,6 +141,9 @@ export type {
   ElementBounds,
   FlipGroupOptions,
   FlipOptions,
+  MorphOptions,
+  ParallaxCleanup,
+  ParallaxOptions,
   ScrollAnimateCleanup,
   ScrollAnimateOptions,
   SequenceOptions,
@@ -149,6 +156,8 @@ export type {
   TimelineControls,
   TimelineStep,
   TransitionOptions,
+  TypewriterControls,
+  TypewriterOptions,
 } from './motion/index';
 
 // ============================================================================
