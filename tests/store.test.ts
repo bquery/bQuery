@@ -1049,6 +1049,29 @@ describe('Store', () => {
       expect(store.val).toBe('fallback');
     });
 
+    it('should fall back when a custom serializer returns null or a non-object', () => {
+      const invalidValues: unknown[] = [null, 'invalid'];
+
+      for (const invalidValue of invalidValues) {
+        const mem = createMemoryStorage();
+        mem.store.set('bquery-store-invalid-persisted', '{"ignored":true}');
+
+        const store = createPersistedStore(
+          { id: 'invalid-persisted', state: () => ({ val: 'fallback' }) },
+          {
+            storage: mem,
+            serializer: {
+              serialize: (state: unknown) => JSON.stringify(state),
+              deserialize: () => invalidValue,
+            },
+          }
+        );
+
+        expect(store.val).toBe('fallback');
+        destroyStore('invalid-persisted');
+      }
+    });
+
     it('should fall back gracefully when default localStorage access throws', () => {
       const originalDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
 

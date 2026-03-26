@@ -14,6 +14,10 @@ const defaultSerializer = {
   deserialize: (raw: string) => JSON.parse(raw) as unknown,
 };
 
+/** @internal Check whether a value can be merged into store state. */
+const isPersistedStateObject = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
 /** @internal Resolve the default storage backend safely. */
 const getDefaultStorage = (): Storage | undefined => {
   try {
@@ -96,7 +100,12 @@ export const createPersistedStore = <
         const saved = storage.getItem(key);
         if (!saved) return defaultState;
 
-        let persisted = serializer.deserialize(saved) as Record<string, unknown>;
+        const deserialized = serializer.deserialize(saved);
+        if (!isPersistedStateObject(deserialized)) {
+          return defaultState;
+        }
+
+        let persisted = deserialized;
 
         // Handle versioning & migration
         if (version !== undefined && migrate) {
@@ -105,7 +114,11 @@ export const createPersistedStore = <
           const oldVersion = rawVersion !== null ? Number(rawVersion) : 0;
 
           if (oldVersion !== version) {
-            persisted = migrate(persisted, oldVersion);
+            const migrated = migrate(persisted, oldVersion);
+            if (!isPersistedStateObject(migrated)) {
+              return defaultState;
+            }
+            persisted = migrated;
             // Save the migrated state and the new version immediately
             try {
               storage.setItem(key, serializer.serialize(persisted));
