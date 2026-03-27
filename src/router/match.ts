@@ -87,21 +87,21 @@ const findSegmentBoundary = (value: string, startIndex: number): number => {
 };
 
 const readNextStaticChunk = (path: string, startIndex: number): string => {
-  let chunk = '';
+  let chunkEnd = startIndex;
 
-  for (let i = startIndex; i < path.length; i++) {
-    if (path[i] === '*') {
+  while (chunkEnd < path.length) {
+    if (path[chunkEnd] === '*') {
       break;
     }
 
-    if (path[i] === ':' && isParamStart(path[i + 1])) {
+    if (path[chunkEnd] === ':' && isParamStart(path[chunkEnd + 1])) {
       break;
     }
 
-    chunk += path[i];
+    chunkEnd++;
   }
 
-  return chunk;
+  return path.slice(startIndex, chunkEnd);
 };
 
 const findAnchoredCandidateEnds = (
@@ -195,10 +195,6 @@ const matchPathPattern = (
             );
 
       for (const candidateEnd of candidateEnds) {
-        if (candidateEnd < pathIndex) {
-          continue;
-        }
-
         const candidateValue = actualPath.slice(pathIndex, candidateEnd);
 
         if (constraintRegex) {
