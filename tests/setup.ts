@@ -77,12 +77,24 @@ if (typeof globalThis.crypto === 'undefined') {
   window.MouseEvent as unknown as typeof MouseEvent;
 
 // Register KeyboardEvent for a11y tests
-(globalThis as unknown as { KeyboardEvent: typeof KeyboardEvent }).KeyboardEvent =
-  window.KeyboardEvent as unknown as typeof KeyboardEvent;
+if (
+  typeof (globalThis as { KeyboardEvent?: typeof KeyboardEvent }).KeyboardEvent === 'undefined' &&
+  typeof (window as unknown as { KeyboardEvent?: typeof KeyboardEvent }).KeyboardEvent !== 'undefined'
+) {
+  (globalThis as unknown as { KeyboardEvent: typeof KeyboardEvent }).KeyboardEvent =
+    (window as unknown as { KeyboardEvent: typeof KeyboardEvent }).KeyboardEvent;
+}
 
 // Register HTMLAnchorElement for a11y tests
-(globalThis as unknown as { HTMLAnchorElement: typeof HTMLAnchorElement }).HTMLAnchorElement =
-  window.HTMLAnchorElement as unknown as typeof HTMLAnchorElement;
+if (
+  typeof (globalThis as { HTMLAnchorElement?: typeof HTMLAnchorElement }).HTMLAnchorElement ===
+    'undefined' &&
+  typeof (window as unknown as { HTMLAnchorElement?: typeof HTMLAnchorElement }).HTMLAnchorElement !==
+    'undefined'
+) {
+  (globalThis as unknown as { HTMLAnchorElement: typeof HTMLAnchorElement }).HTMLAnchorElement =
+    (window as unknown as { HTMLAnchorElement: typeof HTMLAnchorElement }).HTMLAnchorElement;
+}
 
 // Register PointerEvent for dnd tests
 if (typeof globalThis.PointerEvent === 'undefined') {

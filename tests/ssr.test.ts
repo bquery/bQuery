@@ -557,6 +557,24 @@ describe('hydrateStore', () => {
     // Should not throw
     hydrateStore('hydrate-nonexistent', { x: 1 });
   });
+
+  it('filters prototype-pollution keys before patching hydrated state', () => {
+    const store = createStore({
+      id: 'hydrate-sanitized',
+      state: () => ({ safe: 'initial' }),
+    });
+
+    hydrateStore('hydrate-sanitized', {
+      safe: 'hydrated',
+      __proto__: { polluted: true },
+      constructor: 'ignored',
+      prototype: 'ignored',
+    } as Record<string, unknown>);
+
+    expect(store.safe).toBe('hydrated');
+    expect((store as unknown as Record<string, unknown>).constructor).not.toBe('ignored');
+    expect((Object.prototype as Record<string, unknown>).polluted).toBeUndefined();
+  });
 });
 
 describe('hydrateStores', () => {

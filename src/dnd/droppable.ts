@@ -10,6 +10,71 @@
 import type { DropEventData, DroppableHandle, DroppableOptions } from './types';
 import { getActiveDrag } from './draggable';
 
+type DroppableListener = {
+  handlePointerMove: (event: PointerEvent) => void;
+  handlePointerUp: (event: PointerEvent) => void;
+};
+
+const droppableListeners = new Set<DroppableListener>();
+let queuedPointerMove: PointerEvent | null = null;
+let pointerMoveFrame: number | null = null;
+
+const dispatchPointerMove = (event: PointerEvent): void => {
+  for (const listener of droppableListeners) {
+    listener.handlePointerMove(event);
+  }
+};
+
+const flushPointerMove = (): void => {
+  pointerMoveFrame = null;
+  const event = queuedPointerMove;
+  queuedPointerMove = null;
+  if (!event) return;
+  dispatchPointerMove(event);
+};
+
+const handleDocumentPointerMove = (event: PointerEvent): void => {
+  queuedPointerMove = event;
+  if (pointerMoveFrame === null) {
+    pointerMoveFrame = requestAnimationFrame(flushPointerMove);
+  }
+};
+
+const handleDocumentPointerUp = (event: PointerEvent): void => {
+  if (pointerMoveFrame !== null) {
+    cancelAnimationFrame(pointerMoveFrame);
+    pointerMoveFrame = null;
+    queuedPointerMove = null;
+  }
+
+  for (const listener of droppableListeners) {
+    listener.handlePointerUp(event);
+  }
+};
+
+const registerDroppableListener = (listener: DroppableListener): void => {
+  if (droppableListeners.size === 0) {
+    document.addEventListener('pointermove', handleDocumentPointerMove);
+    document.addEventListener('pointerup', handleDocumentPointerUp);
+  }
+
+  droppableListeners.add(listener);
+};
+
+const unregisterDroppableListener = (listener: DroppableListener): void => {
+  droppableListeners.delete(listener);
+
+  if (droppableListeners.size !== 0) return;
+
+  document.removeEventListener('pointermove', handleDocumentPointerMove);
+  document.removeEventListener('pointerup', handleDocumentPointerUp);
+  if (pointerMoveFrame !== null) {
+    cancelAnimationFrame(pointerMoveFrame);
+    pointerMoveFrame = null;
+  }
+  queuedPointerMove = null;
+};
+
 /**
  * Checks whether a dragged element is accepted by the drop zone.
  * @internal
@@ -75,20 +140,40 @@ export const droppable = (
     event,
   });
 
-  const handlePointerMove = (e: PointerEvent): void => {
-    // Check if the pointer is over this drop zone
+  const isPointerInside = (event: PointerEvent): boolean => {
     const rect = el.getBoundingClientRect();
-    const isInside =
-      e.clientX >= rect.left &&
-      e.clientX <= rect.right &&
-      e.clientY >= rect.top &&
-      e.clientY <= rect.bottom;
+    return (
+      event.clientX >= rect.left &&
+      event.clientX <= rect.right &&
+      event.clientY >= rect.top &&
+      event.clientY <= rect.bottom
+    );
+  };
 
-    // Resolve the current dragged element via the shared drag registry.
+  const resolveDraggedElement = (): HTMLElement | null => {
+    return getActiveDrag()?.element ?? currentDragged;
+  };
+
+  const clearOverState = (event: PointerEvent, dragged = currentDragged): void => {
+    if (!isOver) return;
+    isOver = false;
+    el.classList.remove(overClass);
+    if (dragged) {
+      onDragLeave?.(createEventData(dragged, event));
+    }
+    currentDragged = null;
+  };
+
+  const handlePointerMove = (e: PointerEvent): void => {
     const dragged = getActiveDrag()?.element ?? null;
-    if (!dragged || dragged === el) return;
+    const isInside = isPointerInside(e);
+    const acceptsDragged =
+      dragged !== null && dragged !== el && isAccepted(dragged, accept);
 
-    if (!isAccepted(dragged, accept)) return;
+    if (!acceptsDragged || !isInside) {
+      clearOverState(e, dragged ?? currentDragged);
+      return;
+    }
 
     if (isInside && !isOver) {
       isOver = true;
@@ -106,23 +191,30 @@ export const droppable = (
   };
 
   const handlePointerUp = (e: PointerEvent): void => {
-    if (isOver && currentDragged) {
-      onDrop?.(createEventData(currentDragged, e));
+    const dragged = resolveDraggedElement();
+    const isInside = isPointerInside(e);
+    const acceptsDragged =
+      dragged !== null && dragged !== el && isAccepted(dragged, accept);
+
+    if (isInside && acceptsDragged && dragged) {
+      onDrop?.(createEventData(dragged, e));
+    }
+
+    if (isOver) {
       isOver = false;
       el.classList.remove(overClass);
-      currentDragged = null;
     }
+    currentDragged = null;
   };
 
-  // Listen on document to track pointer globally
-  document.addEventListener('pointermove', handlePointerMove);
-  document.addEventListener('pointerup', handlePointerUp);
+  const listener: DroppableListener = { handlePointerMove, handlePointerUp };
+  registerDroppableListener(listener);
 
   return {
     destroy: () => {
-      document.removeEventListener('pointermove', handlePointerMove);
-      document.removeEventListener('pointerup', handlePointerUp);
+      unregisterDroppableListener(listener);
       el.classList.remove(overClass);
+      currentDragged = null;
     },
   };
 };

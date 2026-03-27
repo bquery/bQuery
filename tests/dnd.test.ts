@@ -43,6 +43,25 @@ const firePointerEvent = (
   target.dispatchEvent(event);
 };
 
+const setZoneRect = (
+  target: HTMLElement,
+  rect: { left: number; top: number; right: number; bottom: number }
+): void => {
+  target.getBoundingClientRect = () =>
+    ({
+      ...rect,
+      width: rect.right - rect.left,
+      height: rect.bottom - rect.top,
+      x: rect.left,
+      y: rect.top,
+      toJSON: () => ({}),
+    }) as DOMRect;
+};
+
+const flushPointerTracking = async (): Promise<void> => {
+  await new Promise((resolve) => setTimeout(resolve, 20));
+};
+
 // ─── draggable() ─────────────────────────────────────────────────────────────
 
 describe('dnd/draggable', () => {
@@ -432,7 +451,7 @@ describe('dnd/droppable', () => {
     box.remove();
   });
 
-  it('should detect active drags when draggable uses a custom draggingClass', () => {
+  it('should detect active drags when draggable uses a custom draggingClass', async () => {
     let entered = false;
     const box = createBox('registry-dragged-item');
     container.appendChild(box);
@@ -458,6 +477,7 @@ describe('dnd/droppable', () => {
 
     firePointerEvent(box, 'pointerdown', { clientX: 50, clientY: 50 });
     firePointerEvent(document, 'pointermove', { clientX: 50, clientY: 50 });
+    await flushPointerTracking();
 
     expect(entered).toBe(true);
 
@@ -465,6 +485,95 @@ describe('dnd/droppable', () => {
     dropHandle.destroy();
     dragHandle.destroy();
     box.remove();
+  });
+
+  it('should only call onDrop when pointerup occurs inside the zone', () => {
+    let drops = 0;
+    const box = createBox('drop-inside-item');
+    container.appendChild(box);
+    setZoneRect(zone, { left: 0, top: 0, right: 200, bottom: 200 });
+
+    const dragHandle = draggable(box);
+    const dropHandle = droppable(zone, {
+      onDrop: () => {
+        drops++;
+      },
+    });
+
+    firePointerEvent(box, 'pointerdown', { clientX: 10, clientY: 10 });
+    firePointerEvent(document, 'pointermove', { clientX: 50, clientY: 50 });
+    firePointerEvent(document, 'pointerup', { clientX: 50, clientY: 50 });
+
+    expect(drops).toBe(1);
+
+    dropHandle.destroy();
+    dragHandle.destroy();
+    box.remove();
+  });
+
+  it('should not call onDrop when pointer leaves the zone before pointerup', () => {
+    let drops = 0;
+    const box = createBox('drop-outside-item');
+    container.appendChild(box);
+    setZoneRect(zone, { left: 0, top: 0, right: 200, bottom: 200 });
+
+    const dragHandle = draggable(box);
+    const dropHandle = droppable(zone, {
+      onDrop: () => {
+        drops++;
+      },
+    });
+
+    firePointerEvent(box, 'pointerdown', { clientX: 10, clientY: 10 });
+    firePointerEvent(document, 'pointermove', { clientX: 50, clientY: 50 });
+    firePointerEvent(document, 'pointerup', { clientX: 250, clientY: 250 });
+
+    expect(drops).toBe(0);
+
+    dropHandle.destroy();
+    dragHandle.destroy();
+    box.remove();
+  });
+
+  it('should respect accept filtering for move and pointerup paths', async () => {
+    let enters = 0;
+    let drops = 0;
+    const accepted = createBox('accepted-item');
+    accepted.classList.add('accept-me');
+    const rejected = createBox('rejected-item');
+    container.append(accepted, rejected);
+    setZoneRect(zone, { left: 0, top: 0, right: 200, bottom: 200 });
+
+    const acceptedDragHandle = draggable(accepted);
+    const rejectedDragHandle = draggable(rejected);
+    const dropHandle = droppable(zone, {
+      accept: '.accept-me',
+      onDragEnter: () => {
+        enters++;
+      },
+      onDrop: () => {
+        drops++;
+      },
+    });
+
+    firePointerEvent(rejected, 'pointerdown', { clientX: 10, clientY: 10 });
+    firePointerEvent(document, 'pointermove', { clientX: 50, clientY: 50 });
+    await flushPointerTracking();
+    firePointerEvent(document, 'pointerup', { clientX: 50, clientY: 50 });
+
+    firePointerEvent(accepted, 'pointerdown', { clientX: 10, clientY: 10 });
+    firePointerEvent(document, 'pointermove', { clientX: 50, clientY: 50 });
+    await flushPointerTracking();
+    firePointerEvent(document, 'pointerup', { clientX: 50, clientY: 50 });
+
+    expect(enters).toBe(1);
+    expect(drops).toBe(1);
+
+    dropHandle.destroy();
+    acceptedDragHandle.destroy();
+    rejectedDragHandle.destroy();
+    accepted.remove();
+    rejected.remove();
   });
 });
 

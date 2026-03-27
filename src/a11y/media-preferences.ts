@@ -9,7 +9,26 @@
 
 import { signal } from '../reactive/index';
 import { readonly } from '../reactive/index';
+import type { ReadonlySignal } from '../reactive/index';
 import type { ColorScheme, ContrastPreference, MediaPreferenceSignal } from './types';
+
+const withDestroy = <T>(
+  signalHandle: ReadonlySignal<T>,
+  cleanup: () => void
+): MediaPreferenceSignal<T> => {
+  let destroy = cleanup;
+  const handle = signalHandle as MediaPreferenceSignal<T>;
+  Object.defineProperty(handle, 'destroy', {
+    configurable: true,
+    enumerable: false,
+    value: (): void => {
+      const currentDestroy = destroy;
+      destroy = (): void => {};
+      currentDestroy();
+    },
+  });
+  return handle;
+};
 
 /**
  * Creates a reactive signal that tracks a CSS media query.
@@ -24,7 +43,6 @@ const createMediaSignal = (query: string, initialValue: boolean): MediaPreferenc
   let destroy = (): void => {
     s.dispose();
   };
-  const ro = readonly(s);
 
   if (typeof window !== 'undefined' && typeof window.matchMedia === 'function') {
     try {
@@ -45,19 +63,7 @@ const createMediaSignal = (query: string, initialValue: boolean): MediaPreferenc
     }
   }
 
-  return {
-    get value(): boolean {
-      return ro.value;
-    },
-    peek(): boolean {
-      return ro.peek();
-    },
-    destroy: (): void => {
-      const cleanup = destroy;
-      destroy = (): void => {};
-      cleanup();
-    },
-  };
+  return withDestroy(readonly(s), destroy);
 };
 
 /**
@@ -109,7 +115,6 @@ export const prefersColorScheme = (): MediaPreferenceSignal<ColorScheme> => {
   let destroy = (): void => {
     s.dispose();
   };
-  const ro = readonly(s);
 
   if (typeof window !== 'undefined' && typeof window.matchMedia === 'function') {
     try {
@@ -130,19 +135,7 @@ export const prefersColorScheme = (): MediaPreferenceSignal<ColorScheme> => {
     }
   }
 
-  return {
-    get value(): ColorScheme {
-      return ro.value;
-    },
-    peek(): ColorScheme {
-      return ro.peek();
-    },
-    destroy: (): void => {
-      const cleanup = destroy;
-      destroy = (): void => {};
-      cleanup();
-    },
-  };
+  return withDestroy(readonly(s), destroy);
 };
 
 /**
@@ -174,7 +167,6 @@ export const prefersContrast = (): MediaPreferenceSignal<ContrastPreference> => 
   let destroy = (): void => {
     s.dispose();
   };
-  const ro = readonly(s);
 
   if (typeof window !== 'undefined' && typeof window.matchMedia === 'function') {
     const update = (): void => {
@@ -212,17 +204,5 @@ export const prefersContrast = (): MediaPreferenceSignal<ContrastPreference> => 
     }
   }
 
-  return {
-    get value(): ContrastPreference {
-      return ro.value;
-    },
-    peek(): ContrastPreference {
-      return ro.peek();
-    },
-    destroy: (): void => {
-      const cleanup = destroy;
-      destroy = (): void => {};
-      cleanup();
-    },
-  };
+  return withDestroy(readonly(s), destroy);
 };

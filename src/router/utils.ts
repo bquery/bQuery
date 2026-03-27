@@ -42,6 +42,8 @@ export const flattenRoutes = (routes: RouteDefinition[], parentPath = ''): Route
  * @param name - The route name
  * @param params - Route params to interpolate
  * @returns The resolved path
+ * @throws {Error} If no router is initialized, the route name is unknown,
+ * or a required path param is missing from `params`
  *
  * @example
  * ```ts

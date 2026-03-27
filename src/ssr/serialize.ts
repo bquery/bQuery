@@ -8,10 +8,20 @@
  */
 
 import { getStore, listStores } from '../store/index';
+import { isPrototypePollutionKey } from '../core/utils/object';
 import type { DeserializedStoreState, SerializeOptions } from './types';
 
 const isStoreStateObject = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
+
+const sanitizeHydrationState = (value: Record<string, unknown>): Record<string, unknown> => {
+  const sanitized: Record<string, unknown> = {};
+  for (const [key, entryValue] of Object.entries(value)) {
+    if (isPrototypePollutionKey(key)) continue;
+    sanitized[key] = entryValue;
+  }
+  return sanitized;
+};
 
 /**
  * Result of store state serialization.
@@ -201,7 +211,7 @@ export const hydrateStore = (storeId: string, state: Record<string, unknown>): v
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const store = getStore<{ $patch?: (partial: any) => void }>(storeId);
   if (store && typeof store.$patch === 'function') {
-    store.$patch(state);
+    store.$patch(sanitizeHydrationState(state));
   }
 };
 
