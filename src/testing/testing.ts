@@ -66,6 +66,19 @@ const readRouteConstraint = (
   return null;
 };
 
+const routeConstraintRegexCache = new Map<string, RegExp>();
+
+const getRouteConstraintRegex = (constraint: string): RegExp => {
+  const cached = routeConstraintRegexCache.get(constraint);
+  if (cached) {
+    return cached;
+  }
+
+  const compiled = new RegExp(`^(?:${constraint})$`);
+  routeConstraintRegexCache.set(constraint, compiled);
+  return compiled;
+};
+
 /**
  * Mounts a custom element by tag name for testing and returns a handle
  * to interact with it.
@@ -299,23 +312,12 @@ function matchRoute(
  * @internal
  */
 function matchRoutePattern(pattern: string, path: string): Record<string, string> | null {
-  const constraintRegexCache = new Map<string, RegExp>();
-
-  const getConstraintRegex = (constraint: string): RegExp => {
-    const cached = constraintRegexCache.get(constraint);
-    if (cached) {
-      return cached;
-    }
-
-    const compiled = new RegExp(`^(?:${constraint})$`);
-    constraintRegexCache.set(constraint, compiled);
-    return compiled;
-  };
-
   if (pattern === '*') {
     return {};
   }
 
+  // Memoization keeps wildcard/param backtracking linear for repeated subproblems
+  // within a single pattern/path match attempt.
   const memo = new Map<string, Record<string, string> | null>();
 
   const findSegmentBoundary = (value: string, startIndex: number): number => {
@@ -386,7 +388,7 @@ function matchRoutePattern(pattern: string, path: string): Record<string, string
       for (let candidateEnd = candidateLimit; candidateEnd > pathIndex; candidateEnd--) {
         const candidateValue = path.slice(pathIndex, candidateEnd);
         if (constraint) {
-          const constraintRegex = getConstraintRegex(constraint);
+          const constraintRegex = getRouteConstraintRegex(constraint);
           if (!constraintRegex.test(candidateValue)) {
             continue;
           }

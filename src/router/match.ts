@@ -95,6 +95,8 @@ const matchPathPattern = (
   routePath: string,
   actualPath: string
 ): Record<string, string> | null => {
+  // Memoization keeps wildcard/param backtracking linear for repeated subproblems
+  // within a single route/path match attempt.
   const memo = new Map<string, Record<string, string> | null>();
 
   const matchFrom = (

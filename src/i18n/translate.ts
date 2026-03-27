@@ -4,7 +4,7 @@
  * @internal
  */
 
-import { isPrototypePollutionKey, merge } from '../core/utils/object';
+import { isPlainObject, isPrototypePollutionKey, merge } from '../core/utils/object';
 import type { LocaleMessages, TranslateParams } from './types';
 
 /**
@@ -159,13 +159,24 @@ export const deepMerge = (target: LocaleMessages, source: LocaleMessages): Local
     source as Record<string, unknown>
   ) as LocaleMessages;
 
-  const safeResult = Object.create(null) as LocaleMessages;
-  for (const [key, value] of Object.entries(merged)) {
-    if (isPrototypePollutionKey(key)) {
-      continue;
+  const cloneSafeMessages = (value: unknown): unknown => {
+    if (Array.isArray(value)) {
+      return value.map((entry) => cloneSafeMessages(entry));
     }
-    safeResult[key] = value;
-  }
 
-  return safeResult;
+    if (!isPlainObject(value)) {
+      return value;
+    }
+
+    const safeObject = Object.create(null) as Record<string, unknown>;
+    for (const [key, entry] of Object.entries(value)) {
+      if (isPrototypePollutionKey(key)) {
+        continue;
+      }
+      safeObject[key] = cloneSafeMessages(entry);
+    }
+    return safeObject;
+  };
+
+  return cloneSafeMessages(merged) as LocaleMessages;
 };

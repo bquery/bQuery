@@ -9,6 +9,7 @@
  */
 
 import { isComputed, isSignal, type Signal } from '../reactive/index';
+import { DANGEROUS_PROTOCOLS } from '../security/constants';
 import { sanitizeHtml } from '../security/sanitize';
 import type { BindingContext } from '../view/types';
 import type { RenderOptions, SSRResult } from './types';
@@ -46,12 +47,27 @@ const isUnsafeUrlAttribute = (name: string): boolean => {
     normalized === 'href' ||
     normalized === 'src' ||
     normalized === 'xlink:href' ||
-    normalized === 'formaction'
+    normalized === 'formaction' ||
+    normalized === 'action' ||
+    normalized === 'poster' ||
+    normalized === 'background' ||
+    normalized === 'cite' ||
+    normalized === 'data'
   );
 };
 
+const normalizeUrl = (value: string): string =>
+  value
+    .trim()
+    .replace(/[\u0000-\u001F\u007F]+/g, '')
+    .replace(/[\u200B-\u200D\uFEFF\u2028\u2029]+/g, '')
+    .replace(/\\u[\da-fA-F]{4}/g, '')
+    .replace(/\s+/g, '')
+    .toLowerCase();
+
 const isUnsafeUrlValue = (value: string): boolean => {
-  return value.trim().toLowerCase().startsWith('javascript:');
+  const normalized = normalizeUrl(value);
+  return DANGEROUS_PROTOCOLS.some((protocol) => normalized.startsWith(protocol));
 };
 
 const serializeSSRNode = (node: Node): string => {
