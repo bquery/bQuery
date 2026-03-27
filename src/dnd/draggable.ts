@@ -17,19 +17,14 @@ import type {
 } from './types';
 
 /** Global registry of active draggable elements for drop zone detection. */
-const activeDrags = new Map<
-  HTMLElement,
-  { element: HTMLElement; position: DragPosition }
->();
+const activeDrags = new Map<HTMLElement, { element: HTMLElement; position: DragPosition }>();
 
 /**
  * Returns the currently active drag state, if any.
  * Used internally by `droppable()` to detect drag interactions.
  * @internal
  */
-export const getActiveDrag = ():
-  | { element: HTMLElement; position: DragPosition }
-  | undefined => {
+export const getActiveDrag = (): { element: HTMLElement; position: DragPosition } | undefined => {
   const entries = Array.from(activeDrags.values());
   return entries[entries.length - 1];
 };
@@ -38,10 +33,7 @@ export const getActiveDrag = ():
  * Resolves a `DragBounds` value to an absolute `BoundsRect`.
  * @internal
  */
-const resolveBounds = (
-  el: HTMLElement,
-  bounds: DragBounds
-): BoundsRect | null => {
+const resolveBounds = (el: HTMLElement, bounds: DragBounds): BoundsRect | null => {
   if (typeof bounds === 'object') {
     return bounds;
   }
@@ -66,16 +58,8 @@ const resolveBounds = (
   return {
     left: rect.left - elRect.left + leftOffset,
     top: rect.top - elRect.top + topOffset,
-    right:
-      rect.right -
-      elRect.right +
-      leftOffset +
-      (rect.width - elRect.width),
-    bottom:
-      rect.bottom -
-      elRect.bottom +
-      topOffset +
-      (rect.height - elRect.height),
+    right: rect.right - elRect.right + leftOffset + (rect.width - elRect.width),
+    bottom: rect.bottom - elRect.bottom + topOffset + (rect.height - elRect.height),
   };
 };
 
@@ -83,10 +67,7 @@ const resolveBounds = (
  * Clamp a position within bounds.
  * @internal
  */
-const clampPosition = (
-  pos: DragPosition,
-  bounds: BoundsRect | null
-): DragPosition => {
+const clampPosition = (pos: DragPosition, bounds: BoundsRect | null): DragPosition => {
   if (!bounds) return pos;
   return {
     x: Math.max(bounds.left, Math.min(bounds.right, pos.x)),
@@ -125,10 +106,7 @@ const clampPosition = (
  * handle.destroy();
  * ```
  */
-export const draggable = (
-  el: HTMLElement,
-  options: DraggableOptions = {}
-): DraggableHandle => {
+export const draggable = (el: HTMLElement, options: DraggableOptions = {}): DraggableHandle => {
   const {
     axis = 'both',
     bounds,

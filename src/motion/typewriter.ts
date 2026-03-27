@@ -126,10 +126,7 @@ export const typewriter = (
         if (charIndex < text.length) {
           // Insert text before cursor
           if (cursorEl) {
-            el.insertBefore(
-              document.createTextNode(text[charIndex]),
-              cursorEl
-            );
+            el.insertBefore(document.createTextNode(text[charIndex]), cursorEl);
           } else {
             el.textContent = text.slice(0, charIndex + 1);
           }

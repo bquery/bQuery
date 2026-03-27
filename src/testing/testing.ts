@@ -248,7 +248,10 @@ export function mockSignal<T>(initialValue: T): MockSignal<T> {
  * Parses a path string into the route's `path`, `query`, and `hash` parts.
  * @internal
  */
-function parsePath(fullPath: string, base: string): { path: string; query: Record<string, string | string[]>; hash: string } {
+function parsePath(
+  fullPath: string,
+  base: string
+): { path: string; query: Record<string, string | string[]>; hash: string } {
   let working = fullPath;
 
   // Strip base prefix
@@ -325,10 +328,7 @@ function matchRoutePattern(pattern: string, path: string): Record<string, string
     return slashIndex === -1 ? value.length : slashIndex;
   };
 
-  const matchFrom = (
-    patternIndex: number,
-    pathIndex: number
-  ): Record<string, string> | null => {
+  const matchFrom = (patternIndex: number, pathIndex: number): Record<string, string> | null => {
     const memoKey = `${patternIndex}:${pathIndex}`;
     if (memo.has(memoKey)) {
       return memo.get(memoKey) ?? null;
@@ -508,11 +508,7 @@ export function mockRouter(options: MockRouterOptions = {}): MockRouter {
  * expect(clicked).toBe(true);
  * ```
  */
-export function fireEvent(
-  el: Element,
-  eventName: string,
-  options: FireEventOptions = {}
-): boolean {
+export function fireEvent(el: Element, eventName: string, options: FireEventOptions = {}): boolean {
   if (!el) {
     throw new Error('bQuery testing: fireEvent requires a valid element');
   }
@@ -520,12 +516,7 @@ export function fireEvent(
     throw new Error('bQuery testing: fireEvent requires an event name');
   }
 
-  const {
-    bubbles = true,
-    cancelable = true,
-    composed = true,
-    detail,
-  } = options;
+  const { bubbles = true, cancelable = true, composed = true, detail } = options;
 
   let event: Event;
   if (detail !== undefined) {

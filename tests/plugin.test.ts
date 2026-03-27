@@ -169,9 +169,7 @@ describe('Plugin System', () => {
     it('should throw for plugin with non-function install', () => {
       expect(() =>
         use({ name: 'bad-install', install: 'not-fn' } as unknown as BQueryPlugin)
-      ).toThrow(
-        '"install" function'
-      );
+      ).toThrow('"install" function');
     });
   });
 

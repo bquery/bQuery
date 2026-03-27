@@ -105,7 +105,7 @@ export const createI18n = (config: I18nConfig): I18nInstance => {
 
     const loaded = await loader();
     // Handle both default exports and direct objects
-    const msgs = (loaded as { default?: LocaleMessages }).default ?? loaded as LocaleMessages;
+    const msgs = (loaded as { default?: LocaleMessages }).default ?? (loaded as LocaleMessages);
     messages[loc] = clone(msgs);
     loadedLocales.add(loc);
   };

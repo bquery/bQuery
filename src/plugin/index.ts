@@ -19,7 +19,12 @@
  */
 
 // Types
-export type { BQueryPlugin, CustomDirective, CustomDirectiveHandler, PluginInstallContext } from './types';
+export type {
+  BQueryPlugin,
+  CustomDirective,
+  CustomDirectiveHandler,
+  PluginInstallContext,
+} from './types';
 
 // Runtime API
 export {

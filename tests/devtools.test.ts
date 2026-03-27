@@ -49,7 +49,11 @@ describe('enableDevtools / isDevtoolsEnabled', () => {
 
   it('should disable devtools and clear state', () => {
     enableDevtools(true);
-    trackSignal('x', () => 1, () => 0);
+    trackSignal(
+      'x',
+      () => 1,
+      () => 0
+    );
     recordEvent('signal:update', 'test');
     enableDevtools(false);
     expect(isDevtoolsEnabled()).toBe(false);
@@ -77,7 +81,11 @@ describe('enableDevtools / isDevtoolsEnabled', () => {
 describe('trackSignal / untrackSignal', () => {
   it('should register a signal when enabled', () => {
     enableDevtools(true);
-    trackSignal('count', () => 42, () => 3);
+    trackSignal(
+      'count',
+      () => 42,
+      () => 3
+    );
     const snaps = inspectSignals();
     expect(snaps).toHaveLength(1);
     expect(snaps[0].label).toBe('count');
@@ -86,15 +94,27 @@ describe('trackSignal / untrackSignal', () => {
   });
 
   it('should silently ignore tracking when disabled', () => {
-    trackSignal('ignored', () => 0, () => 0);
+    trackSignal(
+      'ignored',
+      () => 0,
+      () => 0
+    );
     enableDevtools(true);
     expect(inspectSignals()).toHaveLength(0);
   });
 
   it('should overwrite same label', () => {
     enableDevtools(true);
-    trackSignal('a', () => 1, () => 0);
-    trackSignal('a', () => 2, () => 0);
+    trackSignal(
+      'a',
+      () => 1,
+      () => 0
+    );
+    trackSignal(
+      'a',
+      () => 2,
+      () => 0
+    );
     const snaps = inspectSignals();
     expect(snaps).toHaveLength(1);
     expect(snaps[0].value).toBe(2);
@@ -102,12 +122,22 @@ describe('trackSignal / untrackSignal', () => {
 
   it('should throw for empty label', () => {
     enableDevtools(true);
-    expect(() => trackSignal('', () => 0, () => 0)).toThrow('non-empty label');
+    expect(() =>
+      trackSignal(
+        '',
+        () => 0,
+        () => 0
+      )
+    ).toThrow('non-empty label');
   });
 
   it('should remove a tracked signal', () => {
     enableDevtools(true);
-    trackSignal('temp', () => 0, () => 0);
+    trackSignal(
+      'temp',
+      () => 0,
+      () => 0
+    );
     untrackSignal('temp');
     expect(inspectSignals()).toHaveLength(0);
   });
@@ -147,7 +177,11 @@ describe('inspectSignals', () => {
   it('should reflect live values', () => {
     enableDevtools(true);
     let v = 10;
-    trackSignal('dynamic', () => v, () => 1);
+    trackSignal(
+      'dynamic',
+      () => v,
+      () => 1
+    );
     expect(inspectSignals()[0].value).toBe(10);
     v = 20;
     expect(inspectSignals()[0].value).toBe(20);
@@ -155,7 +189,11 @@ describe('inspectSignals', () => {
 
   it('should return correct type shape', () => {
     enableDevtools(true);
-    trackSignal('typed', () => 'hello', () => 2);
+    trackSignal(
+      'typed',
+      () => 'hello',
+      () => 2
+    );
     const snap: SignalSnapshot = inspectSignals()[0];
     expect(typeof snap.label).toBe('string');
     expect(typeof snap.subscriberCount).toBe('number');
@@ -327,7 +365,11 @@ describe('getDevtoolsState', () => {
 describe('log helpers', () => {
   it('logSignals prints table when signals exist', () => {
     enableDevtools(true);
-    trackSignal('a', () => 1, () => 0);
+    trackSignal(
+      'a',
+      () => 1,
+      () => 0
+    );
     const calls: unknown[][] = [];
     const origTable = console.table;
     console.table = (...args: unknown[]) => calls.push(args);

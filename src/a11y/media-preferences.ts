@@ -37,7 +37,10 @@ const withDestroy = <T>(
  * @returns A readonly signal handle that updates when the query match changes
  * @internal
  */
-const createMediaSignal = (query: string, initialValue: boolean): MediaPreferenceSignal<boolean> => {
+const createMediaSignal = (
+  query: string,
+  initialValue: boolean
+): MediaPreferenceSignal<boolean> => {
   const s = signal(initialValue);
   let destroy = (): void => {
     s.dispose();

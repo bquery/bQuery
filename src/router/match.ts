@@ -29,10 +29,7 @@ type RouteParamDescriptor = {
 
 const validatedRoutePathCache = new Set<string>();
 
-const readParamDescriptor = (
-  path: string,
-  index: number
-): RouteParamDescriptor | null => {
+const readParamDescriptor = (path: string, index: number): RouteParamDescriptor | null => {
   if (path[index] !== ':' || !isParamStart(path[index + 1])) {
     return null;
   }
@@ -126,18 +123,12 @@ const findAnchoredCandidateEnds = (
   return candidates.reverse();
 };
 
-const matchPathPattern = (
-  routePath: string,
-  actualPath: string
-): Record<string, string> | null => {
+const matchPathPattern = (routePath: string, actualPath: string): Record<string, string> | null => {
   // Memoization keeps wildcard/param backtracking linear for repeated subproblems
   // within a single route/path match attempt.
   const memo = new Map<string, Record<string, string> | null>();
 
-  const matchFrom = (
-    routeIndex: number,
-    pathIndex: number
-  ): Record<string, string> | null => {
+  const matchFrom = (routeIndex: number, pathIndex: number): Record<string, string> | null => {
     const memoKey = `${routeIndex}:${pathIndex}`;
     if (memo.has(memoKey)) {
       return memo.get(memoKey) ?? null;
@@ -203,7 +194,9 @@ const matchPathPattern = (
 
     const param = readParamDescriptor(routePath, routeIndex);
     if (param) {
-      const constraintRegex = param.constraint ? getRouteConstraintRegex(param.constraint) : undefined;
+      const constraintRegex = param.constraint
+        ? getRouteConstraintRegex(param.constraint)
+        : undefined;
       const candidateLimit = param.constraint
         ? actualPath.length
         : findSegmentBoundary(actualPath, pathIndex);

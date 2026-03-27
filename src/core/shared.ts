@@ -13,9 +13,7 @@ export const applyAll = (elements: ElementList, action: (el: Element) => void) =
 };
 
 /** @internal */
-export const isHTMLElement = (
-  element: Element | null | undefined
-): element is HTMLElement => {
+export const isHTMLElement = (element: Element | null | undefined): element is HTMLElement => {
   if (!element) {
     return false;
   }

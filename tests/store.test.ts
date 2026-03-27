@@ -1368,6 +1368,56 @@ describe('Store', () => {
       }
     });
 
+    it('should persist the pending migrated version after a later successful state write', () => {
+      const mem = createMemoryStorage();
+      const stateKey = 'bquery-store-migration-version-pending';
+      const versionKey = stateKey + '__version';
+      mem.store.set(stateKey, JSON.stringify({ val: 'persisted' }));
+      mem.store.set(versionKey, '1');
+
+      let stateWriteAttempts = 0;
+      const flakyStateStorage: StorageBackend = {
+        getItem: (key: string) => mem.getItem(key),
+        setItem: (key: string, value: string) => {
+          if (key === stateKey) {
+            stateWriteAttempts += 1;
+            if (stateWriteAttempts === 1) {
+              throw new Error('state write failed');
+            }
+          }
+          mem.setItem(key, value);
+        },
+        removeItem: (key: string) => mem.removeItem(key),
+      };
+      const warnSpy = spyOn(console, 'warn').mockImplementation(() => {});
+
+      try {
+        const store = createPersistedStore(
+          {
+            id: 'migration-version-pending',
+            state: () => ({ val: 'default', migrated: false }),
+          },
+          {
+            storage: flakyStateStorage,
+            version: 2,
+            migrate: (old) => ({ ...old, migrated: true }),
+          }
+        );
+
+        expect(store.val).toBe('persisted');
+        expect(store.migrated).toBe(true);
+        expect(mem.store.get(versionKey)).toBe('1');
+
+        store.val = 'updated';
+
+        expect(mem.store.get(stateKey)).toBe(JSON.stringify({ val: 'updated', migrated: true }));
+        expect(mem.store.get(versionKey)).toBe('2');
+      } finally {
+        warnSpy.mockRestore();
+        destroyStore('migration-version-pending');
+      }
+    });
+
     it('should fall back to defaults when deserialized persisted shapes are invalid', () => {
       const invalidPayloads = ['[]', '"text"', '123', 'null'];
 

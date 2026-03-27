@@ -32,12 +32,7 @@ export const morphElement = (
   to: Element,
   options: MorphOptions = {}
 ): Promise<void> => {
-  const {
-    duration = 300,
-    easing = 'ease',
-    respectReducedMotion = true,
-    onComplete,
-  } = options;
+  const { duration = 300, easing = 'ease', respectReducedMotion = true, onComplete } = options;
 
   const fromEl = from as HTMLElement;
   const toEl = to as HTMLElement;

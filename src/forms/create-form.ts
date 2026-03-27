@@ -23,17 +23,13 @@ import type {
  * Determines whether a validator returned a valid result.
  * @internal
  */
-const isValid = (result: ValidationResult): boolean =>
-  result === true || result === undefined;
+const isValid = (result: ValidationResult): boolean => result === true || result === undefined;
 
 /**
  * Runs a single validator, normalising sync and async results.
  * @internal
  */
-const runValidator = async <T>(
-  validator: Validator<T>,
-  value: T
-): Promise<string | undefined> => {
+const runValidator = async <T>(validator: Validator<T>, value: T): Promise<string | undefined> => {
   const result = validator(value);
   const resolved = isPromise(result) ? await result : result;
   return isValid(resolved) ? undefined : (resolved as string);
@@ -138,9 +134,7 @@ const validateSingleField = async <T>(
  * await form.handleSubmit();
  * ```
  */
-export const createForm = <T extends Record<string, unknown>>(
-  config: FormConfig<T>
-): Form<T> => {
+export const createForm = <T extends Record<string, unknown>>(config: FormConfig<T>): Form<T> => {
   // Build reactive field objects
   const fieldEntries = Object.entries(config.fields) as [
     keyof T & string,
@@ -198,10 +192,7 @@ export const createForm = <T extends Record<string, unknown>>(
     // Per-field validation
     for (const [name, fieldConfig] of fieldEntries) {
       const field = (fields as Record<string, FormField>)[name];
-      const error = await validateSingleField(
-        field,
-        (fieldConfig as FieldConfig).validators
-      );
+      const error = await validateSingleField(field, (fieldConfig as FieldConfig).validators);
       if (error) hasError = true;
     }
 

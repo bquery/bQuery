@@ -86,10 +86,7 @@ export const rovingTabIndex = (
         return key === 'ArrowUp' || key === 'ArrowDown';
       case 'both':
         return (
-          key === 'ArrowLeft' ||
-          key === 'ArrowRight' ||
-          key === 'ArrowUp' ||
-          key === 'ArrowDown'
+          key === 'ArrowLeft' || key === 'ArrowRight' || key === 'ArrowUp' || key === 'ArrowDown'
         );
       default:
         return false;

@@ -62,38 +62,42 @@ export const useBattery = (): BatterySignal => {
   if (
     typeof navigator !== 'undefined' &&
     'getBattery' in navigator &&
-    typeof (navigator as Navigator & { getBattery: () => Promise<BatteryManager> }).getBattery === 'function'
+    typeof (navigator as Navigator & { getBattery: () => Promise<BatteryManager> }).getBattery ===
+      'function'
   ) {
     const nav = navigator as Navigator & { getBattery: () => Promise<BatteryManager> };
 
-    nav.getBattery().then((battery) => {
-      if (destroyed) return;
+    nav
+      .getBattery()
+      .then((battery) => {
+        if (destroyed) return;
 
-      const update = (): void => {
-        s.value = {
-          supported: true,
-          charging: battery.charging,
-          chargingTime: battery.chargingTime,
-          dischargingTime: battery.dischargingTime,
-          level: battery.level,
+        const update = (): void => {
+          s.value = {
+            supported: true,
+            charging: battery.charging,
+            chargingTime: battery.chargingTime,
+            dischargingTime: battery.dischargingTime,
+            level: battery.level,
+          };
         };
-      };
 
-      update();
+        update();
 
-      battery.addEventListener('chargingchange', update);
-      battery.addEventListener('chargingtimechange', update);
-      battery.addEventListener('dischargingtimechange', update);
-      battery.addEventListener('levelchange', update);
-      cleanup = () => {
-        battery.removeEventListener('chargingchange', update);
-        battery.removeEventListener('chargingtimechange', update);
-        battery.removeEventListener('dischargingtimechange', update);
-        battery.removeEventListener('levelchange', update);
-      };
-    }).catch(() => {
-      // Battery API rejected — keep default state
-    });
+        battery.addEventListener('chargingchange', update);
+        battery.addEventListener('chargingtimechange', update);
+        battery.addEventListener('dischargingtimechange', update);
+        battery.addEventListener('levelchange', update);
+        cleanup = () => {
+          battery.removeEventListener('chargingchange', update);
+          battery.removeEventListener('chargingtimechange', update);
+          battery.removeEventListener('dischargingtimechange', update);
+          battery.removeEventListener('levelchange', update);
+        };
+      })
+      .catch(() => {
+        // Battery API rejected — keep default state
+      });
   }
 
   const ro = readonly(s) as BatterySignal;

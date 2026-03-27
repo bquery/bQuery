@@ -1112,10 +1112,7 @@ describe('motion/typewriter', () => {
 
   it('returns resolved controls when document is unavailable', async () => {
     const el = document.createElement('div');
-    const originalDocumentDescriptor = Object.getOwnPropertyDescriptor(
-      globalThis,
-      'document'
-    );
+    const originalDocumentDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'document');
 
     try {
       Object.defineProperty(globalThis, 'document', {

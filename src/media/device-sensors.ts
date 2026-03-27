@@ -8,7 +8,12 @@
  */
 
 import { signal, readonly } from '../reactive/index';
-import type { DeviceMotionSignal, DeviceMotionState, DeviceOrientationSignal, DeviceOrientationState } from './types';
+import type {
+  DeviceMotionSignal,
+  DeviceMotionState,
+  DeviceOrientationSignal,
+  DeviceOrientationState,
+} from './types';
 
 /** Default device motion state. */
 const DEFAULT_MOTION_STATE: DeviceMotionState = {

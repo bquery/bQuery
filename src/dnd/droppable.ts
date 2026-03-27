@@ -79,10 +79,7 @@ const unregisterDroppableListener = (listener: DroppableListener): void => {
  * Checks whether a dragged element is accepted by the drop zone.
  * @internal
  */
-const isAccepted = (
-  dragged: HTMLElement,
-  accept: DroppableOptions['accept']
-): boolean => {
+const isAccepted = (dragged: HTMLElement, accept: DroppableOptions['accept']): boolean => {
   if (!accept) return true;
   if (typeof accept === 'string') return dragged.matches(accept);
   return accept(dragged);
@@ -115,10 +112,7 @@ const isAccepted = (
  * handle.destroy();
  * ```
  */
-export const droppable = (
-  el: HTMLElement,
-  options: DroppableOptions = {}
-): DroppableHandle => {
+export const droppable = (el: HTMLElement, options: DroppableOptions = {}): DroppableHandle => {
   const {
     overClass = 'bq-drop-over',
     accept,
@@ -141,10 +135,7 @@ export const droppable = (
   let isOver = false;
   let currentDragged: HTMLElement | null = null;
 
-  const createEventData = (
-    dragged: HTMLElement,
-    event: PointerEvent
-  ): DropEventData => ({
+  const createEventData = (dragged: HTMLElement, event: PointerEvent): DropEventData => ({
     zone: el,
     dragged,
     event,
@@ -177,8 +168,7 @@ export const droppable = (
   const handlePointerMove = (e: PointerEvent): void => {
     const dragged = getActiveDrag()?.element ?? null;
     const isInside = isPointerInside(e);
-    const acceptsDragged =
-      dragged !== null && dragged !== el && isAccepted(dragged, accept);
+    const acceptsDragged = dragged !== null && dragged !== el && isAccepted(dragged, accept);
 
     if (!acceptsDragged || !isInside) {
       clearOverState(e, dragged ?? currentDragged);
@@ -203,8 +193,7 @@ export const droppable = (
   const handlePointerUp = (e: PointerEvent): void => {
     const dragged = resolveDraggedElement();
     const isInside = isPointerInside(e);
-    const acceptsDragged =
-      dragged !== null && dragged !== el && isAccepted(dragged, accept);
+    const acceptsDragged = dragged !== null && dragged !== el && isAccepted(dragged, accept);
 
     if (isInside && acceptsDragged && dragged) {
       onDrop?.(createEventData(dragged, e));

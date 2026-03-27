@@ -880,6 +880,40 @@ describe('component/component', () => {
     el.remove();
   });
 
+  it('does not render when beforeMount throws during initial mount', () => {
+    const tagName = `test-on-error-before-mount-${Date.now()}`;
+    const capturedErrors: Error[] = [];
+    const calls: string[] = [];
+
+    component(tagName, {
+      props: {},
+      beforeMount() {
+        calls.push('beforeMount');
+        throw new Error('BeforeMount error');
+      },
+      connected() {
+        calls.push('connected');
+      },
+      onError(error) {
+        capturedErrors.push(error);
+      },
+      render: () => {
+        calls.push('render');
+        return html`<div>Test</div>`;
+      },
+    });
+
+    const el = document.createElement(tagName);
+    document.body.appendChild(el);
+
+    expect(calls).toEqual(['beforeMount']);
+    expect(capturedErrors).toHaveLength(1);
+    expect(capturedErrors[0].message).toBe('BeforeMount error');
+    expect(el.shadowRoot?.textContent ?? '').not.toContain('Test');
+
+    el.remove();
+  });
+
   it('calls onError when render throws', () => {
     const tagName = `test-on-error-render-${Date.now()}`;
     const capturedErrors: Error[] = [];

@@ -79,21 +79,24 @@ if (typeof globalThis.crypto === 'undefined') {
 // Register KeyboardEvent for a11y tests
 if (
   typeof (globalThis as { KeyboardEvent?: typeof KeyboardEvent }).KeyboardEvent === 'undefined' &&
-  typeof (window as unknown as { KeyboardEvent?: typeof KeyboardEvent }).KeyboardEvent !== 'undefined'
+  typeof (window as unknown as { KeyboardEvent?: typeof KeyboardEvent }).KeyboardEvent !==
+    'undefined'
 ) {
-  (globalThis as unknown as { KeyboardEvent: typeof KeyboardEvent }).KeyboardEvent =
-    (window as unknown as { KeyboardEvent: typeof KeyboardEvent }).KeyboardEvent;
+  (globalThis as unknown as { KeyboardEvent: typeof KeyboardEvent }).KeyboardEvent = (
+    window as unknown as { KeyboardEvent: typeof KeyboardEvent }
+  ).KeyboardEvent;
 }
 
 // Register HTMLAnchorElement for a11y tests
 if (
   typeof (globalThis as { HTMLAnchorElement?: typeof HTMLAnchorElement }).HTMLAnchorElement ===
     'undefined' &&
-  typeof (window as unknown as { HTMLAnchorElement?: typeof HTMLAnchorElement }).HTMLAnchorElement !==
-    'undefined'
+  typeof (window as unknown as { HTMLAnchorElement?: typeof HTMLAnchorElement })
+    .HTMLAnchorElement !== 'undefined'
 ) {
-  (globalThis as unknown as { HTMLAnchorElement: typeof HTMLAnchorElement }).HTMLAnchorElement =
-    (window as unknown as { HTMLAnchorElement: typeof HTMLAnchorElement }).HTMLAnchorElement;
+  (globalThis as unknown as { HTMLAnchorElement: typeof HTMLAnchorElement }).HTMLAnchorElement = (
+    window as unknown as { HTMLAnchorElement: typeof HTMLAnchorElement }
+  ).HTMLAnchorElement;
 }
 
 // Register PointerEvent for dnd tests
@@ -140,10 +143,13 @@ if (typeof globalThis.PointerEvent === 'undefined') {
 }
 
 // Register getComputedStyle for CSS getter tests
-const boundGetComputedStyle = window.getComputedStyle.bind(window) as unknown as typeof getComputedStyle;
-(globalThis as unknown as { getComputedStyle: typeof getComputedStyle }).getComputedStyle =
-  (element: Element, pseudoElt?: string | null): CSSStyleDeclaration =>
-    boundGetComputedStyle(element, pseudoElt);
+const boundGetComputedStyle = window.getComputedStyle.bind(
+  window
+) as unknown as typeof getComputedStyle;
+(globalThis as unknown as { getComputedStyle: typeof getComputedStyle }).getComputedStyle = (
+  element: Element,
+  pseudoElt?: string | null
+): CSSStyleDeclaration => boundGetComputedStyle(element, pseudoElt);
 
 // Mock localStorage for store persistence tests
 if (typeof globalThis.localStorage === 'undefined') {

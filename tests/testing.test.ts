@@ -17,9 +17,7 @@ import {
   fireEvent,
   waitFor,
 } from '../src/testing/index';
-import type {
-  MockRouter,
-} from '../src/testing/types';
+import type { MockRouter } from '../src/testing/types';
 
 // ============================================================================
 // renderComponent
@@ -534,12 +532,9 @@ describe('fireEvent', () => {
   it('should support custom bubbles/cancelable/composed options', () => {
     const el = document.createElement('div');
     let eventBubbles = true;
-    el.addEventListener(
-      'test',
-      (e) => {
-        eventBubbles = e.bubbles;
-      },
-    );
+    el.addEventListener('test', (e) => {
+      eventBubbles = e.bubbles;
+    });
     document.body.appendChild(el);
     fireEvent(el, 'test', { bubbles: false });
     expect(eventBubbles).toBe(false);
@@ -589,20 +584,26 @@ describe('waitFor', () => {
 
   it('should handle async predicates', async () => {
     let counter = 0;
-    await waitFor(async () => {
-      counter++;
-      return counter >= 3;
-    }, { interval: 5 });
+    await waitFor(
+      async () => {
+        counter++;
+        return counter >= 3;
+      },
+      { interval: 5 }
+    );
     expect(counter).toBeGreaterThanOrEqual(3);
   });
 
   it('should handle predicates that throw (treats as not-met)', async () => {
     let callCount = 0;
-    await waitFor(() => {
-      callCount++;
-      if (callCount < 3) throw new Error('not ready');
-      return true;
-    }, { interval: 5 });
+    await waitFor(
+      () => {
+        callCount++;
+        if (callCount < 3) throw new Error('not ready');
+        return true;
+      },
+      { interval: 5 }
+    );
     expect(callCount).toBeGreaterThanOrEqual(3);
   });
 

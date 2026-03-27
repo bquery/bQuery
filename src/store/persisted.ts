@@ -105,7 +105,24 @@ export const createPersistedStore = <
   const serializer = opts.serializer ?? defaultSerializer;
   const version = opts.version;
   const migrate = opts.migrate;
-  let canPersistVersion = storage !== undefined && version !== undefined;
+  const versionKey = key + VERSION_SUFFIX;
+  let shouldPersistInitialVersion = storage !== undefined && version !== undefined;
+  let pendingVersionWrite = false;
+  let canRetryPendingVersionAfterCreate = false;
+
+  const tryPersistVersion = (warningMessage?: string): boolean => {
+    if (!storage || version === undefined) return false;
+
+    try {
+      storage.setItem(versionKey, String(version));
+      return true;
+    } catch (error) {
+      if (warningMessage) {
+        console.warn(warningMessage, error);
+      }
+      return false;
+    }
+  };
 
   const originalStateFactory = definition.state;
 
@@ -129,12 +146,13 @@ export const createPersistedStore = <
 
         // Handle versioning & migration
         if (version !== undefined && migrate) {
-          const versionKey = key + VERSION_SUFFIX;
           const rawVersion = storage.getItem(versionKey);
           const parsedVersion = rawVersion !== null ? Number(rawVersion) : 0;
           const oldVersion = Number.isFinite(parsedVersion) ? parsedVersion : 0;
 
           if (oldVersion !== version) {
+            shouldPersistInitialVersion = false;
+            pendingVersionWrite = true;
             const migrated = migrate(persisted, oldVersion);
             if (!isPersistedStateObject(migrated)) {
               return defaultState;
@@ -147,8 +165,8 @@ export const createPersistedStore = <
             try {
               storage.setItem(key, serializer.serialize(persisted));
               migratedStatePersisted = true;
+              canRetryPendingVersionAfterCreate = true;
             } catch (e) {
-              canPersistVersion = false;
               // Migration will re-run on next load, but state is still usable
               console.warn(
                 `[bQuery store "${definition.id}"] Failed to persist migrated state:`,
@@ -156,19 +174,16 @@ export const createPersistedStore = <
               );
             }
 
-            if (migratedStatePersisted) {
-              try {
-                storage.setItem(versionKey, String(version));
-                canPersistVersion = false;
-              } catch (e) {
-                // Leave canPersistVersion enabled so the initial persistence pass
-                // can retry the version write after the store is created.
-                console.warn(
-                  `[bQuery store "${definition.id}"] Failed to persist migrated version:`,
-                  e
-                );
-              }
+            if (
+              migratedStatePersisted &&
+              tryPersistVersion(
+                `[bQuery store "${definition.id}"] Failed to persist migrated version:`
+              )
+            ) {
+              pendingVersionWrite = false;
             }
+          } else {
+            shouldPersistInitialVersion = false;
           }
         }
 
@@ -183,12 +198,20 @@ export const createPersistedStore = <
   const store = createStore(wrappedDefinition);
 
   // Persist the version number on first creation
-  if (storage && version !== undefined && canPersistVersion) {
+  if (shouldPersistInitialVersion) {
     try {
-      storage.setItem(key + VERSION_SUFFIX, String(version));
+      storage.setItem(versionKey, String(version));
     } catch {
       // Ignore quota errors
     }
+  } else if (
+    pendingVersionWrite &&
+    canRetryPendingVersionAfterCreate &&
+    tryPersistVersion(
+      `[bQuery store "${definition.id}"] Failed to persist migrated version after store creation:`
+    )
+  ) {
+    pendingVersionWrite = false;
   }
 
   // Subscribe to save changes
@@ -196,6 +219,14 @@ export const createPersistedStore = <
     if (!storage) return;
     try {
       storage.setItem(key, serializer.serialize(state));
+      if (
+        pendingVersionWrite &&
+        tryPersistVersion(
+          `[bQuery store "${definition.id}"] Failed to persist migrated version after a successful state write:`
+        )
+      ) {
+        pendingVersionWrite = false;
+      }
     } catch {
       // Ignore quota errors
     }

@@ -15,15 +15,11 @@ const normalizeConstraintCaptures = (constraint: string): string => {
 
     if (char === '\\' && i + 1 < constraint.length) {
       if (!inCharacterClass && constraint[i + 1] >= '1' && constraint[i + 1] <= '9') {
-        throw new Error(
-          'bQuery router: Route constraints cannot use backreferences.'
-        );
+        throw new Error('bQuery router: Route constraints cannot use backreferences.');
       }
 
       if (!inCharacterClass && constraint[i + 1] === 'k' && constraint[i + 2] === '<') {
-        throw new Error(
-          'bQuery router: Route constraints cannot use backreferences.'
-        );
+        throw new Error('bQuery router: Route constraints cannot use backreferences.');
       }
 
       normalized += char + constraint[i + 1];
@@ -97,9 +93,6 @@ export const getRouteConstraintRegex = (constraint: string): RegExp => {
   return compiled;
 };
 
-export const routeConstraintMatches = (
-  constraint: string,
-  value: string
-): boolean => {
+export const routeConstraintMatches = (constraint: string, value: string): boolean => {
   return getRouteConstraintRegex(constraint).test(value);
 };

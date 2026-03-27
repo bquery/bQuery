@@ -1954,9 +1954,7 @@ describe('Router', () => {
 
     it('should mix constrained and unconstrained params', async () => {
       router = createRouter({
-        routes: [
-          { path: '/user/:id(\\d+)/:action', component: () => null },
-        ],
+        routes: [{ path: '/user/:id(\\d+)/:action', component: () => null }],
       });
 
       await router.push('/user/42/edit');
@@ -1965,9 +1963,7 @@ describe('Router', () => {
 
     it('should still support basic params without constraints', async () => {
       router = createRouter({
-        routes: [
-          { path: '/user/:id', component: () => null },
-        ],
+        routes: [{ path: '/user/:id', component: () => null }],
       });
 
       await router.push('/user/anything-works');
@@ -2372,13 +2368,15 @@ describe('Router', () => {
 
       await router.push('/page1');
       const stackAfterPush = mockHistory.getStack();
-      const keyAfterPush =
-        (stackAfterPush[mockHistory.getCurrentIndex()].state as Record<string, unknown>).__bqScrollKey;
+      const keyAfterPush = (
+        stackAfterPush[mockHistory.getCurrentIndex()].state as Record<string, unknown>
+      ).__bqScrollKey;
 
       await router.replace('/page2');
       const stackAfterReplace = mockHistory.getStack();
-      const keyAfterReplace =
-        (stackAfterReplace[mockHistory.getCurrentIndex()].state as Record<string, unknown>).__bqScrollKey;
+      const keyAfterReplace = (
+        stackAfterReplace[mockHistory.getCurrentIndex()].state as Record<string, unknown>
+      ).__bqScrollKey;
 
       expect(keyAfterReplace).toBe(keyAfterPush);
     });
@@ -2413,7 +2411,10 @@ describe('Router', () => {
           __bqScrollKey: expect.any(String),
         });
         expect(
-          Object.prototype.hasOwnProperty.call(lastEntry.state as Record<string, unknown>, '__proto__')
+          Object.prototype.hasOwnProperty.call(
+            lastEntry.state as Record<string, unknown>,
+            '__proto__'
+          )
         ).toBe(false);
         expect(
           Object.prototype.hasOwnProperty.call(
@@ -2472,10 +2473,8 @@ describe('Router', () => {
         await router.push('/page2');
 
         const stack = mockHistory.getStack();
-        const page1Key =
-          (stack[1].state as Record<string, unknown>).__bqScrollKey;
-        const page2Key =
-          (stack[2].state as Record<string, unknown>).__bqScrollKey;
+        const page1Key = (stack[1].state as Record<string, unknown>).__bqScrollKey;
+        const page2Key = (stack[2].state as Record<string, unknown>).__bqScrollKey;
 
         expect(page1Key).not.toBe(page2Key);
       } finally {
@@ -2558,6 +2557,39 @@ describe('Router', () => {
   describe('bq-link custom element', () => {
     let mockHistory: ReturnType<typeof setupMockHistory>;
     let router: Router;
+
+    it('should stay importable when HTMLElement is unavailable', async () => {
+      const originalHTMLElementDescriptor = Object.getOwnPropertyDescriptor(
+        globalThis,
+        'HTMLElement'
+      );
+      const originalCustomElementsDescriptor = Object.getOwnPropertyDescriptor(
+        globalThis,
+        'customElements'
+      );
+
+      try {
+        Object.defineProperty(globalThis, 'HTMLElement', {
+          value: undefined,
+          configurable: true,
+        });
+        Object.defineProperty(globalThis, 'customElements', {
+          value: undefined,
+          configurable: true,
+        });
+
+        const mod = await import(`../src/router/bq-link.ts?ssr-safe=${Date.now()}`);
+        expect(mod.BqLinkElement).toBeDefined();
+        expect(() => mod.registerBqLink()).not.toThrow();
+      } finally {
+        if (originalHTMLElementDescriptor) {
+          Object.defineProperty(globalThis, 'HTMLElement', originalHTMLElementDescriptor);
+        }
+        if (originalCustomElementsDescriptor) {
+          Object.defineProperty(globalThis, 'customElements', originalCustomElementsDescriptor);
+        }
+      }
+    });
 
     beforeEach(() => {
       mockHistory = setupMockHistory();
@@ -2721,9 +2753,7 @@ describe('Router', () => {
 
     it('should apply custom active class', async () => {
       router = createRouter({
-        routes: [
-          { path: '/', component: () => null },
-        ],
+        routes: [{ path: '/', component: () => null }],
       });
 
       const el = document.createElement('bq-link') as BqLinkElement;

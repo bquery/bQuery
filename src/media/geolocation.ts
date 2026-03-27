@@ -53,12 +53,7 @@ const DEFAULT_GEO_STATE: GeolocationState = {
  * ```
  */
 export const useGeolocation = (options: GeolocationOptions = {}): GeolocationSignal => {
-  const {
-    enableHighAccuracy = false,
-    maximumAge = 0,
-    timeout = Infinity,
-    watch = false,
-  } = options;
+  const { enableHighAccuracy = false, maximumAge = 0, timeout = Infinity, watch = false } = options;
 
   const s = signal<GeolocationState>({ ...DEFAULT_GEO_STATE });
 

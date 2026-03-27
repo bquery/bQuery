@@ -29,19 +29,12 @@ import type { ParallaxCleanup, ParallaxOptions } from './types';
  * cleanup();
  * ```
  */
-export const parallax = (
-  element: Element,
-  options: ParallaxOptions = {}
-): ParallaxCleanup => {
+export const parallax = (element: Element, options: ParallaxOptions = {}): ParallaxCleanup => {
   if (typeof window === 'undefined') {
     return () => {};
   }
 
-  const {
-    speed = 0.5,
-    direction = 'vertical',
-    respectReducedMotion = true,
-  } = options;
+  const { speed = 0.5, direction = 'vertical', respectReducedMotion = true } = options;
 
   const el = element as HTMLElement;
   const previousTransform = el.style.transform;

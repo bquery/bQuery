@@ -77,8 +77,7 @@ const auditFormInputs = (container: Element): AuditFinding[] => {
 
     const id = input.getAttribute('id');
     const hasLabel = id ? !!container.querySelector(`label[for="${id}"]`) : false;
-    const hasAriaLabel =
-      input.hasAttribute('aria-label') || input.hasAttribute('aria-labelledby');
+    const hasAriaLabel = input.hasAttribute('aria-label') || input.hasAttribute('aria-labelledby');
     const hasTitle = input.hasAttribute('title');
     const isWrappedInLabel = input.closest('label') !== null;
 
@@ -171,9 +170,7 @@ const auditHeadings = (container: Element): AuditFinding[] => {
     }
 
     if ((heading.textContent ?? '').trim().length === 0) {
-      findings.push(
-        finding('warning', 'Heading element is empty.', heading, 'heading-empty')
-      );
+      findings.push(finding('warning', 'Heading element is empty.', heading, 'heading-empty'));
     }
 
     previousLevel = level;
@@ -237,8 +234,7 @@ const auditLandmarks = (container: Element): AuditFinding[] => {
 
   // Only audit the document body or top-level container
   if (container === document.body || container === document.documentElement) {
-    const hasMain =
-      !!container.querySelector('main') || !!container.querySelector('[role="main"]');
+    const hasMain = !!container.querySelector('main') || !!container.querySelector('[role="main"]');
 
     if (!hasMain) {
       findings.push(
@@ -286,6 +282,15 @@ const auditLandmarks = (container: Element): AuditFinding[] => {
  * ```
  */
 export const auditA11y = (container?: Element): AuditResult => {
+  if (typeof document === 'undefined' || !document.body) {
+    return {
+      findings: [],
+      errors: 0,
+      warnings: 0,
+      passed: true,
+    };
+  }
+
   const target = container ?? document.body;
 
   const allFindings: AuditFinding[] = [

@@ -13,10 +13,7 @@ import type { SortEventData, SortableHandle, SortableOptions } from './types';
  * Gets the sortable items within a container.
  * @internal
  */
-const getItems = (
-  container: HTMLElement,
-  selector: string
-): HTMLElement[] => {
+const getItems = (container: HTMLElement, selector: string): HTMLElement[] => {
   return Array.from(container.querySelectorAll(selector)) as HTMLElement[];
 };
 
@@ -30,8 +27,7 @@ const getClosestItem = (
   axis: 'x' | 'y',
   dragged: HTMLElement
 ): { element: HTMLElement; index: number } | null => {
-  let closest: { element: HTMLElement; index: number; distance: number } | null =
-    null;
+  let closest: { element: HTMLElement; index: number; distance: number } | null = null;
 
   for (let i = 0; i < items.length; i++) {
     const item = items[i];
@@ -88,10 +84,7 @@ const getClosestItem = (
  * handle.destroy();
  * ```
  */
-export const sortable = (
-  container: HTMLElement,
-  options: SortableOptions = {}
-): SortableHandle => {
+export const sortable = (container: HTMLElement, options: SortableOptions = {}): SortableHandle => {
   const {
     items: itemSelector = ':scope > *',
     axis = 'y',
@@ -114,11 +107,7 @@ export const sortable = (
   let itemStartTop = 0;
   let itemStartLeft = 0;
 
-  const createEventData = (
-    item: HTMLElement,
-    oldIdx: number,
-    newIdx: number
-  ): SortEventData => ({
+  const createEventData = (item: HTMLElement, oldIdx: number, newIdx: number): SortEventData => ({
     container,
     item,
     oldIndex: oldIdx,

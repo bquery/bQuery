@@ -32,9 +32,7 @@ let currentScope: ComponentScope | undefined;
  * Sets the active component scope.
  * @internal
  */
-export function setCurrentScope(
-  scope: ComponentScope | undefined
-): ComponentScope | undefined {
+export function setCurrentScope(scope: ComponentScope | undefined): ComponentScope | undefined {
   const previousScope = currentScope;
   currentScope = scope;
   return previousScope;

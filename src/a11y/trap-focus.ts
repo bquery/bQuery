@@ -80,6 +80,22 @@ export const trapFocus = (
 ): FocusTrapHandle => {
   const { escapeDeactivates = true, onEscape, initialFocus, returnFocus } = options;
 
+  if (
+    typeof document === 'undefined' ||
+    typeof document.addEventListener !== 'function' ||
+    typeof document.removeEventListener !== 'function'
+  ) {
+    let active = false;
+    return {
+      get active() {
+        return active;
+      },
+      release: () => {
+        active = false;
+      },
+    };
+  }
+
   const previouslyFocused = document.activeElement as HTMLElement | null;
   let active = true;
 

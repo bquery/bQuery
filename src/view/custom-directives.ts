@@ -13,9 +13,7 @@ let customDirectiveResolver: CustomDirectiveResolver | null = null;
  * Registers the resolver used by the view pipeline for custom directives.
  * @internal
  */
-export const registerCustomDirectiveResolver = (
-  resolver: CustomDirectiveResolver
-): void => {
+export const registerCustomDirectiveResolver = (resolver: CustomDirectiveResolver): void => {
   customDirectiveResolver = resolver;
 };
 
@@ -23,8 +21,6 @@ export const registerCustomDirectiveResolver = (
  * Returns a custom directive handler when one is registered.
  * @internal
  */
-export const getCustomDirective = (
-  name: string
-): DirectiveHandler | undefined => {
+export const getCustomDirective = (name: string): DirectiveHandler | undefined => {
   return customDirectiveResolver ? customDirectiveResolver(name) : undefined;
 };

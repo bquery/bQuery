@@ -258,7 +258,12 @@ describe('media/useNetworkStatus', () => {
   it('returns readonly signal', () => {
     const net = useNetworkStatus();
     expect(() => {
-      (net as { value: unknown }).value = { online: false, effectiveType: '4g', downlink: 10, rtt: 50 };
+      (net as { value: unknown }).value = {
+        online: false,
+        effectiveType: '4g',
+        downlink: 10,
+        rtt: 50,
+      };
     }).toThrow();
   });
 
@@ -311,18 +316,22 @@ describe('media/useNetworkStatus', () => {
       value: connection,
     });
 
-    const addSpy = spyOn(window, 'addEventListener').mockImplementation((type: string, listener: EventListenerOrEventListenerObject) => {
-      if (typeof listener === 'function') {
-        if (type === 'online') onlineHandler = listener as () => void;
-        if (type === 'offline') offlineHandler = listener as () => void;
+    const addSpy = spyOn(window, 'addEventListener').mockImplementation(
+      (type: string, listener: EventListenerOrEventListenerObject) => {
+        if (typeof listener === 'function') {
+          if (type === 'online') onlineHandler = listener as () => void;
+          if (type === 'offline') offlineHandler = listener as () => void;
+        }
       }
-    });
-    const removeSpy = spyOn(window, 'removeEventListener').mockImplementation((type: string, listener: EventListenerOrEventListenerObject) => {
-      if (typeof listener === 'function') {
-        if (type === 'online') removedOnlineHandler = listener as () => void;
-        if (type === 'offline') removedOfflineHandler = listener as () => void;
+    );
+    const removeSpy = spyOn(window, 'removeEventListener').mockImplementation(
+      (type: string, listener: EventListenerOrEventListenerObject) => {
+        if (typeof listener === 'function') {
+          if (type === 'online') removedOnlineHandler = listener as () => void;
+          if (type === 'offline') removedOfflineHandler = listener as () => void;
+        }
       }
-    });
+    );
 
     try {
       const net = useNetworkStatus();
@@ -365,7 +374,13 @@ describe('media/useBattery', () => {
   it('returns readonly signal', () => {
     const battery = useBattery();
     expect(() => {
-      (battery as { value: unknown }).value = { supported: true, charging: true, level: 0.5, chargingTime: 100, dischargingTime: 200 };
+      (battery as { value: unknown }).value = {
+        supported: true,
+        charging: true,
+        level: 0.5,
+        chargingTime: 100,
+        dischargingTime: 200,
+      };
     }).toThrow();
   });
 
@@ -532,16 +547,20 @@ describe('media/useDeviceMotion', () => {
   it('removes the devicemotion listener when destroyed', () => {
     let addedHandler: EventListener | undefined;
     let removedHandler: EventListener | undefined;
-    const addSpy = spyOn(window, 'addEventListener').mockImplementation((type: string, listener: EventListenerOrEventListenerObject) => {
-      if (type === 'devicemotion' && typeof listener === 'function') {
-        addedHandler = listener;
+    const addSpy = spyOn(window, 'addEventListener').mockImplementation(
+      (type: string, listener: EventListenerOrEventListenerObject) => {
+        if (type === 'devicemotion' && typeof listener === 'function') {
+          addedHandler = listener;
+        }
       }
-    });
-    const removeSpy = spyOn(window, 'removeEventListener').mockImplementation((type: string, listener: EventListenerOrEventListenerObject) => {
-      if (type === 'devicemotion' && typeof listener === 'function') {
-        removedHandler = listener;
+    );
+    const removeSpy = spyOn(window, 'removeEventListener').mockImplementation(
+      (type: string, listener: EventListenerOrEventListenerObject) => {
+        if (type === 'devicemotion' && typeof listener === 'function') {
+          removedHandler = listener;
+        }
       }
-    });
+    );
 
     try {
       const motion = useDeviceMotion();
@@ -576,16 +595,20 @@ describe('media/useDeviceOrientation', () => {
   it('removes the deviceorientation listener when destroyed', () => {
     let addedHandler: EventListener | undefined;
     let removedHandler: EventListener | undefined;
-    const addSpy = spyOn(window, 'addEventListener').mockImplementation((type: string, listener: EventListenerOrEventListenerObject) => {
-      if (type === 'deviceorientation' && typeof listener === 'function') {
-        addedHandler = listener;
+    const addSpy = spyOn(window, 'addEventListener').mockImplementation(
+      (type: string, listener: EventListenerOrEventListenerObject) => {
+        if (type === 'deviceorientation' && typeof listener === 'function') {
+          addedHandler = listener;
+        }
       }
-    });
-    const removeSpy = spyOn(window, 'removeEventListener').mockImplementation((type: string, listener: EventListenerOrEventListenerObject) => {
-      if (type === 'deviceorientation' && typeof listener === 'function') {
-        removedHandler = listener;
+    );
+    const removeSpy = spyOn(window, 'removeEventListener').mockImplementation(
+      (type: string, listener: EventListenerOrEventListenerObject) => {
+        if (type === 'deviceorientation' && typeof listener === 'function') {
+          removedHandler = listener;
+        }
       }
-    });
+    );
 
     try {
       const orientation = useDeviceOrientation();
@@ -646,7 +669,9 @@ describe('media/clipboard', () => {
     let written = '';
     const mockClipboard = {
       readText: async () => written,
-      writeText: async (text: string) => { written = text; },
+      writeText: async (text: string) => {
+        written = text;
+      },
     };
 
     const originalClipboard = navigator.clipboard;

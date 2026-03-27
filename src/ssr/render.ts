@@ -33,10 +33,7 @@ const VOID_ELEMENTS = new Set([
 ]);
 
 const escapeHtmlText = (value: string): string =>
-  value
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
+  value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
 const escapeHtmlAttribute = (value: string): string =>
   escapeHtmlText(value).replace(/"/g, '&quot;');
@@ -260,7 +257,10 @@ const processSSRElement = (
       for (const pair of pairs) {
         const colonIdx = pair.indexOf(':');
         if (colonIdx > -1) {
-          const className = pair.slice(0, colonIdx).trim().replace(/^['"]|['"]$/g, '');
+          const className = pair
+            .slice(0, colonIdx)
+            .trim()
+            .replace(/^['"]|['"]$/g, '');
           const condExpr = pair.slice(colonIdx + 1).trim();
           const condition = evaluateSSR<boolean>(condExpr, context);
           if (condition) {
@@ -396,11 +396,7 @@ const stripDirectiveAttributes = (el: Element, prefix: string): void => {
   // Remove directive attributes from this element
   const attrs = Array.from(el.attributes);
   for (const attr of attrs) {
-    if (
-      attr.name.startsWith(`${prefix}-`) ||
-      attr.name.startsWith(':') ||
-      attr.name === ':key'
-    ) {
+    if (attr.name.startsWith(`${prefix}-`) || attr.name.startsWith(':') || attr.name === ':key') {
       el.removeAttribute(attr.name);
     }
   }

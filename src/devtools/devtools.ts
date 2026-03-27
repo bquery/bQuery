@@ -97,7 +97,7 @@ export const isDevtoolsEnabled = (): boolean => _enabled;
 export const trackSignal = (
   label: string,
   peek: () => unknown,
-  subscriberCount: () => number,
+  subscriberCount: () => number
 ): void => {
   if (!_enabled) return;
   if (typeof label !== 'string' || label.length === 0) {
@@ -267,7 +267,6 @@ export const recordEvent = (type: TimelineEventType, detail: string): void => {
   _timeline.push(entry);
 
   if (_options.logToConsole) {
-     
     console.log(`[bq:devtools] ${type} — ${detail}`);
   }
 };
@@ -338,11 +337,10 @@ export const getDevtoolsState = (): DevtoolsState => ({
 export const logSignals = (): void => {
   const signals = inspectSignals();
   if (signals.length === 0) {
-     
     console.log('[bq:devtools] No tracked signals.');
     return;
   }
-   
+
   console.table(signals);
 };
 
@@ -358,11 +356,10 @@ export const logSignals = (): void => {
 export const logStores = (): void => {
   const stores = inspectStores();
   if (stores.length === 0) {
-     
     console.log('[bq:devtools] No stores registered.');
     return;
   }
-   
+
   console.table(stores.map((s) => ({ id: s.id, state: JSON.stringify(s.state) })));
 };
 
@@ -378,11 +375,10 @@ export const logStores = (): void => {
 export const logComponents = (): void => {
   const components = inspectComponents();
   if (components.length === 0) {
-     
     console.log('[bq:devtools] No custom elements found.');
     return;
   }
-   
+
   console.table(components);
 };
 
@@ -400,16 +396,15 @@ export const logComponents = (): void => {
 export const logTimeline = (last?: number): void => {
   const entries = typeof last === 'number' && last > 0 ? _timeline.slice(-last) : _timeline;
   if (entries.length === 0) {
-     
     console.log('[bq:devtools] Timeline is empty.');
     return;
   }
-   
+
   console.table(
     entries.map((e) => ({
       time: new Date(e.timestamp).toISOString(),
       type: e.type,
       detail: e.detail,
-    })),
+    }))
   );
 };

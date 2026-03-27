@@ -34,13 +34,9 @@ interface NavigatorWithConnection extends Navigator {
  */
 const getNetworkState = (): NetworkState => {
   const online =
-    typeof navigator !== 'undefined' && navigator.onLine !== undefined
-      ? navigator.onLine
-      : true;
+    typeof navigator !== 'undefined' && navigator.onLine !== undefined ? navigator.onLine : true;
 
-  const nav = typeof navigator !== 'undefined'
-    ? (navigator as NavigatorWithConnection)
-    : undefined;
+  const nav = typeof navigator !== 'undefined' ? (navigator as NavigatorWithConnection) : undefined;
   const conn = nav?.connection;
 
   return {
@@ -88,9 +84,7 @@ export const useNetworkStatus = (): NetworkSignal => {
     window.addEventListener('offline', update);
 
     const nav =
-      typeof navigator !== 'undefined'
-        ? (navigator as NavigatorWithConnection)
-        : undefined;
+      typeof navigator !== 'undefined' ? (navigator as NavigatorWithConnection) : undefined;
     if (nav?.connection) {
       nav.connection.addEventListener('change', update);
     }

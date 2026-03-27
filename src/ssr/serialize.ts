@@ -126,9 +126,7 @@ export const serializeStoreState = (options: SerializeOptions = {}): SerializeRe
 
   const stateJson = serialize(stateMap);
   if (typeof stateJson !== 'string') {
-    throw new Error(
-      'serializeStoreState: custom serialize function must return a string.'
-    );
+    throw new Error('serializeStoreState: custom serialize function must return a string.');
   }
 
   if (serialize !== JSON.stringify) {
@@ -136,9 +134,7 @@ export const serializeStoreState = (options: SerializeOptions = {}): SerializeRe
     try {
       parsedStateJson = JSON.parse(stateJson);
     } catch {
-      throw new Error(
-        'serializeStoreState: custom serialize function returned invalid JSON.'
-      );
+      throw new Error('serializeStoreState: custom serialize function returned invalid JSON.');
     }
 
     if (!isStoreStateObject(parsedStateJson)) {

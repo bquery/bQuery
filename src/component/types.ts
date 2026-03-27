@@ -51,54 +51,48 @@ export type PropDefinition<T = unknown> = {
  * When no explicit state generic is provided, component state falls back to
  * an untyped string-keyed record for backwards compatibility.
  */
-export type ComponentStateShape<
-  TState extends Record<string, unknown> | undefined = undefined,
-> = TState extends Record<string, unknown> ? TState : Record<string, unknown>;
+export type ComponentStateShape<TState extends Record<string, unknown> | undefined = undefined> =
+  TState extends Record<string, unknown> ? TState : Record<string, unknown>;
 
 /**
  * Component state keys are string-based because runtime state access is backed
  * by plain object properties.
  */
-export type ComponentStateKey<
-  TState extends Record<string, unknown> | undefined = undefined,
-> =
+export type ComponentStateKey<TState extends Record<string, unknown> | undefined = undefined> =
   keyof ComponentStateShape<TState> & string;
 
 /**
  * Public component element instance shape exposed by lifecycle hooks and
  * `defineComponent()` return values.
  */
-export type ComponentElement<
-  TState extends Record<string, unknown> | undefined = undefined,
-> = HTMLElement & {
-  /**
-   * Updates a state property and triggers a re-render.
-   *
-   * @param key - The state property key
-   * @param value - The new value
-   */
-  setState<TKey extends ComponentStateKey<TState>>(
-    key: TKey,
-    value: ComponentStateShape<TState>[TKey]
-  ): void;
-  /**
-   * Gets a state property value.
-   *
-   * @param key - The state property key
-   * @returns The current value
-   */
-  getState<TKey extends ComponentStateKey<TState>>(
-    key: TKey
-  ): ComponentStateShape<TState>[TKey];
-  /**
-   * Gets a state property value with an explicit cast for backwards
-   * compatibility with the pre-typed-state API.
-   *
-   * @param key - The state property key
-   * @returns The current value cast to `TResult`
-   */
-  getState<TResult = unknown>(key: string): TResult;
-};
+export type ComponentElement<TState extends Record<string, unknown> | undefined = undefined> =
+  HTMLElement & {
+    /**
+     * Updates a state property and triggers a re-render.
+     *
+     * @param key - The state property key
+     * @param value - The new value
+     */
+    setState<TKey extends ComponentStateKey<TState>>(
+      key: TKey,
+      value: ComponentStateShape<TState>[TKey]
+    ): void;
+    /**
+     * Gets a state property value.
+     *
+     * @param key - The state property key
+     * @returns The current value
+     */
+    getState<TKey extends ComponentStateKey<TState>>(key: TKey): ComponentStateShape<TState>[TKey];
+    /**
+     * Gets a state property value with an explicit cast for backwards
+     * compatibility with the pre-typed-state API.
+     *
+     * @param key - The state property key
+     * @returns The current value cast to `TResult`
+     */
+    getState<TResult = unknown>(key: string): TResult;
+  };
 
 /**
  * Constructor returned by `defineComponent()`.
@@ -185,8 +179,8 @@ type ComponentHookWithProps<
   TState extends Record<string, unknown> | undefined = undefined,
   TResult = void,
 > = {
-   (this: ComponentElement<TState>, newProps: TProps, oldProps: TProps): TResult;
-   (newProps: TProps, oldProps: TProps): TResult;
+  (this: ComponentElement<TState>, newProps: TProps, oldProps: TProps): TResult;
+  (newProps: TProps, oldProps: TProps): TResult;
 };
 type ComponentUpdatedHook<
   TState extends Record<string, unknown> | undefined = undefined,
@@ -200,12 +194,16 @@ type ComponentErrorHook<TState extends Record<string, unknown> | undefined = und
   (error: Error): void;
 };
 
-type ComponentAttributeChangedHook<
-  TState extends Record<string, unknown> | undefined = undefined,
-> = {
-  (this: ComponentElement<TState>, name: string, oldValue: string | null, newValue: string | null): void;
-  (name: string, oldValue: string | null, newValue: string | null): void;
-};
+type ComponentAttributeChangedHook<TState extends Record<string, unknown> | undefined = undefined> =
+  {
+    (
+      this: ComponentElement<TState>,
+      name: string,
+      oldValue: string | null,
+      newValue: string | null
+    ): void;
+    (name: string, oldValue: string | null, newValue: string | null): void;
+  };
 
 type ComponentStateDefinition<TState extends Record<string, unknown> | undefined = undefined> =
   TState extends Record<string, unknown>

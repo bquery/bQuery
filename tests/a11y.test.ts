@@ -148,6 +148,25 @@ describe('a11y/trapFocus', () => {
     expect(trap.active).toBe(false);
   });
 
+  it('should return a no-op handle when document APIs are unavailable', () => {
+    const originalDocumentDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'document');
+
+    try {
+      Object.defineProperty(globalThis, 'document', {
+        value: undefined,
+        configurable: true,
+      });
+
+      const trap = trapFocus(container);
+      expect(trap.active).toBe(false);
+      expect(() => trap.release()).not.toThrow();
+    } finally {
+      if (originalDocumentDescriptor) {
+        Object.defineProperty(globalThis, 'document', originalDocumentDescriptor);
+      }
+    }
+  });
+
   it('should return focus to returnFocus element on release', () => {
     const returnBtn = document.createElement('button');
     returnBtn.id = 'return-target';
@@ -1073,6 +1092,30 @@ describe('a11y/auditA11y', () => {
     const imgFinding = result.findings.find((f) => f.rule === 'img-alt');
     expect(imgFinding?.element).toBeInstanceOf(Element);
     expect(imgFinding?.element.tagName).toBe('IMG');
+  });
+
+  it('should return an empty passing result when document.body is unavailable', () => {
+    const originalBody = document.body;
+
+    Object.defineProperty(document, 'body', {
+      configurable: true,
+      value: null,
+    });
+
+    try {
+      const result = auditA11y();
+      expect(result).toEqual({
+        findings: [],
+        errors: 0,
+        warnings: 0,
+        passed: true,
+      });
+    } finally {
+      Object.defineProperty(document, 'body', {
+        configurable: true,
+        value: originalBody,
+      });
+    }
   });
 });
 

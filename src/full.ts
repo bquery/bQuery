@@ -390,8 +390,20 @@ export type {
 // ---------------------------------------------------------------------------
 // Plugin module
 // ---------------------------------------------------------------------------
-export { use, isInstalled, getInstalledPlugins, getCustomDirective, getCustomDirectives, resetPlugins } from './plugin/index';
-export type { BQueryPlugin, CustomDirective, CustomDirectiveHandler, PluginInstallContext } from './plugin/index';
+export {
+  use,
+  isInstalled,
+  getInstalledPlugins,
+  getCustomDirective,
+  getCustomDirectives,
+  resetPlugins,
+} from './plugin/index';
+export type {
+  BQueryPlugin,
+  CustomDirective,
+  CustomDirectiveHandler,
+  PluginInstallContext,
+} from './plugin/index';
 
 // ---------------------------------------------------------------------------
 // DevTools module

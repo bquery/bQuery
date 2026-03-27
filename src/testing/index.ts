@@ -20,7 +20,14 @@
  */
 
 // Runtime API
-export { renderComponent, flushEffects, mockSignal, mockRouter, fireEvent, waitFor } from './testing';
+export {
+  renderComponent,
+  flushEffects,
+  mockSignal,
+  mockRouter,
+  fireEvent,
+  waitFor,
+} from './testing';
 
 // Types
 export type {

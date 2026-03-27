@@ -352,7 +352,10 @@ describe('i18n/createI18n', () => {
 
     it('should not allow prototype pollution keys during merge', () => {
       const i18n = createTestI18n();
-      i18n.mergeMessages('en', JSON.parse('{\"__proto__\":{\"polluted\":\"yes\"},\"safe\":\"ok\"}'));
+      i18n.mergeMessages(
+        'en',
+        JSON.parse('{\"__proto__\":{\"polluted\":\"yes\"},\"safe\":\"ok\"}')
+      );
 
       expect(({} as Record<string, unknown>).polluted).toBeUndefined();
       expect(i18n.t('safe')).toBe('ok');

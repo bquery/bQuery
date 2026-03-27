@@ -215,5 +215,8 @@ export type PersistedStoreOptions = {
    * the current `version`. Receives the deserialized state and the old
    * version number. Must return the migrated state object.
    */
-  migrate?: (persistedState: Record<string, unknown>, oldVersion: number) => Record<string, unknown>;
+  migrate?: (
+    persistedState: Record<string, unknown>,
+    oldVersion: number
+  ) => Record<string, unknown>;
 };

@@ -14,13 +14,7 @@ import { isPromise } from '../core/utils/type-guards';
 import { notifyDevtoolsStateChange, registerDevtoolsStore } from './devtools';
 import { applyPlugins } from './plugins';
 import { getStore, hasStore, registerStore } from './registry';
-import type {
-  Getters,
-  OnActionCallback,
-  Store,
-  StoreDefinition,
-  StoreSubscriber,
-} from './types';
+import type { Getters, OnActionCallback, Store, StoreDefinition, StoreSubscriber } from './types';
 import { deepClone, detectNestedMutations, isDev } from './utils';
 
 /**

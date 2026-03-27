@@ -25,6 +25,10 @@ import { routeSignal } from './state';
  */
 const DEFAULT_ACTIVE_CLASS = 'active';
 
+/** @internal SSR-safe base class for environments without HTMLElement. */
+const BQ_LINK_BASE =
+  typeof HTMLElement !== 'undefined' ? HTMLElement : (class {} as unknown as typeof HTMLElement);
+
 /**
  * `<bq-link>` — A navigation custom element for bQuery routers.
  *
@@ -50,7 +54,7 @@ const DEFAULT_ACTIVE_CLASS = 'active';
  * // <bq-link to="/about">About</bq-link>
  * ```
  */
-export class BqLinkElement extends HTMLElement {
+export class BqLinkElement extends BQ_LINK_BASE {
   /** @internal */
   private _cleanup: CleanupFn | null = null;
 
@@ -135,11 +139,7 @@ export class BqLinkElement extends HTMLElement {
   }
 
   /** @internal */
-  attributeChangedCallback(
-    name: string,
-    _oldValue: string | null,
-    _newValue: string | null
-  ): void {
+  attributeChangedCallback(name: string, _oldValue: string | null, _newValue: string | null): void {
     // Re-setup active tracking when relevant attributes change
     if (name === 'to' || name === 'exact' || name === 'active-class') {
       if (this.isConnected) {
@@ -240,6 +240,7 @@ export class BqLinkElement extends HTMLElement {
  */
 export const registerBqLink = (): void => {
   if (
+    typeof HTMLElement !== 'undefined' &&
     typeof customElements !== 'undefined' &&
     !customElements.get('bq-link')
   ) {

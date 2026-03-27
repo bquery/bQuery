@@ -178,12 +178,17 @@ const createComponentClass = <
     private mount(): void {
       if (this.hasMounted) return;
       const previousScope = setCurrentScope(this.ensureScope());
+      let hookError = false;
       try {
         definition.beforeMount?.call(this);
         definition.connected?.call(this);
+      } catch (error) {
+        hookError = true;
+        this.handleError(error as Error);
       } finally {
         setCurrentScope(previousScope);
       }
+      if (hookError) return;
       this.render();
       this.setupSignalSubscriptions();
       this.hasMounted = true;

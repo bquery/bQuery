@@ -65,7 +65,9 @@ const createInstallContext = (): PluginInstallContext => ({
       throw new Error(`bQuery plugin component: constructor for "${tagName}" must be a function`);
     }
     if (typeof customElements === 'undefined') {
-      throw new Error('bQuery plugin component: customElements is not available in this environment');
+      throw new Error(
+        'bQuery plugin component: customElements is not available in this environment'
+      );
     }
     // Idempotent — skip if already defined
     if (!customElements.get(tagName)) {

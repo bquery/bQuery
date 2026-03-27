@@ -18,97 +18,68 @@ import {
 // ============================================================================
 describe('renderToString', () => {
   it('renders a simple template with bq-text', () => {
-    const result = renderToString(
-      '<div><h1 bq-text="title"></h1></div>',
-      { title: 'Hello World' }
-    );
+    const result = renderToString('<div><h1 bq-text="title"></h1></div>', { title: 'Hello World' });
     expect(result.html).toContain('Hello World');
     expect(result.html).toContain('<h1');
   });
 
   it('renders bq-text with signal values', () => {
     const title = signal('From Signal');
-    const result = renderToString(
-      '<div><span bq-text="title"></span></div>',
-      { title }
-    );
+    const result = renderToString('<div><span bq-text="title"></span></div>', { title });
     expect(result.html).toContain('From Signal');
   });
 
   it('renders bq-text with computed values', () => {
     const name = signal('World');
     const greeting = computed(() => `Hello, ${name.value}!`);
-    const result = renderToString(
-      '<div><p bq-text="greeting"></p></div>',
-      { greeting }
-    );
+    const result = renderToString('<div><p bq-text="greeting"></p></div>', { greeting });
     expect(result.html).toContain('Hello, World!');
   });
 
   it('renders bq-text with null/undefined as empty string', () => {
-    const result = renderToString(
-      '<div><span bq-text="missing"></span></div>',
-      { missing: null }
-    );
+    const result = renderToString('<div><span bq-text="missing"></span></div>', { missing: null });
     expect(result.html).toContain('<span bq-text="missing"></span>');
   });
 
   it('renders bq-if: truthy condition keeps element', () => {
-    const result = renderToString(
-      '<div><p bq-if="show">Visible</p></div>',
-      { show: true }
-    );
+    const result = renderToString('<div><p bq-if="show">Visible</p></div>', { show: true });
     expect(result.html).toContain('Visible');
   });
 
   it('renders bq-if: falsy condition removes element', () => {
-    const result = renderToString(
-      '<div><p bq-if="show">Hidden</p></div>',
-      { show: false }
-    );
+    const result = renderToString('<div><p bq-if="show">Hidden</p></div>', { show: false });
     expect(result.html).not.toContain('Hidden');
     expect(result.html).not.toContain('<p');
   });
 
   it('renders bq-if with negation', () => {
-    const result = renderToString(
-      '<div><p bq-if="!hidden">Shown</p></div>',
-      { hidden: false }
-    );
+    const result = renderToString('<div><p bq-if="!hidden">Shown</p></div>', { hidden: false });
     expect(result.html).toContain('Shown');
   });
 
   it('renders bq-if with signal', () => {
     const show = signal(true);
-    const result = renderToString(
-      '<div><p bq-if="show">Visible</p></div>',
-      { show }
-    );
+    const result = renderToString('<div><p bq-if="show">Visible</p></div>', { show });
     expect(result.html).toContain('Visible');
   });
 
   it('renders bq-show: falsy condition adds display:none', () => {
-    const result = renderToString(
-      '<div><p bq-show="visible">Content</p></div>',
-      { visible: false }
-    );
+    const result = renderToString('<div><p bq-show="visible">Content</p></div>', {
+      visible: false,
+    });
     expect(result.html).toContain('display: none');
   });
 
   it('renders bq-show: truthy condition keeps display', () => {
-    const result = renderToString(
-      '<div><p bq-show="visible">Content</p></div>',
-      { visible: true }
-    );
+    const result = renderToString('<div><p bq-show="visible">Content</p></div>', { visible: true });
     expect(result.html).not.toContain('display: none');
     expect(result.html).toContain('Content');
   });
 
   it('renders bq-for: basic list', () => {
-    const result = renderToString(
-      '<ul><li bq-for="item in items" bq-text="item.name"></li></ul>',
-      { items: [{ name: 'Alice' }, { name: 'Bob' }, { name: 'Charlie' }] }
-    );
+    const result = renderToString('<ul><li bq-for="item in items" bq-text="item.name"></li></ul>', {
+      items: [{ name: 'Alice' }, { name: 'Bob' }, { name: 'Charlie' }],
+    });
     expect(result.html).toContain('Alice');
     expect(result.html).toContain('Bob');
     expect(result.html).toContain('Charlie');
@@ -118,10 +89,9 @@ describe('renderToString', () => {
   });
 
   it('renders bq-for: with index', () => {
-    const result = renderToString(
-      '<ul><li bq-for="(item, i) in items" bq-text="i"></li></ul>',
-      { items: ['a', 'b', 'c'] }
-    );
+    const result = renderToString('<ul><li bq-for="(item, i) in items" bq-text="i"></li></ul>', {
+      items: ['a', 'b', 'c'],
+    });
     expect(result.html).toContain('0');
     expect(result.html).toContain('1');
     expect(result.html).toContain('2');
@@ -129,19 +99,17 @@ describe('renderToString', () => {
 
   it('renders bq-for: with signal array', () => {
     const items = signal([{ name: 'X' }, { name: 'Y' }]);
-    const result = renderToString(
-      '<ul><li bq-for="item in items" bq-text="item.name"></li></ul>',
-      { items }
-    );
+    const result = renderToString('<ul><li bq-for="item in items" bq-text="item.name"></li></ul>', {
+      items,
+    });
     expect(result.html).toContain('X');
     expect(result.html).toContain('Y');
   });
 
   it('renders bq-for: empty array produces no children', () => {
-    const result = renderToString(
-      '<ul><li bq-for="item in items" bq-text="item"></li></ul>',
-      { items: [] }
-    );
+    const result = renderToString('<ul><li bq-for="item in items" bq-text="item"></li></ul>', {
+      items: [],
+    });
     const liCount = (result.html.match(/<li/g) || []).length;
     expect(liCount).toBe(0);
   });
@@ -158,19 +126,17 @@ describe('renderToString', () => {
   });
 
   it('renders bq-class: string expression', () => {
-    const result = renderToString(
-      '<div><span bq-class="cls">text</span></div>',
-      { cls: 'highlight bold' }
-    );
+    const result = renderToString('<div><span bq-class="cls">text</span></div>', {
+      cls: 'highlight bold',
+    });
     expect(result.html).toContain('highlight');
     expect(result.html).toContain('bold');
   });
 
   it('renders bq-bind:attr', () => {
-    const result = renderToString(
-      '<div><a bq-bind:href="url">Link</a></div>',
-      { url: 'https://example.com' }
-    );
+    const result = renderToString('<div><a bq-bind:href="url">Link</a></div>', {
+      url: 'https://example.com',
+    });
     expect(result.html).toContain('href="https://example.com"');
   });
 
@@ -194,10 +160,9 @@ describe('renderToString', () => {
   });
 
   it('renders bq-html', () => {
-    const result = renderToString(
-      '<div><span bq-html="content"></span></div>',
-      { content: '<strong onclick="alert(1)">Bold</strong><script>alert(1)</script>' }
-    );
+    const result = renderToString('<div><span bq-html="content"></span></div>', {
+      content: '<strong onclick="alert(1)">Bold</strong><script>alert(1)</script>',
+    });
     expect(result.html).toContain('<strong>Bold</strong>');
     expect(result.html).not.toContain('onclick=');
     expect(result.html).not.toContain('<script');
@@ -290,10 +255,10 @@ describe('renderToString', () => {
   });
 
   it('handles template with multiple root elements', () => {
-    const result = renderToString(
-      '<h1 bq-text="a"></h1><p bq-text="b"></p>',
-      { a: 'Title', b: 'Para' }
-    );
+    const result = renderToString('<h1 bq-text="a"></h1><p bq-text="b"></p>', {
+      a: 'Title',
+      b: 'Para',
+    });
     expect(result.html).toContain('Title');
     expect(result.html).toContain('Para');
   });
@@ -301,7 +266,12 @@ describe('renderToString', () => {
   it('renders bq-for with nested bq-text', () => {
     const result = renderToString(
       '<div><div bq-for="user in users"><span bq-text="user.name"></span><span bq-text="user.age"></span></div></div>',
-      { users: [{ name: 'Alice', age: 30 }, { name: 'Bob', age: 25 }] }
+      {
+        users: [
+          { name: 'Alice', age: 30 },
+          { name: 'Bob', age: 25 },
+        ],
+      }
     );
     expect(result.html).toContain('Alice');
     expect(result.html).toContain('30');
@@ -310,10 +280,9 @@ describe('renderToString', () => {
   });
 
   it('renders dot-notation access in bq-text', () => {
-    const result = renderToString(
-      '<div><span bq-text="user.name"></span></div>',
-      { user: { name: 'Deep Value' } }
-    );
+    const result = renderToString('<div><span bq-text="user.name"></span></div>', {
+      user: { name: 'Deep Value' },
+    });
     expect(result.html).toContain('Deep Value');
   });
 
@@ -340,11 +309,7 @@ describe('renderToString', () => {
     createStore({ id: 'ssr-a', state: () => ({ x: 1 }) });
     createStore({ id: 'ssr-b', state: () => ({ y: 2 }) });
     try {
-      const result = renderToString(
-        '<div></div>',
-        {},
-        { includeStoreState: ['ssr-a'] }
-      );
+      const result = renderToString('<div></div>', {}, { includeStoreState: ['ssr-a'] });
       expect(result.storeState).toContain('ssr-a');
       expect(result.storeState).not.toContain('ssr-b');
     } finally {
@@ -575,9 +540,7 @@ describe('deserializeStoreState', () => {
     expect(state).toEqual({ myStore: { count: 5 } });
 
     // Global should be cleaned up
-    expect(
-      (window as unknown as Record<string, unknown>).__BQUERY_INITIAL_STATE__
-    ).toBeUndefined();
+    expect((window as unknown as Record<string, unknown>).__BQUERY_INITIAL_STATE__).toBeUndefined();
   });
 
   it('removes a custom scriptId during cleanup', () => {
@@ -668,9 +631,7 @@ describe('deserializeStoreState', () => {
     );
 
     expect(Object.getPrototypeOf(window)).toBe(originalWindowPrototype);
-    expect(
-      (window as unknown as Record<string, unknown>).__BQUERY_INITIAL_STATE__
-    ).toBeUndefined();
+    expect((window as unknown as Record<string, unknown>).__BQUERY_INITIAL_STATE__).toBeUndefined();
   });
 
   it('rejects prototype-pollution scriptId values before cleanup side effects', () => {
@@ -929,7 +890,11 @@ describe('SSR → Hydration integration', () => {
     // Client side hydration
     const title = signal('SSR Title');
     const body = signal('SSR Body');
-    const view = hydrateMount(container.firstElementChild! as Element, { title, body }, { hydrate: true });
+    const view = hydrateMount(
+      container.firstElementChild! as Element,
+      { title, body },
+      { hydrate: true }
+    );
 
     // Content should match server render
     expect(container.querySelector('h1')!.textContent).toBe('SSR Title');
@@ -949,10 +914,7 @@ describe('SSR → Hydration integration', () => {
       state: () => ({ count: 42 }),
     });
 
-    renderToString(
-      '<div><span bq-text="count"></span></div>',
-      { count: serverStore.count }
-    );
+    renderToString('<div><span bq-text="count"></span></div>', { count: serverStore.count });
 
     const { stateJson } = serializeStoreState({ storeIds: ['integration-counter'] });
 

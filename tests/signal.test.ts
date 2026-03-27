@@ -1308,10 +1308,12 @@ describe('createUseFetch', () => {
       baseUrl: 'https://example.com',
       immediate: false,
       transform: (value) => value.name,
-      fetcher: asMockFetch(async () =>
-        new Response(JSON.stringify({ id: 1, name: 'Ada' }), {
-          status: 200,
-        })),
+      fetcher: asMockFetch(
+        async () =>
+          new Response(JSON.stringify({ id: 1, name: 'Ada' }), {
+            status: 200,
+          })
+      ),
     });
 
     const state = useApiFetch('/users');
