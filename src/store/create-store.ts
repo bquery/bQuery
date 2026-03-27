@@ -2,6 +2,7 @@
  * Store creation logic.
  */
 
+import { isPromise } from '../core/utils/type-guards';
 import {
   batch,
   computed,
@@ -10,7 +11,6 @@ import {
   type ReadonlySignal,
   type Signal,
 } from '../reactive/index';
-import { isPromise } from '../core/utils/type-guards';
 import { notifyDevtoolsStateChange, registerDevtoolsStore } from './devtools';
 import { applyPlugins } from './plugins';
 import { getStore, hasStore, registerStore } from './registry';
@@ -245,9 +245,10 @@ export const createStore = <
 
       const afterHooks: Array<(result: unknown) => void> = [];
       const errorHooks: Array<(error: unknown) => void> = [];
+      const listenerSnapshot = [...actionListeners];
 
       // Notify all action listeners (before phase)
-      for (const listener of actionListeners) {
+      for (const listener of listenerSnapshot) {
         runOnActionCallback('listener', actionName, () =>
           listener({
             name: actionName,

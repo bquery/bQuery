@@ -719,12 +719,12 @@ describe('a11y/skipLink', () => {
     }
   });
 
-  it('should allow default anchor navigation when no target can be resolved', () => {
+  it('should prevent default anchor navigation when no target can be resolved', () => {
     const handle = skipLink('#missing-main');
     const clickEvent = new MouseEvent('click', { bubbles: true, cancelable: true });
 
-    expect(getSkipLinkElement(handle).dispatchEvent(clickEvent)).toBe(true);
-    expect(clickEvent.defaultPrevented).toBe(false);
+    expect(getSkipLinkElement(handle).dispatchEvent(clickEvent)).toBe(false);
+    expect(clickEvent.defaultPrevented).toBe(true);
 
     handle.destroy();
   });
@@ -734,7 +734,7 @@ describe('a11y/skipLink', () => {
     const clickEvent = new MouseEvent('click', { bubbles: true, cancelable: true });
 
     expect(() => getSkipLinkElement(handle).dispatchEvent(clickEvent)).not.toThrow();
-    expect(clickEvent.defaultPrevented).toBe(false);
+    expect(clickEvent.defaultPrevented).toBe(true);
 
     handle.destroy();
   });

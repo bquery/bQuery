@@ -868,6 +868,38 @@ describe('Store', () => {
       expect(callsB).toEqual(['increment']);
     });
 
+    it('should iterate over a stable listener snapshot when listeners mutate subscriptions', () => {
+      const store = createStore<{ count: number }, Record<string, never>, { increment(): void }>({
+        id: 'on-action-listener-snapshot',
+        state: () => ({ count: 0 }),
+        actions: {
+          increment() {
+            (this as { count: number }).count++;
+          },
+        },
+      });
+
+      const calls: string[] = [];
+      let unsubscribeFirst = () => {};
+
+      unsubscribeFirst = store.$onAction(() => {
+        calls.push('first');
+        unsubscribeFirst();
+        store.$onAction(() => {
+          calls.push('late');
+        });
+      });
+
+      store.$onAction(() => {
+        calls.push('second');
+      });
+
+      store.increment();
+      store.increment();
+
+      expect(calls).toEqual(['first', 'second', 'second', 'late']);
+    });
+
     it('should ignore errors thrown by action listeners and hooks', async () => {
       const store = createStore<
         { count: number },

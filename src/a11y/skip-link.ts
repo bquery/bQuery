@@ -220,12 +220,13 @@ export const skipLink = (targetSelector: string, options: SkipLinkOptions = {}):
   });
 
   link.addEventListener('click', (e) => {
+    e.preventDefault();
+
     const target = resolveTarget();
     if (!target) {
       return;
     }
 
-    e.preventDefault();
     link.href = `#${ensureTargetId(target)}`;
     // Make the target focusable if it isn't already
     ensureTargetFocusable(target);

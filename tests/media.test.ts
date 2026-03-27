@@ -415,6 +415,32 @@ describe('media/useNetworkStatus', () => {
       });
     }
   });
+
+  it('falls back gracefully when navigator.connection lacks event listener methods', () => {
+    const originalConnection = (navigator as Navigator & { connection?: unknown }).connection;
+
+    Object.defineProperty(navigator, 'connection', {
+      configurable: true,
+      value: {
+        effectiveType: '3g',
+        downlink: 1.5,
+        rtt: 250,
+        addEventListener: undefined,
+        removeEventListener: undefined,
+      },
+    });
+
+    try {
+      const net = useNetworkStatus();
+      expect(net.value.effectiveType).toBe('3g');
+      expect(() => net.destroy()).not.toThrow();
+    } finally {
+      Object.defineProperty(navigator, 'connection', {
+        configurable: true,
+        value: originalConnection,
+      });
+    }
+  });
 });
 
 // ─── useBattery ──────────────────────────────────────────────────────────────

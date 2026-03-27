@@ -125,7 +125,18 @@ export const use = <TOptions = unknown>(
   if (installedPlugins.has(plugin.name)) return;
 
   const ctx = createInstallContext();
-  plugin.install(ctx, options);
+  const directivesSnapshot = new Map(customDirectives);
+
+  try {
+    plugin.install(ctx, options);
+  } catch (error) {
+    customDirectives.clear();
+    for (const [name, handler] of directivesSnapshot) {
+      customDirectives.set(name, handler);
+    }
+    throw error;
+  }
+
   installedPlugins.add(plugin.name);
 };
 

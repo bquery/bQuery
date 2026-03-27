@@ -132,6 +132,28 @@ describe('Plugin System', () => {
       expect(installCount).toBe(2);
     });
 
+    it('should roll back directives registered during a failed install attempt', () => {
+      let shouldThrow = true;
+      const handler: CustomDirectiveHandler = () => {};
+      const plugin = makePlugin('rollback-test', (ctx) => {
+        ctx.directive('recoverable', handler);
+
+        if (shouldThrow) {
+          throw new Error('install failed');
+        }
+      });
+
+      expect(() => use(plugin)).toThrow('install failed');
+      expect(isInstalled('rollback-test')).toBe(false);
+      expect(getCustomDirective('recoverable')).toBeUndefined();
+
+      shouldThrow = false;
+      use(plugin);
+
+      expect(isInstalled('rollback-test')).toBe(true);
+      expect(getCustomDirective('recoverable')).toBe(handler);
+    });
+
     it('should throw for null/undefined plugin', () => {
       expect(() => use(null as unknown as BQueryPlugin)).toThrow(
         'bQuery plugin: use() expects a plugin object'

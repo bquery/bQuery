@@ -7,7 +7,7 @@
  * @module bquery/media
  */
 
-import { signal, readonly } from '../reactive/index';
+import { readonly, signal } from '../reactive/index';
 import type { NetworkSignal, NetworkState } from './types';
 
 /**
@@ -85,14 +85,16 @@ export const useNetworkStatus = (): NetworkSignal => {
 
     const nav =
       typeof navigator !== 'undefined' ? (navigator as NavigatorWithConnection) : undefined;
-    if (nav?.connection) {
+    if (nav?.connection && typeof nav.connection.addEventListener === 'function') {
       nav.connection.addEventListener('change', update);
     }
 
     cleanup = () => {
       window.removeEventListener('online', update);
       window.removeEventListener('offline', update);
-      nav?.connection?.removeEventListener('change', update);
+      if (nav?.connection && typeof nav.connection.removeEventListener === 'function') {
+        nav.connection.removeEventListener('change', update);
+      }
     };
   }
 
