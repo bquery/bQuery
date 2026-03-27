@@ -49,8 +49,11 @@ export const morphElement = (
   const previousDisplay = toEl.style.display;
   const previousVisibility = toEl.style.visibility;
   const computedDisplay =
-    typeof getComputedStyle === 'function' ? getComputedStyle(toEl).display : '';
-  const forcedDisplay = computedDisplay === 'none' ? 'block' : previousDisplay || '';
+    typeof getComputedStyle === 'function'
+      ? getComputedStyle(toEl).display
+      : previousDisplay || 'block';
+  const forcedDisplay =
+    computedDisplay === 'none' ? 'block' : previousDisplay || computedDisplay || 'block';
   toEl.style.visibility = 'hidden';
   toEl.style.display = forcedDisplay;
 
@@ -62,8 +65,13 @@ export const morphElement = (
 
   // Hide source, show destination
   fromEl.style.display = 'none';
-  toEl.style.display =
-    computedDisplay === 'none' ? forcedDisplay : previousDisplay === 'none' ? '' : previousDisplay;
+  if (computedDisplay === 'none') {
+    toEl.style.display = forcedDisplay;
+  } else if (previousDisplay === 'none') {
+    toEl.style.display = '';
+  } else {
+    toEl.style.display = previousDisplay;
+  }
 
   // If reduced motion is preferred, skip the animation
   if (respectReducedMotion && prefersReducedMotion()) {

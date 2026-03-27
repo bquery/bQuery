@@ -821,10 +821,13 @@ describe('motion/morphElement', () => {
     const mockGetComputedStyle = ((element: Element) => {
       const style = originalGetComputedStyle(element);
       if (element === to && (to as HTMLElement).style.display === '') {
-        return {
-          ...style,
-          display: 'none',
-        } as CSSStyleDeclaration;
+        const hiddenStyle = Object.create(style) as CSSStyleDeclaration;
+        Object.defineProperty(hiddenStyle, 'display', {
+          configurable: true,
+          enumerable: true,
+          value: 'none',
+        });
+        return hiddenStyle;
       }
       return style;
     }) as typeof globalThis.getComputedStyle;
