@@ -4,7 +4,7 @@
  * @internal
  */
 
-import { merge } from '../core/utils/object';
+import { isPrototypePollutionKey, merge } from '../core/utils/object';
 import type { LocaleMessages, TranslateParams } from './types';
 
 /**
@@ -160,7 +160,12 @@ export const deepMerge = (target: LocaleMessages, source: LocaleMessages): Local
   ) as LocaleMessages;
 
   const safeResult = Object.create(null) as LocaleMessages;
-  Object.assign(safeResult, merged);
+  for (const [key, value] of Object.entries(merged)) {
+    if (isPrototypePollutionKey(key)) {
+      continue;
+    }
+    safeResult[key] = value;
+  }
 
   return safeResult;
 };

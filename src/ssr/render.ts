@@ -14,6 +14,86 @@ import type { BindingContext } from '../view/types';
 import type { RenderOptions, SSRResult } from './types';
 import { serializeStoreState } from './serialize';
 
+const VOID_ELEMENTS = new Set([
+  'area',
+  'base',
+  'br',
+  'col',
+  'embed',
+  'hr',
+  'img',
+  'input',
+  'link',
+  'meta',
+  'param',
+  'source',
+  'track',
+  'wbr',
+]);
+
+const escapeHtmlText = (value: string): string =>
+  value
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;');
+
+const escapeHtmlAttribute = (value: string): string =>
+  escapeHtmlText(value).replaceAll('"', '&quot;');
+
+const isUnsafeUrlAttribute = (name: string): boolean => {
+  const normalized = name.toLowerCase();
+  return (
+    normalized === 'href' ||
+    normalized === 'src' ||
+    normalized === 'xlink:href' ||
+    normalized === 'formaction'
+  );
+};
+
+const isUnsafeUrlValue = (value: string): boolean => {
+  return value.trim().toLowerCase().startsWith('javascript:');
+};
+
+const serializeSSRNode = (node: Node): string => {
+  if (node.nodeType === Node.TEXT_NODE) {
+    return escapeHtmlText(node.textContent ?? '');
+  }
+
+  if (node.nodeType !== Node.ELEMENT_NODE) {
+    return '';
+  }
+
+  const el = node as Element;
+  const tagName = el.tagName.toLowerCase();
+
+  if (tagName === 'script') {
+    return '';
+  }
+
+  let attrs = '';
+  for (const attr of Array.from(el.attributes)) {
+    const attrName = attr.name.toLowerCase();
+    if (attrName.startsWith('on')) {
+      continue;
+    }
+    if (isUnsafeUrlAttribute(attrName) && isUnsafeUrlValue(attr.value)) {
+      continue;
+    }
+    attrs += ` ${attr.name}="${escapeHtmlAttribute(attr.value)}"`;
+  }
+
+  if (VOID_ELEMENTS.has(tagName)) {
+    return `<${tagName}${attrs}>`;
+  }
+
+  let childrenHtml = '';
+  for (const child of Array.from(el.childNodes)) {
+    childrenHtml += serializeSSRNode(child);
+  }
+
+  return `<${tagName}${attrs}>${childrenHtml}</${tagName}>`;
+};
+
 /**
  * Unwraps a value — if it's a signal/computed, returns `.value`, otherwise returns as-is.
  * @internal
@@ -400,7 +480,10 @@ export const renderToString = (
     }
   }
 
-  const html = body.innerHTML;
+  let html = '';
+  for (const child of Array.from(body.childNodes)) {
+    html += serializeSSRNode(child);
+  }
 
   // Handle store state serialization
   let storeState: string | undefined;

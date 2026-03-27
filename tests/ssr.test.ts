@@ -203,6 +203,18 @@ describe('renderToString', () => {
     expect(result.html).not.toContain('<script');
   });
 
+  it('drops unsafe script elements and inline event handlers from the template output', () => {
+    const result = renderToString(
+      '<div onclick="alert(1)"><script>alert(1)</script><a href="javascript:alert(1)">Bad</a><button>Safe</button></div>',
+      {}
+    );
+
+    expect(result.html).not.toContain('<script');
+    expect(result.html).not.toContain('onclick=');
+    expect(result.html).not.toContain('javascript:alert(1)');
+    expect(result.html).toContain('<button>Safe</button>');
+  });
+
   it('strips directive attributes when stripDirectives is true', () => {
     const result = renderToString(
       '<div><h1 bq-text="title">placeholder</h1></div>',

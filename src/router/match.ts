@@ -8,20 +8,6 @@ import { getNormalizedRouteConstraint } from './constraints';
 import { isParamChar, isParamStart, readConstraint } from './path-pattern';
 import type { Route, RouteDefinition } from './types';
 
-// ============================================================================
-// Route Matching
-// ============================================================================
-
-const REGEX_META_CHARS = new Set(['\\', '^', '$', '.', '*', '+', '?', '(', ')', '[', ']', '{', '}', '|']);
-
-const escapeRegexLiteral = (value: string): string => {
-  let escaped = '';
-  for (const char of value) {
-    escaped += REGEX_META_CHARS.has(char) ? `\\${char}` : char;
-  }
-  return escaped;
-};
-
 const readConstraintOrThrow = (
   path: string,
   startIndex: number
@@ -35,93 +21,129 @@ const readConstraintOrThrow = (
   return parsedConstraint;
 };
 
-/**
- * Converts a route path pattern to a RegExp for matching.
- * Supports `:param` patterns, `:param(regex)` constraints, and `*` wildcards.
- * Uses placeholder approach to preserve patterns during escaping.
- * Returns positional capture groups for maximum compatibility.
- * @internal
- */
-const pathToRegex = (path: string): RegExp => {
-  // Handle wildcard-only route
-  if (path === '*') {
-    return /^.*$/;
-  }
-
-  let pattern = '';
-
-  for (let i = 0; i < path.length; ) {
-    const char = path[i];
-
-    if (char === '*') {
-      pattern += '.*';
-      i++;
-      continue;
-    }
-
-    if (char === ':' && isParamStart(path[i + 1])) {
-      let nameEnd = i + 2;
-      while (nameEnd < path.length && isParamChar(path[nameEnd])) {
-        nameEnd++;
-      }
-
-      let nextIndex = nameEnd;
-      let constraint = '[^/]+';
-
-      if (path[nameEnd] === '(') {
-        const parsedConstraint = readConstraintOrThrow(path, nameEnd);
-        constraint = parsedConstraint.constraint;
-        nextIndex = parsedConstraint.endIndex;
-      }
-
-      pattern += `(${getNormalizedRouteConstraint(constraint)})`;
-      i = nextIndex;
-      continue;
-    }
-
-    pattern += escapeRegexLiteral(char);
-    i++;
-  }
-
-  return new RegExp(`^${pattern}$`);
+type RouteParamDescriptor = {
+  name: string;
+  constraint?: string;
+  nextIndex: number;
 };
 
-/**
- * Extracts param names from a route path.
- * Handles both `:param` and `:param(regex)` syntax.
- * @internal
- */
-const extractParamNames = (path: string): string[] => {
-  const names: string[] = [];
-
-  for (let i = 0; i < path.length; ) {
-    if (path[i] !== ':' || !isParamStart(path[i + 1])) {
-      i++;
-      continue;
-    }
-
-    let nameEnd = i + 2;
-    while (nameEnd < path.length && isParamChar(path[nameEnd])) {
-      nameEnd++;
-    }
-
-    names.push(path.slice(i + 1, nameEnd));
-
-    if (path[nameEnd] === '(') {
-      const parsedConstraint = readConstraintOrThrow(path, nameEnd);
-      i = parsedConstraint.endIndex;
-      continue;
-    }
-
-    i = nameEnd;
+const readParamDescriptor = (
+  path: string,
+  index: number
+): RouteParamDescriptor | null => {
+  if (path[index] !== ':' || !isParamStart(path[index + 1])) {
+    return null;
   }
 
-  return names;
+  let nameEnd = index + 2;
+  while (nameEnd < path.length && isParamChar(path[nameEnd])) {
+    nameEnd++;
+  }
+
+  let nextIndex = nameEnd;
+  let constraint: string | undefined;
+
+  if (path[nameEnd] === '(') {
+    const parsedConstraint = readConstraintOrThrow(path, nameEnd);
+    constraint = parsedConstraint.constraint;
+    nextIndex = parsedConstraint.endIndex;
+  }
+
+  return {
+    name: path.slice(index + 1, nameEnd),
+    constraint,
+    nextIndex,
+  };
+};
+
+const findSegmentBoundary = (value: string, startIndex: number): number => {
+  const slashIndex = value.indexOf('/', startIndex);
+  return slashIndex === -1 ? value.length : slashIndex;
+};
+
+const matchPathPattern = (
+  routePath: string,
+  actualPath: string
+): Record<string, string> | null => {
+  const memo = new Map<string, Record<string, string> | null>();
+
+  const matchFrom = (
+    routeIndex: number,
+    pathIndex: number
+  ): Record<string, string> | null => {
+    const memoKey = `${routeIndex}:${pathIndex}`;
+    if (memo.has(memoKey)) {
+      return memo.get(memoKey) ?? null;
+    }
+
+    if (routeIndex === routePath.length) {
+      const result = pathIndex === actualPath.length ? {} : null;
+      memo.set(memoKey, result);
+      return result;
+    }
+
+    const routeChar = routePath[routeIndex];
+
+    if (routeChar === '*') {
+      for (let candidateEnd = actualPath.length; candidateEnd >= pathIndex; candidateEnd--) {
+        const suffixMatch = matchFrom(routeIndex + 1, candidateEnd);
+        if (suffixMatch) {
+          memo.set(memoKey, suffixMatch);
+          return suffixMatch;
+        }
+      }
+
+      memo.set(memoKey, null);
+      return null;
+    }
+
+    const param = readParamDescriptor(routePath, routeIndex);
+    if (param) {
+      const candidateLimit = param.constraint
+        ? actualPath.length
+        : findSegmentBoundary(actualPath, pathIndex);
+
+      for (let candidateEnd = candidateLimit; candidateEnd > pathIndex; candidateEnd--) {
+        const candidateValue = actualPath.slice(pathIndex, candidateEnd);
+
+        if (param.constraint) {
+          const normalizedConstraint = getNormalizedRouteConstraint(param.constraint);
+          const constraintRegex = new RegExp(`^(?:${normalizedConstraint})$`);
+          if (!constraintRegex.test(candidateValue)) {
+            continue;
+          }
+        }
+
+        const suffixMatch = matchFrom(param.nextIndex, candidateEnd);
+        if (suffixMatch) {
+          const result = {
+            [param.name]: candidateValue,
+            ...suffixMatch,
+          };
+          memo.set(memoKey, result);
+          return result;
+        }
+      }
+
+      memo.set(memoKey, null);
+      return null;
+    }
+
+    if (pathIndex >= actualPath.length || routeChar !== actualPath[pathIndex]) {
+      memo.set(memoKey, null);
+      return null;
+    }
+
+    const result = matchFrom(routeIndex + 1, pathIndex + 1);
+    memo.set(memoKey, result);
+    return result;
+  };
+
+  return matchFrom(0, 0);
 };
 
 /**
  * Matches a path against route definitions and extracts params.
- * Uses positional captures for maximum compatibility.
  * @internal
  */
 export const matchRoute = (
@@ -129,18 +151,8 @@ export const matchRoute = (
   routes: RouteDefinition[]
 ): { matched: RouteDefinition; params: Record<string, string> } | null => {
   for (const route of routes) {
-    const regex = pathToRegex(route.path);
-    const match = path.match(regex);
-
-    if (match) {
-      const paramNames = extractParamNames(route.path);
-      const params: Record<string, string> = {};
-
-      // Map positional captures to param names
-      paramNames.forEach((name, index) => {
-        params[name] = match[index + 1] || '';
-      });
-
+    const params = matchPathPattern(route.path, path);
+    if (params) {
       return { matched: route, params };
     }
   }

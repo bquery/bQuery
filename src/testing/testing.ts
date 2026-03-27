@@ -286,13 +286,8 @@ function matchRoute(
   routes: MockRouteDefinition[]
 ): { matched: MockRouteDefinition | null; params: Record<string, string> } {
   for (const route of routes) {
-    const { regex, paramNames } = buildRouteRegex(route.path);
-    const match = path.match(regex);
-    if (match) {
-      const params: Record<string, string> = {};
-      for (let i = 0; i < paramNames.length; i++) {
-        params[paramNames[i]] = match[i + 1] ?? '';
-      }
+    const params = matchRoutePattern(route.path, path);
+    if (params) {
       return { matched: route, params };
     }
   }
@@ -300,53 +295,116 @@ function matchRoute(
 }
 
 /**
- * Builds a regex from a route path pattern.
+ * Builds param matches from a route path pattern without compiling the full path into a regex.
  * @internal
  */
-function buildRouteRegex(pattern: string): { regex: RegExp; paramNames: string[] } {
-  const paramNames: string[] = [];
-
+function matchRoutePattern(pattern: string, path: string): Record<string, string> | null {
   if (pattern === '*') {
-    return { regex: /^.*$/, paramNames: [] };
+    return {};
   }
 
-  let regexStr = '';
+  const memo = new Map<string, Record<string, string> | null>();
 
-  for (let i = 0; i < pattern.length; ) {
-    if (pattern[i] !== ':' || !isWordChar(pattern[i + 1])) {
-      regexStr += pattern[i];
-      i++;
-      continue;
+  const findSegmentBoundary = (value: string, startIndex: number): number => {
+    const slashIndex = value.indexOf('/', startIndex);
+    return slashIndex === -1 ? value.length : slashIndex;
+  };
+
+  const matchFrom = (
+    patternIndex: number,
+    pathIndex: number
+  ): Record<string, string> | null => {
+    const memoKey = `${patternIndex}:${pathIndex}`;
+    if (memo.has(memoKey)) {
+      return memo.get(memoKey) ?? null;
     }
 
-    let nameEnd = i + 2;
-    while (nameEnd < pattern.length && isWordChar(pattern[nameEnd])) {
-      nameEnd++;
+    if (patternIndex === pattern.length) {
+      const result = pathIndex === path.length ? {} : null;
+      memo.set(memoKey, result);
+      return result;
     }
 
-    const name = pattern.slice(i + 1, nameEnd);
-    paramNames.push(name);
+    const patternChar = pattern[patternIndex];
 
-    if (pattern[nameEnd] === '(') {
-      const parsedConstraint = readRouteConstraint(pattern, nameEnd);
-      if (parsedConstraint) {
-        regexStr += `(${parsedConstraint.constraint})`;
-        i = parsedConstraint.endIndex;
-        continue;
+    if (patternChar === '*') {
+      for (let candidateEnd = path.length; candidateEnd >= pathIndex; candidateEnd--) {
+        const suffixMatch = matchFrom(patternIndex + 1, candidateEnd);
+        if (suffixMatch) {
+          memo.set(memoKey, suffixMatch);
+          return suffixMatch;
+        }
       }
+
+      memo.set(memoKey, null);
+      return null;
     }
 
-    if (pattern[nameEnd] === '*') {
-      regexStr += '(.*)';
-      i = nameEnd + 1;
-      continue;
+    if (patternChar === ':' && isWordChar(pattern[patternIndex + 1])) {
+      let nameEnd = patternIndex + 2;
+      while (nameEnd < pattern.length && isWordChar(pattern[nameEnd])) {
+        nameEnd++;
+      }
+
+      const name = pattern.slice(patternIndex + 1, nameEnd);
+      let nextPatternIndex = nameEnd;
+      let constraint: string | undefined;
+      let catchAll = false;
+
+      if (pattern[nameEnd] === '(') {
+        const parsedConstraint = readRouteConstraint(pattern, nameEnd);
+        if (parsedConstraint) {
+          constraint = parsedConstraint.constraint;
+          nextPatternIndex = parsedConstraint.endIndex;
+        }
+      }
+
+      if (pattern[nextPatternIndex] === '*') {
+        catchAll = true;
+        nextPatternIndex++;
+      }
+
+      const candidateLimit = catchAll
+        ? path.length
+        : constraint
+          ? path.length
+          : findSegmentBoundary(path, pathIndex);
+
+      for (let candidateEnd = candidateLimit; candidateEnd > pathIndex; candidateEnd--) {
+        const candidateValue = path.slice(pathIndex, candidateEnd);
+        if (constraint) {
+          const constraintRegex = new RegExp(`^(?:${constraint})$`);
+          if (!constraintRegex.test(candidateValue)) {
+            continue;
+          }
+        }
+
+        const suffixMatch = matchFrom(nextPatternIndex, candidateEnd);
+        if (suffixMatch) {
+          const result = {
+            [name]: candidateValue,
+            ...suffixMatch,
+          };
+          memo.set(memoKey, result);
+          return result;
+        }
+      }
+
+      memo.set(memoKey, null);
+      return null;
     }
 
-    regexStr += '([^/]+)';
-    i = nameEnd;
-  }
+    if (pathIndex >= path.length || patternChar !== path[pathIndex]) {
+      memo.set(memoKey, null);
+      return null;
+    }
 
-  return { regex: new RegExp(`^${regexStr}$`), paramNames };
+    const result = matchFrom(patternIndex + 1, pathIndex + 1);
+    memo.set(memoKey, result);
+    return result;
+  };
+
+  return matchFrom(0, 0);
 }
 
 /**

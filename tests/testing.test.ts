@@ -425,6 +425,15 @@ describe('mockRouter', () => {
     expect(router.currentRoute.value.params.path).toBe('a/b/c');
   });
 
+  it('should support literal suffixes after params', () => {
+    router = mockRouter({
+      routes: [{ path: '/file/:name.json' }],
+    });
+    router.push('/file/config.json');
+    expect(router.currentRoute.value.matched?.path).toBe('/file/:name.json');
+    expect(router.currentRoute.value.params).toEqual({ name: 'config' });
+  });
+
   it('should be reactive (effects trigger on push)', () => {
     router = mockRouter({
       routes: [{ path: '/' }, { path: '/about' }],
