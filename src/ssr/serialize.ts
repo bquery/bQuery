@@ -127,7 +127,7 @@ export const serializeStoreState = (options: SerializeOptions = {}): SerializeRe
   const stateJson = serialize(stateMap);
   if (typeof stateJson !== 'string') {
     throw new Error(
-      'serializeStoreState: custom serialize function must return a JSON object string.'
+      'serializeStoreState: custom serialize function must return a string.'
     );
   }
 

@@ -423,25 +423,36 @@ describe('serializeStoreState', () => {
 
   it('uses custom serializer', () => {
     createStore({ id: 'serialize-ser', state: () => ({ k: 'v' }) });
+    let serializerArg: unknown;
 
     const result = serializeStoreState({
       storeIds: ['serialize-ser'],
-      serialize: (data) => JSON.stringify(data, null, 2),
+      serialize: (data) => {
+        serializerArg = data;
+        return JSON.stringify(data, null, 2);
+      },
     });
     expect(result.stateJson).toContain('  '); // indented JSON
+    expect(serializerArg).toEqual({ 'serialize-ser': { k: 'v' } });
   });
 
   it('throws when custom serializer returns invalid JSON', () => {
+    createStore({ id: 'serialize-invalid-json', state: () => ({ bad: true }) });
+
     expect(() =>
       serializeStoreState({
+        storeIds: ['serialize-invalid-json'],
         serialize: (() => '{invalid json}') as (data: unknown) => string,
       })
     ).toThrow('serializeStoreState: custom serialize function returned invalid JSON.');
   });
 
   it('throws when custom serializer returns non-object JSON', () => {
+    createStore({ id: 'serialize-non-object-json', state: () => ({ bad: true }) });
+
     expect(() =>
       serializeStoreState({
+        storeIds: ['serialize-non-object-json'],
         serialize: (() => '[]') as (data: unknown) => string,
       })
     ).toThrow('serializeStoreState: custom serialize function must return a JSON object string.');
