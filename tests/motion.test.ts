@@ -779,7 +779,7 @@ describe('motion/morphElement', () => {
     await promise;
 
     expect(from.style.display).toBe('none');
-    expect(to.style.opacity).toBe('1');
+    expect(to.style.opacity).toBe('');
   });
 
   it('forces a measurable display when destination is hidden via computed styles', async () => {
@@ -861,7 +861,7 @@ describe('motion/morphElement', () => {
     const to = createPositionedElement({ top: 10, left: 20, width: 100, height: 100 });
 
     await morphElement(from, to);
-    expect(to.style.opacity).toBe('1');
+    expect(to.style.opacity).toBe('');
   });
 
   it('skips animation when reduced motion is active', async () => {
@@ -871,7 +871,7 @@ describe('motion/morphElement', () => {
     const to = createPositionedElement({ top: 100, left: 100 });
 
     await morphElement(from, to);
-    expect(to.style.opacity).toBe('1');
+    expect(to.style.opacity).toBe('');
   });
 
   it('calls onComplete callback', async () => {
@@ -893,6 +893,63 @@ describe('motion/morphElement', () => {
     let completed = false;
     await morphElement(from, to, { onComplete: () => (completed = true) });
     expect(completed).toBe(true);
+  });
+
+  it('restores existing inline transform and opacity after animation completes', async () => {
+    const from = createPositionedElement({ top: 0, left: 0, width: 100, height: 100 });
+    const to = createPositionedElement({ top: 50, left: 50, width: 200, height: 200 });
+    to.style.transform = 'rotate(12deg)';
+    to.style.opacity = '0.4';
+
+    const mockAnim = createMockAnimation();
+    to.animate = mock(() => mockAnim) as unknown as Element['animate'];
+
+    const promise = morphElement(from, to);
+    mockAnim.onfinish?.();
+    await promise;
+
+    expect(to.style.transform).toBe('rotate(12deg)');
+    expect(to.style.opacity).toBe('0.4');
+  });
+
+  it('restores existing inline transform and opacity when reduced motion skips animation', async () => {
+    setReducedMotion(true);
+
+    const from = createPositionedElement({ top: 0, left: 0, width: 100, height: 100 });
+    const to = createPositionedElement({ top: 50, left: 50, width: 200, height: 200 });
+    to.style.transform = 'scale(1.1)';
+    to.style.opacity = '0.7';
+
+    await morphElement(from, to);
+
+    expect(to.style.transform).toBe('scale(1.1)');
+    expect(to.style.opacity).toBe('0.7');
+  });
+
+  it('restores existing inline transform and opacity when no morph is needed', async () => {
+    const from = createPositionedElement({ top: 10, left: 20, width: 100, height: 100 });
+    const to = createPositionedElement({ top: 10, left: 20, width: 100, height: 100 });
+    to.style.transform = 'translateX(5px)';
+    to.style.opacity = '0.8';
+
+    await morphElement(from, to);
+
+    expect(to.style.transform).toBe('translateX(5px)');
+    expect(to.style.opacity).toBe('0.8');
+  });
+
+  it('restores existing inline transform and opacity when animate API is unavailable', async () => {
+    const from = createPositionedElement({ top: 0, left: 0, width: 100, height: 100 });
+    const to = createPositionedElement({ top: 50, left: 50, width: 200, height: 200 });
+    to.style.transform = 'skewX(4deg)';
+    to.style.opacity = '0.6';
+    // @ts-expect-error - test scenario
+    to.animate = undefined;
+
+    await morphElement(from, to);
+
+    expect(to.style.transform).toBe('skewX(4deg)');
+    expect(to.style.opacity).toBe('0.6');
   });
 });
 

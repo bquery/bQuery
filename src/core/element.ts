@@ -27,6 +27,70 @@ import { isPrototypePollutionKey } from './utils/object';
 /** Handler signature for delegated events */
 type DelegatedHandler = (event: Event, target: Element) => void;
 
+type SerializableFormControl = HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
+
+const isSerializableFormControl = (element: Element): element is SerializableFormControl => {
+  const tagName = element.tagName.toLowerCase();
+  return tagName === 'input' || tagName === 'textarea' || tagName === 'select';
+};
+
+const collectFormEntries = (form: HTMLFormElement): Array<[string, string]> => {
+  const entries: Array<[string, string]> = [];
+
+  for (const control of Array.from(form.elements)) {
+    if (!(control instanceof Element) || !isSerializableFormControl(control)) {
+      continue;
+    }
+
+    const name = control.name;
+    if (!name || control.disabled || isPrototypePollutionKey(name)) {
+      continue;
+    }
+
+    if (control.tagName.toLowerCase() === 'input') {
+      const input = control as HTMLInputElement;
+      const type = input.type.toLowerCase();
+
+      if (type === 'checkbox' || type === 'radio') {
+        if (input.checked) {
+          entries.push([name, input.value]);
+        }
+        continue;
+      }
+
+      if (
+        type === 'file' ||
+        type === 'submit' ||
+        type === 'button' ||
+        type === 'reset' ||
+        type === 'image'
+      ) {
+        continue;
+      }
+
+      entries.push([name, input.value]);
+      continue;
+    }
+
+    if (control.tagName.toLowerCase() === 'select') {
+      const select = control as HTMLSelectElement;
+
+      if (select.multiple) {
+        for (const option of Array.from(select.selectedOptions)) {
+          entries.push([name, option.value]);
+        }
+      } else {
+        entries.push([name, select.value]);
+      }
+      continue;
+    }
+
+    entries.push([name, (control as HTMLTextAreaElement).value]);
+  }
+
+  return entries;
+};
+
 export class BQueryElement {
   /**
    * Stores delegated event handlers for cleanup via undelegate().
@@ -808,13 +872,9 @@ export class BQueryElement {
     }
 
     const result: Record<string, string | string[]> = {};
-    const formData = new FormData(form);
 
-    for (const [key, value] of formData.entries()) {
-      if (typeof value !== 'string') continue; // Skip File objects
-      if (isPrototypePollutionKey(key)) continue;
-
-      if (key in result) {
+    for (const [key, value] of collectFormEntries(form)) {
+      if (Object.prototype.hasOwnProperty.call(result, key)) {
         // Handle multiple values (e.g., checkboxes)
         const existing = result[key];
         if (Array.isArray(existing)) {
@@ -847,13 +907,10 @@ export class BQueryElement {
       return '';
     }
 
-    const formData = new FormData(form);
     const params = new URLSearchParams();
 
-    for (const [key, value] of formData.entries()) {
-      if (typeof value === 'string') {
-        params.append(key, value);
-      }
+    for (const [key, value] of collectFormEntries(form)) {
+      params.append(key, value);
     }
 
     return params.toString();

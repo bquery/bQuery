@@ -4,7 +4,6 @@
  * @module bquery/motion
  */
 
-import { applyFinalKeyframeStyles } from './animate';
 import { prefersReducedMotion } from './reduced-motion';
 import type { MorphOptions } from './types';
 
@@ -43,6 +42,8 @@ export const morphElement = (
   // Ensure destination is visible so we can measure it
   const previousDisplay = toEl.style.display;
   const previousVisibility = toEl.style.visibility;
+  const previousTransform = toEl.style.transform;
+  const previousOpacity = toEl.style.opacity;
   const computedDisplay =
     typeof getComputedStyle === 'function'
       ? getComputedStyle(toEl).display
@@ -51,6 +52,11 @@ export const morphElement = (
   // display, and finally to `block` so hidden destinations remain measurable.
   const forcedDisplay =
     computedDisplay === 'none' ? 'block' : previousDisplay || computedDisplay || 'block';
+  const restoreAnimatedInlineStyles = () => {
+    toEl.style.transform = previousTransform;
+    toEl.style.opacity = previousOpacity;
+  };
+
   toEl.style.visibility = 'hidden';
   toEl.style.display = forcedDisplay;
 
@@ -72,7 +78,7 @@ export const morphElement = (
 
   // If reduced motion is preferred, skip the animation
   if (respectReducedMotion && prefersReducedMotion()) {
-    toEl.style.opacity = '1';
+    restoreAnimatedInlineStyles();
     onComplete?.();
     return Promise.resolve();
   }
@@ -85,7 +91,7 @@ export const morphElement = (
 
   // If no visual change, skip animation
   if (dx === 0 && dy === 0 && sx === 1 && sy === 1) {
-    toEl.style.opacity = '1';
+    restoreAnimatedInlineStyles();
     onComplete?.();
     return Promise.resolve();
   }
@@ -103,7 +109,7 @@ export const morphElement = (
 
   // Check if animate API is available
   if (typeof toEl.animate !== 'function') {
-    applyFinalKeyframeStyles(toEl, keyframes);
+    restoreAnimatedInlineStyles();
     onComplete?.();
     return Promise.resolve();
   }
@@ -119,9 +125,7 @@ export const morphElement = (
     const finalize = () => {
       if (finalized) return;
       finalized = true;
-      // Apply final state
-      toEl.style.transform = '';
-      toEl.style.opacity = '1';
+      restoreAnimatedInlineStyles();
       animation.cancel();
       onComplete?.();
       resolve();

@@ -829,12 +829,11 @@ describe('core/BQueryElement - new methods', () => {
     dangerousInput.value = 'polluted';
     form.appendChild(safeInput);
     form.appendChild(dangerousInput);
+    document.body.appendChild(form);
 
     const data = new BQueryElement(form).serialize();
 
-    if (Object.keys(data).length > 0) {
-      expect(data.email).toBe('test@example.com');
-    }
+    expect(data.email).toBe('test@example.com');
     expect(Object.prototype.hasOwnProperty.call(data, '__proto__')).toBe(false);
     expect(Object.keys(data)).not.toContain('__proto__');
 
