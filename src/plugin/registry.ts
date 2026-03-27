@@ -40,6 +40,13 @@ const createInstallContext = (): PluginInstallContext => ({
     if (typeof name !== 'string' || name.length === 0) {
       throw new Error('bQuery plugin directive: name must be a non-empty string');
     }
+    if (name.startsWith('bq-')) {
+      const suggestedName = name.slice(3);
+      throw new Error(
+        `bQuery plugin directive: name "${name}" must be provided without the "bq-" prefix` +
+          (suggestedName ? ` (use "${suggestedName}")` : '')
+      );
+    }
     if (typeof handler !== 'function') {
       throw new Error(`bQuery plugin directive: handler for "${name}" must be a function`);
     }

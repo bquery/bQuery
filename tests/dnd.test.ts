@@ -642,6 +642,26 @@ describe('dnd/droppable', () => {
     accepted.remove();
     rejected.remove();
   });
+
+  it('returns a no-op handle when document is unavailable', () => {
+    const originalDocumentDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'document');
+
+    try {
+      Object.defineProperty(globalThis, 'document', {
+        configurable: true,
+        writable: true,
+        value: undefined,
+      });
+
+      const handle = droppable(zone);
+      expect(typeof handle.destroy).toBe('function');
+      handle.destroy();
+    } finally {
+      if (originalDocumentDescriptor) {
+        Object.defineProperty(globalThis, 'document', originalDocumentDescriptor);
+      }
+    }
+  });
 });
 
 // ─── sortable() ──────────────────────────────────────────────────────────────

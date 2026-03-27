@@ -44,6 +44,7 @@ export const parallax = (
   } = options;
 
   const el = element as HTMLElement;
+  const previousTransform = el.style.transform;
 
   // If reduced motion is preferred, don't apply parallax
   if (respectReducedMotion && prefersReducedMotion()) {
@@ -59,7 +60,7 @@ export const parallax = (
 
     // Re-check reduced motion on each frame (in case toggle changed)
     if (respectReducedMotion && prefersReducedMotion()) {
-      el.style.transform = '';
+      el.style.transform = previousTransform;
       return;
     }
 
@@ -76,7 +77,10 @@ export const parallax = (
       tx = scrollX * speed;
     }
 
-    el.style.transform = `translate3d(${tx}px, ${ty}px, 0)`;
+    const parallaxTransform = `translate3d(${tx}px, ${ty}px, 0)`;
+    el.style.transform = previousTransform
+      ? `${previousTransform} ${parallaxTransform}`
+      : parallaxTransform;
   };
 
   const onScroll = () => {
@@ -104,6 +108,6 @@ export const parallax = (
       frameId = null;
     }
     ticking = false;
-    el.style.transform = '';
+    el.style.transform = previousTransform;
   };
 };

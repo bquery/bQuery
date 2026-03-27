@@ -8,6 +8,7 @@ import {
   registerDependency,
   scheduleObserver,
   track,
+  withoutCurrentObserver,
   type ReactiveSource,
 } from './internals';
 
@@ -50,7 +51,7 @@ export class Computed<T> implements ReactiveSource {
   get value(): T {
     if (this.disposed) {
       if (!this.hasCachedValue) {
-        this.cachedValue = this.compute();
+        this.cachedValue = withoutCurrentObserver(() => this.compute());
         this.hasCachedValue = true;
       }
       return this.cachedValue;
@@ -80,7 +81,7 @@ export class Computed<T> implements ReactiveSource {
   peek(): T {
     if (this.disposed) {
       if (!this.hasCachedValue) {
-        this.cachedValue = this.compute();
+        this.cachedValue = withoutCurrentObserver(() => this.compute());
         this.hasCachedValue = true;
       }
       return this.cachedValue;

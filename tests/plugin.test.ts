@@ -297,6 +297,17 @@ describe('Plugin System', () => {
       }).toThrow('must be a function');
     });
 
+    it('should reject directive names with the bq- prefix', () => {
+      expect(() => {
+        use({
+          name: 'prefixed-dir',
+          install(ctx) {
+            ctx.directive('bq-tooltip', () => {});
+          },
+        });
+      }).toThrow('must be provided without the "bq-" prefix');
+    });
+
     it('should clear directives on reset', () => {
       use({
         name: 'reset-dir',

@@ -128,6 +128,16 @@ export const droppable = (
     onDrop,
   } = options;
 
+  if (
+    typeof document === 'undefined' ||
+    typeof requestAnimationFrame === 'undefined' ||
+    typeof cancelAnimationFrame === 'undefined'
+  ) {
+    return {
+      destroy: () => {},
+    };
+  }
+
   let isOver = false;
   let currentDragged: HTMLElement | null = null;
 

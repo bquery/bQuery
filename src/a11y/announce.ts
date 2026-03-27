@@ -84,6 +84,7 @@ export const announceToScreenReader = (
   priority: AnnouncePriority = 'polite'
 ): void => {
   if (!message) return;
+  if (typeof document === 'undefined' || !document.body) return;
 
   const region = getOrCreateLiveRegion(priority);
   const pendingTimeout = pendingAnnouncements.get(priority);

@@ -938,6 +938,19 @@ describe('motion/parallax', () => {
     expect(el.style.transform).toBe('');
   });
 
+  it('preserves and restores an existing inline transform', () => {
+    const el = document.createElement('div');
+    el.style.transform = 'scale(1.2)';
+
+    const cleanup = parallax(el, { speed: 0.3 });
+
+    expect(el.style.transform).toBe('scale(1.2) translate3d(0px, 0px, 0)');
+
+    cleanup();
+
+    expect(el.style.transform).toBe('scale(1.2)');
+  });
+
   it('cancels queued animation work on cleanup', () => {
     const el = document.createElement('div');
     const originalRaf = globalThis.requestAnimationFrame;

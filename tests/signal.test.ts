@@ -182,6 +182,26 @@ describe('computed', () => {
     expect(doubled.value).toBe(2);
     expect(computeCount).toBe(1);
   });
+
+  it('does not track caller dependencies when first read after dispose', () => {
+    const source = signal(1);
+    const derived = computed(() => source.value * 2);
+    let effectRuns = 0;
+
+    derived.dispose();
+
+    effect(() => {
+      effectRuns++;
+      void derived.value;
+    });
+
+    expect(effectRuns).toBe(1);
+
+    source.value = 2;
+
+    expect(effectRuns).toBe(1);
+    expect(derived.value).toBe(2);
+  });
 });
 
 describe('effect', () => {

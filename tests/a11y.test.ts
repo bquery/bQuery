@@ -245,6 +245,24 @@ describe('a11y/announceToScreenReader', () => {
     expect(regions.length).toBe(0);
   });
 
+  it('should no-op when document.body is unavailable', () => {
+    const originalBody = document.body;
+    Object.defineProperty(document, 'body', {
+      configurable: true,
+      value: null,
+    });
+
+    try {
+      announceToScreenReader('Hello');
+      expect(document.querySelectorAll('[aria-live]').length).toBe(0);
+    } finally {
+      Object.defineProperty(document, 'body', {
+        configurable: true,
+        value: originalBody,
+      });
+    }
+  });
+
   it('should update existing region for same priority', async () => {
     announceToScreenReader('First');
     await new Promise((resolve) => setTimeout(resolve, 100));
