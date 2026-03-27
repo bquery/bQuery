@@ -2326,7 +2326,11 @@ describe('Router', () => {
 
     it('should preserve existing history state when adding scroll restoration state', async () => {
       const originalStateDescriptor = Object.getOwnPropertyDescriptor(history, 'state');
-      mockHistory.getStack()[0]!.state = { preserved: 'value' };
+      mockHistory.getStack()[0]!.state = Object.assign(Object.create(null), {
+        preserved: 'value',
+        constructor: 'ignored',
+        __proto__: 'ignored',
+      });
 
       Object.defineProperty(history, 'state', {
         configurable: true,
@@ -2349,6 +2353,15 @@ describe('Router', () => {
           preserved: 'value',
           __bqScrollKey: expect.any(String),
         });
+        expect(
+          Object.prototype.hasOwnProperty.call(lastEntry.state as Record<string, unknown>, '__proto__')
+        ).toBe(false);
+        expect(
+          Object.prototype.hasOwnProperty.call(
+            lastEntry.state as Record<string, unknown>,
+            'constructor'
+          )
+        ).toBe(false);
       } finally {
         if (originalStateDescriptor) {
           Object.defineProperty(history, 'state', originalStateDescriptor);

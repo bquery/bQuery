@@ -3,6 +3,7 @@
  * @module bquery/router
  */
 
+import { isPrototypePollutionKey } from '../core/utils/object';
 import { createRoute } from './match';
 import { currentRoute, getActiveRouter, routeSignal, setActiveRouter } from './state';
 import type { NavigationGuard, Route, Router, RouterOptions } from './types';
@@ -13,6 +14,17 @@ import { flattenRoutes } from './utils';
 // ============================================================================
 
 const MAX_SCROLL_POSITION_ENTRIES = 100;
+
+const sanitizeHistoryState = (state: Record<string, unknown>): Record<string, unknown> => {
+  const sanitized: Record<string, unknown> = {};
+
+  for (const [key, value] of Object.entries(state)) {
+    if (isPrototypePollutionKey(key)) continue;
+    sanitized[key] = value;
+  }
+
+  return sanitized;
+};
 
 /**
  * Creates and initializes a router instance.
@@ -243,7 +255,7 @@ export const createRouter = (options: RouterOptions): Router => {
     const fullPath = useHash ? `#${path}` : `${base}${path}`;
     const baseState =
       scrollRestoration && history.state && typeof history.state === 'object'
-        ? (history.state as Record<string, unknown>)
+        ? sanitizeHistoryState(history.state as Record<string, unknown>)
         : {};
     const state = scrollRestoration ? { ...baseState, __bqScrollKey: scrollKey } : {};
     history[method](state, '', fullPath);
