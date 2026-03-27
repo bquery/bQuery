@@ -597,15 +597,16 @@ describe('deserializeStoreState', () => {
 
   it('skips script cleanup when document APIs are unavailable', () => {
     const originalDocumentDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'document');
-    (window as unknown as Record<string, unknown>).__BQUERY_INITIAL_STATE__ = {
-      myStore: { count: 2 },
-    };
 
     try {
       Object.defineProperty(globalThis, 'document', {
         value: undefined,
         configurable: true,
       });
+
+      (window as unknown as Record<string, unknown>).__BQUERY_INITIAL_STATE__ = {
+        myStore: { count: 2 },
+      };
 
       const state = deserializeStoreState();
 
