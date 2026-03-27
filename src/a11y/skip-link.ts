@@ -36,6 +36,18 @@ const generatedSkipTargetRefs = new Map<string, { count: number; target: HTMLEle
 /** Matches a bare element id value (not a general CSS selector). */
 const BARE_ID_SELECTOR_RE = /^[A-Za-z][\w-]*$/;
 
+const assertSkipLinkEnvironment = (): void => {
+  if (
+    typeof document === 'undefined' ||
+    typeof document.createElement !== 'function' ||
+    typeof document.querySelector !== 'function' ||
+    typeof document.getElementById !== 'function' ||
+    !document.body
+  ) {
+    throw new Error('bQuery a11y: skipLink() requires a browser document.');
+  }
+};
+
 /**
  * Creates a skip navigation link that jumps to the specified target.
  *
@@ -65,6 +77,8 @@ export const skipLink = (
   targetSelector: string,
   options: SkipLinkOptions = {}
 ): SkipLinkHandle => {
+  assertSkipLinkEnvironment();
+
   const { text = 'Skip to main content', className = 'bq-skip-link' } = options;
   let trackedGeneratedTargetId: string | undefined;
   const isBareIdSelector = BARE_ID_SELECTOR_RE.test(targetSelector);

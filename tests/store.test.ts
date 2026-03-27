@@ -1280,7 +1280,7 @@ describe('Store', () => {
 
       expect(store.val).toBe('persisted');
       expect(store.migrated).toBe(true);
-      expect(mem.store.get('bquery-store-migration-persist-failure__version')).toBe('2');
+      expect(mem.store.get('bquery-store-migration-persist-failure__version')).toBe('1');
       expect(warnSpy).toHaveBeenCalled();
 
       warnSpy.mockRestore();

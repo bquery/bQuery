@@ -210,9 +210,11 @@ export const deserializeStoreState = (
   }
 
   // Clean up script tag
-  const scriptEl = document.getElementById(scriptId);
-  if (scriptEl) {
-    scriptEl.remove();
+  if (typeof document !== 'undefined' && typeof document.getElementById === 'function') {
+    const scriptEl = document.getElementById(scriptId);
+    if (scriptEl) {
+      scriptEl.remove();
+    }
   }
 
   if (!isStoreStateObject(state)) {

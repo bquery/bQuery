@@ -595,6 +595,31 @@ describe('deserializeStoreState', () => {
     expect(document.getElementById('custom-ssr-state')).toBeNull();
   });
 
+  it('skips script cleanup when document APIs are unavailable', () => {
+    const originalDocumentDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'document');
+    (window as unknown as Record<string, unknown>).__BQUERY_INITIAL_STATE__ = {
+      myStore: { count: 2 },
+    };
+
+    try {
+      Object.defineProperty(globalThis, 'document', {
+        value: undefined,
+        configurable: true,
+      });
+
+      const state = deserializeStoreState();
+
+      expect(state).toEqual({ myStore: { count: 2 } });
+      expect(
+        (window as unknown as Record<string, unknown>).__BQUERY_INITIAL_STATE__
+      ).toBeUndefined();
+    } finally {
+      if (originalDocumentDescriptor) {
+        Object.defineProperty(globalThis, 'document', originalDocumentDescriptor);
+      }
+    }
+  });
+
   it('returns empty object for non-object values', () => {
     (window as unknown as Record<string, unknown>).__BQUERY_INITIAL_STATE__ = 'not an object';
     const state = deserializeStoreState();

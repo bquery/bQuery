@@ -635,6 +635,25 @@ describe('a11y/skipLink', () => {
     main.remove();
     replacement.remove();
   });
+
+  it('should throw a descriptive error when document APIs are unavailable', () => {
+    const originalDocumentDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'document');
+
+    try {
+      Object.defineProperty(globalThis, 'document', {
+        value: undefined,
+        configurable: true,
+      });
+
+      expect(() => skipLink('#main')).toThrow(
+        'bQuery a11y: skipLink() requires a browser document.'
+      );
+    } finally {
+      if (originalDocumentDescriptor) {
+        Object.defineProperty(globalThis, 'document', originalDocumentDescriptor);
+      }
+    }
+  });
 });
 
 // ─── prefersReducedMotion ────────────────────────────────────────────────────
