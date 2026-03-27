@@ -448,6 +448,13 @@ describe('media/useNetworkStatus', () => {
       });
     }
   });
+
+  it('defines destroy as a non-enumerable handle method', () => {
+    const net = useNetworkStatus();
+
+    expect(Object.keys(net)).not.toContain('destroy');
+    expect(Object.getOwnPropertyDescriptor(net, 'destroy')?.enumerable ?? true).toBe(false);
+  });
 });
 
 // ─── useBattery ──────────────────────────────────────────────────────────────

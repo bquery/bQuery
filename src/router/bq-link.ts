@@ -67,7 +67,7 @@ export class BqLinkElement extends BQ_LINK_BASE {
   private _cleanup: CleanupFn | null = null;
 
   /** @internal */
-  private _trackedActiveClasses: string[] = [];
+  private _trackedActiveClasses = new Map<string, boolean>();
 
   static get observedAttributes(): string[] {
     return ['to', 'replace', 'exact', 'active-class'];
@@ -178,7 +178,9 @@ export class BqLinkElement extends BQ_LINK_BASE {
     const targetPath = this.to;
     const exactMatch = this.exact;
     const cssClasses = tokenizeClassNames(this.activeClass);
-    this._trackedActiveClasses = cssClasses;
+    this._trackedActiveClasses = new Map(
+      cssClasses.map((cssClass) => [cssClass, this.classList.contains(cssClass)])
+    );
 
     this._cleanup = effect(() => {
       const current = routeSignal.value.path;
@@ -190,7 +192,8 @@ export class BqLinkElement extends BQ_LINK_BASE {
             current.startsWith(targetPath.endsWith('/') ? targetPath : targetPath + '/');
 
       for (const cssClass of cssClasses) {
-        this.classList.toggle(cssClass, isMatch);
+        const wasPresentInitially = this._trackedActiveClasses.get(cssClass) ?? false;
+        this.classList.toggle(cssClass, isMatch || wasPresentInitially);
       }
 
       // Update aria-current for accessibility
@@ -204,10 +207,10 @@ export class BqLinkElement extends BQ_LINK_BASE {
 
   /** @internal */
   private _clearTrackedActiveClasses(): void {
-    for (const cssClass of this._trackedActiveClasses) {
-      this.classList.remove(cssClass);
+    for (const [cssClass, wasPresentInitially] of this._trackedActiveClasses) {
+      this.classList.toggle(cssClass, wasPresentInitially);
     }
-    this._trackedActiveClasses = [];
+    this._trackedActiveClasses.clear();
   }
 
   /**

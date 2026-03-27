@@ -856,6 +856,11 @@ export class BQueryElement {
    * Serializes form data to a plain object.
    * Only works on form elements; returns empty object for non-forms.
    *
+   * For security hardening, the returned object uses a null prototype,
+   * so inherited members like `hasOwnProperty` are not available directly.
+   * Prefer `Object.keys()` or `Object.prototype.hasOwnProperty.call(...)`
+   * when checking for fields on the serialized result.
+   *
    * @returns Object with form field names as keys and values
    *
    * @example
@@ -863,6 +868,7 @@ export class BQueryElement {
    * // For a form with <input name="email" value="test@example.com">
    * const data = $('#myForm').serialize();
    * // { email: 'test@example.com' }
+   * Object.prototype.hasOwnProperty.call(data, 'email'); // true
    * ```
    */
   serialize(): Record<string, string | string[]> {

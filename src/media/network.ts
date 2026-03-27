@@ -100,12 +100,16 @@ export const useNetworkStatus = (): NetworkSignal => {
 
   const ro = readonly(s) as NetworkSignal;
   let destroyed = false;
-  ro.destroy = (): void => {
-    if (destroyed) return;
-    destroyed = true;
-    cleanup?.();
-    s.dispose();
-  };
+  Object.defineProperty(ro, 'destroy', {
+    value(): void {
+      if (destroyed) return;
+      destroyed = true;
+      cleanup?.();
+      s.dispose();
+    },
+    enumerable: false,
+    configurable: true,
+  });
 
   return ro;
 };

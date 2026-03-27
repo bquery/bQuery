@@ -2847,6 +2847,57 @@ describe('Router', () => {
       el.remove();
     });
 
+    it('should preserve user-authored active classes when the route does not match', async () => {
+      router = createRouter({
+        routes: [
+          { path: '/', component: () => null },
+          { path: '/about', component: () => null },
+        ],
+      });
+
+      await router.push('/about');
+
+      const el = document.createElement('bq-link') as BqLinkElement;
+      el.to = '/';
+      el.classList.add('active');
+      document.body.appendChild(el);
+
+      await new Promise((r) => setTimeout(r, 10));
+
+      expect(el.classList.contains('active')).toBe(true);
+      expect(el.getAttribute('aria-current')).toBeNull();
+
+      el.remove();
+    });
+
+    it('should restore user-authored active classes after disconnect or active-class changes', async () => {
+      router = createRouter({
+        routes: [{ path: '/', component: () => null }],
+      });
+
+      const el = document.createElement('bq-link') as BqLinkElement;
+      el.to = '/';
+      el.activeClass = 'active selected';
+      el.classList.add('active');
+      document.body.appendChild(el);
+
+      await new Promise((r) => setTimeout(r, 10));
+      expect(el.classList.contains('active')).toBe(true);
+      expect(el.classList.contains('selected')).toBe(true);
+
+      el.activeClass = 'current';
+
+      await new Promise((r) => setTimeout(r, 10));
+      expect(el.classList.contains('active')).toBe(true);
+      expect(el.classList.contains('selected')).toBe(false);
+      expect(el.classList.contains('current')).toBe(true);
+
+      el.remove();
+
+      expect(el.classList.contains('active')).toBe(true);
+      expect(el.classList.contains('current')).toBe(false);
+    });
+
     it('should match with path prefix by default (not exact)', async () => {
       router = createRouter({
         routes: [
