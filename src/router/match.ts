@@ -4,7 +4,7 @@
  */
 
 import { parseQuery } from './query';
-import { getNormalizedRouteConstraint } from './constraints';
+import { getNormalizedRouteConstraint, getRouteConstraintRegex } from './constraints';
 import { isParamChar, isParamStart, readConstraint } from './path-pattern';
 import type { Route, RouteDefinition } from './types';
 
@@ -27,18 +27,7 @@ type RouteParamDescriptor = {
   nextIndex: number;
 };
 
-const constraintRegexCache = new Map<string, RegExp>();
-
-const getConstraintRegex = (normalizedConstraint: string): RegExp => {
-  const cached = constraintRegexCache.get(normalizedConstraint);
-  if (cached) {
-    return cached;
-  }
-
-  const compiled = new RegExp(`^(?:${normalizedConstraint})$`);
-  constraintRegexCache.set(normalizedConstraint, compiled);
-  return compiled;
-};
+const validatedRoutePathCache = new Set<string>();
 
 const readParamDescriptor = (
   path: string,
@@ -70,6 +59,10 @@ const readParamDescriptor = (
 };
 
 const validateRoutePathPattern = (path: string): void => {
+  if (validatedRoutePathCache.has(path)) {
+    return;
+  }
+
   for (let i = 0; i < path.length; ) {
     const char = path[i];
 
@@ -84,11 +77,53 @@ const validateRoutePathPattern = (path: string): void => {
 
     i++;
   }
+
+  validatedRoutePathCache.add(path);
 };
 
 const findSegmentBoundary = (value: string, startIndex: number): number => {
   const slashIndex = value.indexOf('/', startIndex);
   return slashIndex === -1 ? value.length : slashIndex;
+};
+
+const readNextStaticChunk = (path: string, startIndex: number): string => {
+  let chunk = '';
+
+  for (let i = startIndex; i < path.length; i++) {
+    if (path[i] === '*') {
+      break;
+    }
+
+    if (path[i] === ':' && isParamStart(path[i + 1])) {
+      break;
+    }
+
+    chunk += path[i];
+  }
+
+  return chunk;
+};
+
+const findAnchoredCandidateEnds = (
+  actualPath: string,
+  startIndex: number,
+  limit: number,
+  nextStaticChunk: string
+): number[] => {
+  const candidates: number[] = [];
+  let searchIndex = startIndex;
+
+  while (searchIndex <= limit) {
+    const candidateEnd = actualPath.indexOf(nextStaticChunk, searchIndex);
+    if (candidateEnd === -1 || candidateEnd > limit) {
+      break;
+    }
+
+    candidates.push(candidateEnd);
+    searchIndex = candidateEnd + 1;
+  }
+
+  return candidates.reverse();
 };
 
 const matchPathPattern = (
@@ -117,7 +152,22 @@ const matchPathPattern = (
     const routeChar = routePath[routeIndex];
 
     if (routeChar === '*') {
-      for (let candidateEnd = actualPath.length; candidateEnd >= pathIndex; candidateEnd--) {
+      if (routeIndex === routePath.length - 1) {
+        const result = {};
+        memo.set(memoKey, result);
+        return result;
+      }
+
+      const nextStaticChunk = readNextStaticChunk(routePath, routeIndex + 1);
+      const candidateEnds =
+        nextStaticChunk.length > 0
+          ? findAnchoredCandidateEnds(actualPath, pathIndex, actualPath.length, nextStaticChunk)
+          : Array.from(
+              { length: actualPath.length - pathIndex + 1 },
+              (_, offset) => actualPath.length - offset
+            );
+
+      for (const candidateEnd of candidateEnds) {
         const suffixMatch = matchFrom(routeIndex + 1, candidateEnd);
         if (suffixMatch) {
           memo.set(memoKey, suffixMatch);
@@ -131,18 +181,27 @@ const matchPathPattern = (
 
     const param = readParamDescriptor(routePath, routeIndex);
     if (param) {
-      const normalizedConstraint = param.constraint
-        ? getNormalizedRouteConstraint(param.constraint)
-        : undefined;
+      const constraintRegex = param.constraint ? getRouteConstraintRegex(param.constraint) : undefined;
       const candidateLimit = param.constraint
         ? actualPath.length
         : findSegmentBoundary(actualPath, pathIndex);
+      const nextStaticChunk = readNextStaticChunk(routePath, param.nextIndex);
+      const candidateEnds =
+        nextStaticChunk.length > 0
+          ? findAnchoredCandidateEnds(actualPath, pathIndex, candidateLimit, nextStaticChunk)
+          : Array.from(
+              { length: candidateLimit - pathIndex + 1 },
+              (_, offset) => candidateLimit - offset
+            );
 
-      for (let candidateEnd = candidateLimit; candidateEnd > pathIndex; candidateEnd--) {
+      for (const candidateEnd of candidateEnds) {
+        if (candidateEnd < pathIndex) {
+          continue;
+        }
+
         const candidateValue = actualPath.slice(pathIndex, candidateEnd);
 
-        if (normalizedConstraint) {
-          const constraintRegex = getConstraintRegex(normalizedConstraint);
+        if (constraintRegex) {
           if (!constraintRegex.test(candidateValue)) {
             continue;
           }

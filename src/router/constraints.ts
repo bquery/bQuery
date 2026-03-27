@@ -3,6 +3,9 @@
  * @internal
  */
 
+const normalizedConstraintCache = new Map<string, string>();
+const compiledConstraintRegexCache = new Map<string, RegExp>();
+
 const normalizeConstraintCaptures = (constraint: string): string => {
   let normalized = '';
   let inCharacterClass = false;
@@ -72,12 +75,31 @@ const normalizeConstraintCaptures = (constraint: string): string => {
 };
 
 export const getNormalizedRouteConstraint = (constraint: string): string => {
-  return normalizeConstraintCaptures(constraint);
+  const cached = normalizedConstraintCache.get(constraint);
+  if (cached !== undefined) {
+    return cached;
+  }
+
+  const normalized = normalizeConstraintCaptures(constraint);
+  normalizedConstraintCache.set(constraint, normalized);
+  return normalized;
+};
+
+export const getRouteConstraintRegex = (constraint: string): RegExp => {
+  const normalizedConstraint = getNormalizedRouteConstraint(constraint);
+  const cached = compiledConstraintRegexCache.get(normalizedConstraint);
+  if (cached) {
+    return cached;
+  }
+
+  const compiled = new RegExp(`^(?:${normalizedConstraint})$`);
+  compiledConstraintRegexCache.set(normalizedConstraint, compiled);
+  return compiled;
 };
 
 export const routeConstraintMatches = (
   constraint: string,
   value: string
 ): boolean => {
-  return new RegExp(`^(?:${normalizeConstraintCaptures(constraint)})$`).test(value);
+  return getRouteConstraintRegex(constraint).test(value);
 };

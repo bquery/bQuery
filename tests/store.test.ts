@@ -1188,6 +1188,18 @@ describe('Store', () => {
       expect(store.val).toBe('persisted');
     });
 
+    it('should persist the configured version metadata on first creation', () => {
+      const mem = createMemoryStorage();
+
+      createPersistedStore(
+        { id: 'versioned-store', state: () => ({ val: 'default' }) },
+        { storage: mem, version: 4 }
+      );
+
+      expect(mem.store.get('bquery-store-versioned-store__version')).toBe('4');
+      destroyStore('versioned-store');
+    });
+
     it('should handle corrupt data in storage gracefully', () => {
       const mem = createMemoryStorage();
       mem.store.set('bquery-store-corrupt', 'NOT_JSON!!!');
@@ -1222,6 +1234,57 @@ describe('Store', () => {
         expect(store.val).toBe('fallback');
         destroyStore('invalid-persisted');
       }
+    });
+
+    it('should fall back when a custom serializer throws during deserialize', () => {
+      const mem = createMemoryStorage();
+      mem.store.set('bquery-store-deserialize-throws', '{"ignored":true}');
+
+      const store = createPersistedStore(
+        { id: 'deserialize-throws', state: () => ({ val: 'fallback' }) },
+        {
+          storage: mem,
+          serializer: {
+            serialize: (state: unknown) => JSON.stringify(state),
+            deserialize: () => {
+              throw new Error('deserialize failed');
+            },
+          },
+        }
+      );
+
+      expect(store.val).toBe('fallback');
+      destroyStore('deserialize-throws');
+    });
+
+    it('should keep migrated state when serializer persistence fails after migration', () => {
+      const mem = createMemoryStorage();
+      mem.store.set('bquery-store-migration-persist-failure', JSON.stringify({ val: 'persisted' }));
+      mem.store.set('bquery-store-migration-persist-failure__version', '1');
+      const warnSpy = spyOn(console, 'warn').mockImplementation(() => {});
+
+      const store = createPersistedStore(
+        { id: 'migration-persist-failure', state: () => ({ val: 'default', migrated: false }) },
+        {
+          storage: mem,
+          version: 2,
+          migrate: (old) => ({ ...old, migrated: true }),
+          serializer: {
+            serialize: () => {
+              throw new Error('serialize failed');
+            },
+            deserialize: (raw: string) => JSON.parse(raw) as unknown,
+          },
+        }
+      );
+
+      expect(store.val).toBe('persisted');
+      expect(store.migrated).toBe(true);
+      expect(mem.store.get('bquery-store-migration-persist-failure__version')).toBe('2');
+      expect(warnSpy).toHaveBeenCalled();
+
+      warnSpy.mockRestore();
+      destroyStore('migration-persist-failure');
     });
 
     it('should ignore prototype-pollution keys from persisted state', () => {

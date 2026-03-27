@@ -1973,6 +1973,32 @@ describe('Router', () => {
       await router.push('/user/anything-works');
       expect(currentRoute.value.params).toEqual({ id: 'anything-works' });
     });
+
+    it('should match long wildcard paths with literal suffixes', async () => {
+      router = createRouter({
+        routes: [
+          { path: '/docs/*.md', component: () => null, name: 'markdownDocs' },
+          { path: '*', component: () => null, name: 'notFound' },
+        ],
+      });
+
+      const longPath = `/docs/${'guide/'.repeat(200)}intro.md`;
+      await router.push(longPath);
+
+      expect(currentRoute.value.matched?.name).toBe('markdownDocs');
+      expect(currentRoute.value.path).toBe(longPath);
+    });
+
+    it('should match long constrained params followed by literal suffixes', () => {
+      const longDigits = '1234567890'.repeat(300);
+
+      const result = matchRoute(`/file/${longDigits}.json`, [
+        { path: '/file/:id(\\d+).json', component: () => null },
+      ]);
+
+      expect(result).not.toBeNull();
+      expect(result?.params).toEqual({ id: longDigits });
+    });
   });
 
   // ============================================================================

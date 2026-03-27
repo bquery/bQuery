@@ -4,7 +4,7 @@
  */
 
 import { computed, type ReadonlySignal } from '../reactive/index';
-import { routeConstraintMatches } from './constraints';
+import { getRouteConstraintRegex } from './constraints';
 import { isParamChar, isParamStart, readConstraint } from './path-pattern';
 import { getActiveRouter, routeSignal } from './state';
 import type { RouteDefinition } from './types';
@@ -91,7 +91,7 @@ export const resolve = (name: string, params: Record<string, string> = {}): stri
       if (value === undefined) {
         throw new Error(`bQuery router: Missing required param "${key}" for route "${name}".`);
       }
-      if (constraint && !routeConstraintMatches(constraint, value)) {
+      if (constraint && !getRouteConstraintRegex(constraint).test(value)) {
         throw new Error(
           `bQuery router: Param "${key}" with value "${value}" does not satisfy the route constraint for route "${name}".`
         );
