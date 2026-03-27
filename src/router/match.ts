@@ -159,20 +159,42 @@ const matchPathPattern = (
       }
 
       const nextStaticChunk = readNextStaticChunk(routePath, routeIndex + 1);
-      const candidateEnds =
+      const anchoredCandidateEnds =
         nextStaticChunk.length > 0
           ? findAnchoredCandidateEnds(actualPath, pathIndex, actualPath.length, nextStaticChunk)
-          : Array.from(
-              { length: actualPath.length - pathIndex + 1 },
-              (_, offset) => actualPath.length - offset
-            );
+          : null;
 
-      for (const candidateEnd of candidateEnds) {
+      const iterateCandidateEnds = anchoredCandidateEnds
+        ? (callback: (candidateEnd: number) => Record<string, string> | null) => {
+            for (const candidateEnd of anchoredCandidateEnds) {
+              const result = callback(candidateEnd);
+              if (result) {
+                return result;
+              }
+            }
+            return null;
+          }
+        : (callback: (candidateEnd: number) => Record<string, string> | null) => {
+            for (let candidateEnd = actualPath.length; candidateEnd >= pathIndex; candidateEnd--) {
+              const result = callback(candidateEnd);
+              if (result) {
+                return result;
+              }
+            }
+            return null;
+          };
+
+      const wildcardMatch = iterateCandidateEnds((candidateEnd) => {
         const suffixMatch = matchFrom(routeIndex + 1, candidateEnd);
         if (suffixMatch) {
           memo.set(memoKey, suffixMatch);
           return suffixMatch;
         }
+        return null;
+      });
+
+      if (wildcardMatch) {
+        return wildcardMatch;
       }
 
       memo.set(memoKey, null);
@@ -186,20 +208,37 @@ const matchPathPattern = (
         ? actualPath.length
         : findSegmentBoundary(actualPath, pathIndex);
       const nextStaticChunk = readNextStaticChunk(routePath, param.nextIndex);
-      const candidateEnds =
+      const anchoredCandidateEnds =
         nextStaticChunk.length > 0
           ? findAnchoredCandidateEnds(actualPath, pathIndex, candidateLimit, nextStaticChunk)
-          : Array.from(
-              { length: candidateLimit - pathIndex + 1 },
-              (_, offset) => candidateLimit - offset
-            );
+          : null;
 
-      for (const candidateEnd of candidateEnds) {
+      const iterateCandidateEnds = anchoredCandidateEnds
+        ? (callback: (candidateEnd: number) => Record<string, string> | null) => {
+            for (const candidateEnd of anchoredCandidateEnds) {
+              const result = callback(candidateEnd);
+              if (result) {
+                return result;
+              }
+            }
+            return null;
+          }
+        : (callback: (candidateEnd: number) => Record<string, string> | null) => {
+            for (let candidateEnd = candidateLimit; candidateEnd >= pathIndex; candidateEnd--) {
+              const result = callback(candidateEnd);
+              if (result) {
+                return result;
+              }
+            }
+            return null;
+          };
+
+      const paramMatch = iterateCandidateEnds((candidateEnd) => {
         const candidateValue = actualPath.slice(pathIndex, candidateEnd);
 
         if (constraintRegex) {
           if (!constraintRegex.test(candidateValue)) {
-            continue;
+            return null;
           }
         }
 
@@ -212,6 +251,11 @@ const matchPathPattern = (
           memo.set(memoKey, result);
           return result;
         }
+        return null;
+      });
+
+      if (paramMatch) {
+        return paramMatch;
       }
 
       memo.set(memoKey, null);
