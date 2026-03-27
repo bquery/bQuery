@@ -101,7 +101,7 @@ export const createPersistedStore = <
     typeof options === 'string' ? { key: options } : (options ?? {});
 
   const key = opts.key ?? `bquery-store-${definition.id}`;
-  const storage = opts.storage ?? (typeof window !== 'undefined' ? getDefaultStorage() : undefined);
+  const storage = opts.storage ?? getDefaultStorage();
   const serializer = opts.serializer ?? defaultSerializer;
   const version = opts.version;
   const migrate = opts.migrate;
@@ -140,17 +140,34 @@ export const createPersistedStore = <
               return defaultState;
             }
             persisted = migrated;
-            canPersistVersion = false;
-            // Save the migrated state and the new version immediately
+
+            let migratedStatePersisted = false;
+            // Save the migrated state and version immediately when possible.
+            // If the state write fails, never advance the version key.
             try {
               storage.setItem(key, serializer.serialize(persisted));
-              storage.setItem(versionKey, String(version));
+              migratedStatePersisted = true;
             } catch (e) {
+              canPersistVersion = false;
               // Migration will re-run on next load, but state is still usable
               console.warn(
                 `[bQuery store "${definition.id}"] Failed to persist migrated state:`,
                 e
               );
+            }
+
+            if (migratedStatePersisted) {
+              try {
+                storage.setItem(versionKey, String(version));
+                canPersistVersion = false;
+              } catch (e) {
+                // Leave canPersistVersion enabled so the initial persistence pass
+                // can retry the version write after the store is created.
+                console.warn(
+                  `[bQuery store "${definition.id}"] Failed to persist migrated version:`,
+                  e
+                );
+              }
             }
           }
         }

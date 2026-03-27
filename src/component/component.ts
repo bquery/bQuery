@@ -240,10 +240,17 @@ const createComponentClass = <
      * Called when the element is moved to a new document (e.g. via `document.adoptNode`).
      */
     adoptedCallback(): void {
+      if (!definition.onAdopted) {
+        return;
+      }
+
+      const previousScope = setCurrentScope(this.ensureScope());
       try {
-        definition.onAdopted?.call(this);
+        definition.onAdopted.call(this);
       } catch (error) {
         this.handleError(error as Error);
+      } finally {
+        setCurrentScope(previousScope);
       }
     }
 

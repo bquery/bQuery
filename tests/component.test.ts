@@ -1939,6 +1939,37 @@ describe('component/onAdopted lifecycle hook', () => {
     el.remove();
   });
 
+  it('keeps component-scoped primitives available inside onAdopted', () => {
+    const tagName = `test-adopted-scope-${Date.now()}`;
+    const seenValues: string[] = [];
+    const errors: Error[] = [];
+
+    component(tagName, {
+      props: {},
+      onAdopted() {
+        const adoptedSignal = useSignal('adopted');
+        const upper = useComputed(() => adoptedSignal.value.toUpperCase());
+        useEffect(() => {
+          seenValues.push(upper.value);
+        });
+      },
+      onError(error) {
+        errors.push(error);
+      },
+      render: () => html`<div>Scoped adopted</div>`,
+    });
+
+    const el = document.createElement(tagName);
+    document.body.appendChild(el);
+
+    (el as unknown as { adoptedCallback(): void }).adoptedCallback();
+
+    expect(errors).toEqual([]);
+    expect(seenValues).toEqual(['ADOPTED']);
+
+    el.remove();
+  });
+
   it('calls onError when onAdopted throws', () => {
     const tagName = `test-adopted-error-${Date.now()}`;
     const errors: Error[] = [];
