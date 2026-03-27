@@ -33,12 +33,12 @@ const VOID_ELEMENTS = new Set([
 
 const escapeHtmlText = (value: string): string =>
   value
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;');
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
 
 const escapeHtmlAttribute = (value: string): string =>
-  escapeHtmlText(value).replaceAll('"', '&quot;');
+  escapeHtmlText(value).replace(/"/g, '&quot;');
 
 const isUnsafeUrlAttribute = (name: string): boolean => {
   const normalized = name.toLowerCase();
