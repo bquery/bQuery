@@ -32,18 +32,56 @@ export type Route = {
 /**
  * Route definition for configuration.
  */
-export type RouteDefinition = {
-  /** Path pattern (e.g., '/user/:id', '/posts/*') */
+type BaseRouteDefinition = {
+  /**
+   * Path pattern (e.g., '/user/:id', '/posts/*').
+   * Supports regex constraints on params: `/user/:id(\\d+)`.
+   * Constraint backreferences are not supported.
+   */
   path: string;
-  /** Component loader (sync or async) */
-  component: () => unknown | Promise<unknown>;
   /** Optional route name for programmatic navigation */
   name?: string;
   /** Optional metadata */
   meta?: Record<string, unknown>;
   /** Nested child routes */
   children?: RouteDefinition[];
+  /**
+   * Per-route navigation guard. Called before entering this route.
+   * Return `false` to cancel navigation.
+   *
+   * @example
+   * ```ts
+   * {
+   *   path: '/admin',
+   *   component: () => import('./Admin'),
+   *   beforeEnter: (to, from) => isAuthenticated() || false,
+   * }
+   * ```
+   */
+  beforeEnter?: NavigationGuard;
 };
+
+type ComponentRouteDefinition = BaseRouteDefinition & {
+  /** Component loader (sync or async) */
+  component: () => unknown | Promise<unknown>;
+  redirectTo?: never;
+};
+
+type RedirectRouteDefinition = BaseRouteDefinition & {
+  /**
+   * Redirect target path. When the route is matched, the router
+   * automatically navigates to this path instead.
+   *
+   * @example
+   * ```ts
+   * { path: '/old-page', redirectTo: '/new-page' }
+   * ```
+   */
+  redirectTo: string;
+  component?: never;
+};
+
+export type RouteDefinition = ComponentRouteDefinition | RedirectRouteDefinition;
 
 /**
  * Router configuration options.
@@ -55,6 +93,12 @@ export type RouterOptions = {
   base?: string;
   /** Use hash-based routing instead of history (default: false) */
   hash?: boolean;
+  /**
+   * Restore scroll position on back/forward navigation (default: false).
+   * When enabled, the router saves scroll positions for each history entry
+   * and restores them on popstate events.
+   */
+  scrollRestoration?: boolean;
 };
 
 /**

@@ -58,6 +58,42 @@
     "./storybook": {
       "import": "./dist/storybook.es.mjs",
       "types": "./dist/storybook/index.d.ts"
+    },
+    "./forms": {
+      "import": "./dist/forms.es.mjs",
+      "types": "./dist/forms/index.d.ts"
+    },
+    "./i18n": {
+      "import": "./dist/i18n.es.mjs",
+      "types": "./dist/i18n/index.d.ts"
+    },
+    "./a11y": {
+      "import": "./dist/a11y.es.mjs",
+      "types": "./dist/a11y/index.d.ts"
+    },
+    "./dnd": {
+      "import": "./dist/dnd.es.mjs",
+      "types": "./dist/dnd/index.d.ts"
+    },
+    "./media": {
+      "import": "./dist/media.es.mjs",
+      "types": "./dist/media/index.d.ts"
+    },
+    "./plugin": {
+      "import": "./dist/plugin.es.mjs",
+      "types": "./dist/plugin/index.d.ts"
+    },
+    "./devtools": {
+      "import": "./dist/devtools.es.mjs",
+      "types": "./dist/devtools/index.d.ts"
+    },
+    "./testing": {
+      "import": "./dist/testing.es.mjs",
+      "types": "./dist/testing/index.d.ts"
+    },
+    "./ssr": {
+      "import": "./dist/ssr.es.mjs",
+      "types": "./dist/ssr/index.d.ts"
     }
   },
   "files": [

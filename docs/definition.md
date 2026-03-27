@@ -451,9 +451,9 @@ This repo uses **Bun**, **Vite**, **VitePress**, **Storybook**, and **TypeScript
 
 | Browser | Version | Support |
 | ------- | ------- | ------- |
-| Chrome  | 90+     | ✅ Full  |
-| Firefox | 90+     | ✅ Full  |
-| Safari  | 15+     | ✅ Full  |
-| Edge    | 90+     | ✅ Full  |
+| Chrome  | 90+     | ✅ Full |
+| Firefox | 90+     | ✅ Full |
+| Safari  | 15+     | ✅ Full |
+| Edge    | 90+     | ✅ Full |
 
 > **No IE support** by design.

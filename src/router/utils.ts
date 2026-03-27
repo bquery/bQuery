@@ -4,6 +4,8 @@
  */
 
 import { computed, type ReadonlySignal } from '../reactive/index';
+import { getRouteConstraintRegex } from './constraints';
+import { isParamChar, isParamStart, readConstraint } from './path-pattern';
 import { getActiveRouter, routeSignal } from './state';
 import type { RouteDefinition } from './types';
 
@@ -41,6 +43,8 @@ export const flattenRoutes = (routes: RouteDefinition[], parentPath = ''): Route
  * @param name - The route name
  * @param params - Route params to interpolate
  * @returns The resolved path
+ * @throws {Error} If no router is initialized, the route name is unknown,
+ * or a required path param is missing from `params`
  *
  * @example
  * ```ts
@@ -61,9 +65,45 @@ export const resolve = (name: string, params: Record<string, string> = {}): stri
     throw new Error(`bQuery router: Route "${name}" not found.`);
   }
 
-  let path = route.path;
-  for (const [key, value] of Object.entries(params)) {
-    path = path.replace(`:${key}`, encodeURIComponent(value));
+  let path = '';
+  for (let i = 0; i < route.path.length; ) {
+    if (route.path[i] === ':' && isParamStart(route.path[i + 1])) {
+      let nameEnd = i + 2;
+      while (nameEnd < route.path.length && isParamChar(route.path[nameEnd])) {
+        nameEnd++;
+      }
+
+      let nextIndex = nameEnd;
+      let constraint: string | null = null;
+      if (route.path[nameEnd] === '(') {
+        const parsedConstraint = readConstraint(route.path, nameEnd);
+        if (!parsedConstraint) {
+          throw new Error(
+            `bQuery router: Invalid constraint syntax in path "${route.path}" for route "${name}".`
+          );
+        }
+        constraint = parsedConstraint.constraint;
+        nextIndex = parsedConstraint.endIndex;
+      }
+
+      const key = route.path.slice(i + 1, nameEnd);
+      const value = params[key];
+      if (value === undefined) {
+        throw new Error(`bQuery router: Missing required param "${key}" for route "${name}".`);
+      }
+      if (constraint && !getRouteConstraintRegex(constraint).test(value)) {
+        throw new Error(
+          `bQuery router: Param "${key}" with value "${value}" does not satisfy the route constraint for route "${name}".`
+        );
+      }
+
+      path += encodeURIComponent(value);
+      i = nextIndex;
+      continue;
+    }
+
+    path += route.path[i];
+    i++;
   }
 
   return path;

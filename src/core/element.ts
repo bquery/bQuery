@@ -1,5 +1,6 @@
 import { createElementFromHtml, insertContent, setHtml } from './dom';
 import { getOuterSize, isHTMLElement } from './shared';
+import { isPrototypePollutionKey } from './utils/object';
 
 /**
  * Wrapper for a single DOM element.
@@ -25,6 +26,70 @@ import { getOuterSize, isHTMLElement } from './shared';
  */
 /** Handler signature for delegated events */
 type DelegatedHandler = (event: Event, target: Element) => void;
+
+type SerializableFormControl = HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
+
+const isSerializableFormControl = (element: Element): element is SerializableFormControl => {
+  const tagName = element.tagName.toLowerCase();
+  return tagName === 'input' || tagName === 'textarea' || tagName === 'select';
+};
+
+const collectFormEntries = (form: HTMLFormElement): Array<[string, string]> => {
+  const entries: Array<[string, string]> = [];
+
+  for (const control of Array.from(form.elements)) {
+    if (!(control instanceof Element) || !isSerializableFormControl(control)) {
+      continue;
+    }
+
+    const name = control.name;
+    if (!name || control.disabled || isPrototypePollutionKey(name)) {
+      continue;
+    }
+
+    if (control.tagName.toLowerCase() === 'input') {
+      const input = control as HTMLInputElement;
+      const type = input.type.toLowerCase();
+
+      if (type === 'checkbox' || type === 'radio') {
+        if (input.checked) {
+          entries.push([name, input.value]);
+        }
+        continue;
+      }
+
+      if (
+        type === 'file' ||
+        type === 'submit' ||
+        type === 'button' ||
+        type === 'reset' ||
+        type === 'image'
+      ) {
+        continue;
+      }
+
+      entries.push([name, input.value]);
+      continue;
+    }
+
+    if (control.tagName.toLowerCase() === 'select') {
+      const select = control as HTMLSelectElement;
+
+      if (select.multiple) {
+        for (const option of Array.from(select.selectedOptions)) {
+          entries.push([name, option.value]);
+        }
+      } else {
+        entries.push([name, select.value]);
+      }
+      continue;
+    }
+
+    entries.push([name, (control as HTMLTextAreaElement).value]);
+  }
+
+  return entries;
+};
 
 export class BQueryElement {
   /**
@@ -791,6 +856,11 @@ export class BQueryElement {
    * Serializes form data to a plain object.
    * Only works on form elements; returns empty object for non-forms.
    *
+   * For security hardening, the returned object uses a null prototype,
+   * so inherited members like `hasOwnProperty` are not available directly.
+   * Prefer `Object.keys()` or `Object.prototype.hasOwnProperty.call(...)`
+   * when checking for fields on the serialized result.
+   *
    * @returns Object with form field names as keys and values
    *
    * @example
@@ -798,6 +868,7 @@ export class BQueryElement {
    * // For a form with <input name="email" value="test@example.com">
    * const data = $('#myForm').serialize();
    * // { email: 'test@example.com' }
+   * Object.prototype.hasOwnProperty.call(data, 'email'); // true
    * ```
    */
   serialize(): Record<string, string | string[]> {
@@ -806,13 +877,10 @@ export class BQueryElement {
       return {};
     }
 
-    const result: Record<string, string | string[]> = {};
-    const formData = new FormData(form);
+    const result = Object.create(null) as Record<string, string | string[]>;
 
-    for (const [key, value] of formData.entries()) {
-      if (typeof value !== 'string') continue; // Skip File objects
-
-      if (key in result) {
+    for (const [key, value] of collectFormEntries(form)) {
+      if (Object.prototype.hasOwnProperty.call(result, key)) {
         // Handle multiple values (e.g., checkboxes)
         const existing = result[key];
         if (Array.isArray(existing)) {
@@ -845,13 +913,10 @@ export class BQueryElement {
       return '';
     }
 
-    const formData = new FormData(form);
     const params = new URLSearchParams();
 
-    for (const [key, value] of formData.entries()) {
-      if (typeof value === 'string') {
-        params.append(key, value);
-      }
+    for (const [key, value] of collectFormEntries(form)) {
+      params.append(key, value);
     }
 
     return params.toString();

@@ -6,8 +6,10 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, spyOn } from 'bun:test';
+import { clearRouteConstraintCache, getRouteConstraintRegex } from '../src/router/constraints';
 import {
   back,
+  BqLinkElement,
   createRouter,
   currentRoute,
   forward,
@@ -16,17 +18,24 @@ import {
   isActiveSignal,
   link,
   navigate,
+  registerBqLink,
   resolve,
   type Route,
   type RouteDefinition,
   type Router,
 } from '../src/router/index';
+import { matchRoute } from '../src/router/match';
 
 // ============================================================================
 // Test Setup - Mock History API and Location
 // ============================================================================
 
 const TEST_ORIGIN = 'http://localhost';
+const expectType = <T>(_value: T): void => {};
+
+afterEach(() => {
+  clearRouteConstraintCache();
+});
 
 /**
  * Helper to setup mocked window.location and history for router tests.
@@ -167,6 +176,31 @@ const setupMockHistory = () => {
 // ============================================================================
 
 describe('Router', () => {
+  describe('route constraint cache', () => {
+    it('clears cached compiled regexes on demand', () => {
+      const first = getRouteConstraintRegex('\\d+');
+      const second = getRouteConstraintRegex('\\d+');
+
+      expect(second).toBe(first);
+
+      clearRouteConstraintCache();
+
+      const third = getRouteConstraintRegex('\\d+');
+      expect(third).not.toBe(first);
+    });
+
+    it('evicts old constraint entries once the cache cap is exceeded', () => {
+      const first = getRouteConstraintRegex('value-0');
+
+      for (let i = 1; i <= 128; i++) {
+        getRouteConstraintRegex(`value-${i}`);
+      }
+
+      const afterEviction = getRouteConstraintRegex('value-0');
+      expect(afterEviction).not.toBe(first);
+    });
+  });
+
   describe('module exports', () => {
     it('should export createRouter', async () => {
       const mod = await import('../src/router/index');
@@ -968,6 +1002,42 @@ describe('Router', () => {
       expect(resolve('search', { query: 'hello world' })).toBe('/search/hello%20world');
     });
 
+    it('should strip param constraints when resolving named routes', () => {
+      router = createRouter({
+        routes: [{ path: '/user/:id(\\d+)', component: () => null, name: 'user' }],
+      });
+
+      expect(resolve('user', { id: '42' })).toBe('/user/42');
+    });
+
+    it('should validate resolved params against route constraints', () => {
+      router = createRouter({
+        routes: [{ path: '/user/:id(\\d+)', component: () => null, name: 'user' }],
+      });
+
+      expect(() => resolve('user', { id: 'abc' })).toThrow(
+        'Param "id" with value "abc" does not satisfy the route constraint for route "user"'
+      );
+    });
+
+    it('should throw error when a required param is missing', () => {
+      router = createRouter({
+        routes: [{ path: '/user/:id(\\d+)', component: () => null, name: 'user' }],
+      });
+
+      expect(() => resolve('user')).toThrow('Missing required param "id" for route "user"');
+    });
+
+    it('should throw error for invalid param constraint syntax when resolving', () => {
+      expect(() =>
+        createRouter({
+          routes: [{ path: '/user/:id(\\d+', component: () => null, name: 'user' }],
+        })
+      ).toThrow(
+        'bQuery router: Invalid route param constraint syntax in path "/user/:id(\\d+" at index 9.'
+      );
+    });
+
     it('should throw error for unknown route name', () => {
       router = createRouter({
         routes: [{ path: '/', component: () => null, name: 'home' }],
@@ -981,6 +1051,19 @@ describe('Router', () => {
       router.destroy();
 
       expect(() => resolve('any')).toThrow('No router initialized');
+    });
+
+    it('should require routes to define either a component or a redirect target', () => {
+      const validRoutes: RouteDefinition[] = [
+        { path: '/', component: () => null },
+        { path: '/old', redirectTo: '/' },
+      ];
+
+      expectType<RouteDefinition[]>(validRoutes);
+
+      // @ts-expect-error route definitions must provide a component or redirectTo
+      expectType<RouteDefinition>({ path: '/broken' });
+      expect(validRoutes).toHaveLength(2);
     });
   });
 
@@ -1752,6 +1835,1444 @@ describe('Router', () => {
       expect(currentRoute.value.path).toBe('/page2');
       expect(currentRoute.value.query).toEqual({ test: '2' });
       expect(currentRoute.value.hash).toBe('section');
+    });
+  });
+
+  // ============================================================================
+  // Route Params with Type Coercion (Regex Constraints)
+  // ============================================================================
+
+  describe('route params with regex constraints', () => {
+    let mockHistory: ReturnType<typeof setupMockHistory>;
+    let router: Router;
+
+    beforeEach(() => {
+      mockHistory = setupMockHistory();
+    });
+
+    afterEach(() => {
+      router?.destroy();
+      mockHistory.restore();
+    });
+
+    it('should match params with \\d+ constraint', async () => {
+      router = createRouter({
+        routes: [
+          { path: '/user/:id(\\d+)', component: () => null },
+          { path: '*', component: () => null },
+        ],
+      });
+
+      await router.push('/user/42');
+      expect(currentRoute.value.path).toBe('/user/42');
+      expect(currentRoute.value.params).toEqual({ id: '42' });
+      expect(currentRoute.value.matched?.path).toBe('/user/:id(\\d+)');
+    });
+
+    it('should not match when constraint fails', async () => {
+      router = createRouter({
+        routes: [
+          { path: '/user/:id(\\d+)', component: () => null },
+          { path: '*', component: () => null },
+        ],
+      });
+
+      await router.push('/user/abc');
+      // Should NOT match the constrained route
+      expect(currentRoute.value.matched?.path).toBe('*');
+    });
+
+    it('should support [a-z-]+ constraint', async () => {
+      router = createRouter({
+        routes: [
+          { path: '/post/:slug([a-z-]+)', component: () => null },
+          { path: '*', component: () => null },
+        ],
+      });
+
+      await router.push('/post/hello-world');
+      expect(currentRoute.value.params).toEqual({ slug: 'hello-world' });
+      expect(currentRoute.value.matched?.path).toBe('/post/:slug([a-z-]+)');
+
+      await router.push('/post/ABC');
+      expect(currentRoute.value.matched?.path).toBe('*');
+    });
+
+    it('should support multiple constrained params', async () => {
+      router = createRouter({
+        routes: [
+          { path: '/date/:year(\\d{4})/:month(\\d{2})', component: () => null },
+          { path: '*', component: () => null },
+        ],
+      });
+
+      await router.push('/date/2026/03');
+      expect(currentRoute.value.params).toEqual({ year: '2026', month: '03' });
+
+      await router.push('/date/26/3');
+      // 26 doesn't match \d{4}, 3 doesn't match \d{2}
+      expect(currentRoute.value.matched?.path).toBe('*');
+    });
+
+    it('should ignore nested capturing groups inside param constraints when extracting params', async () => {
+      router = createRouter({
+        routes: [
+          { path: '/item/:slug((foo|bar)-\\d+)', component: () => null },
+          { path: '*', component: () => null },
+        ],
+      });
+
+      await router.push('/item/foo-42');
+      expect(currentRoute.value.params).toEqual({ slug: 'foo-42' });
+      expect(currentRoute.value.matched?.path).toBe('/item/:slug((foo|bar)-\\d+)');
+    });
+
+    it('should ignore named capturing groups inside param constraints when extracting params', async () => {
+      router = createRouter({
+        routes: [
+          { path: '/item/:slug((?<prefix>foo|bar)-\\d+)', component: () => null },
+          { path: '*', component: () => null },
+        ],
+      });
+
+      await router.push('/item/bar-42');
+      expect(currentRoute.value.params).toEqual({ slug: 'bar-42' });
+      expect(currentRoute.value.matched?.path).toBe('/item/:slug((?<prefix>foo|bar)-\\d+)');
+    });
+
+    it('should reject constraints that use backreferences', () => {
+      expect(() =>
+        createRouter({
+          routes: [{ path: '/item/:slug((foo|bar)-\\1)', component: () => null }],
+        })
+      ).toThrow('bQuery router: Route constraints cannot use backreferences.');
+    });
+
+    it('should wrap invalid constraint regex syntax in a router-specific error', () => {
+      expect(() => getRouteConstraintRegex('[a-')).toThrow(
+        'bQuery router: Invalid route constraint regex: [a-'
+      );
+    });
+
+    it('should throw for invalid param constraint syntax when matching routes', () => {
+      expect(() =>
+        matchRoute('/user/42', [{ path: '/user/:id(\\d+', component: () => null }])
+      ).toThrow(
+        'bQuery router: Invalid route param constraint syntax in path "/user/:id(\\d+" at index 9.'
+      );
+    });
+
+    it('should support literal closing parentheses inside constraint character classes', async () => {
+      router = createRouter({
+        routes: [
+          { path: '/item/:slug([)])/edit', component: () => null },
+          { path: '*', component: () => null },
+        ],
+      });
+
+      await router.push('/item/)/edit');
+      expect(currentRoute.value.params).toEqual({ slug: ')' });
+      expect(currentRoute.value.matched?.path).toBe('/item/:slug([)])/edit');
+    });
+
+    it('should support parentheses inside character classes without rewriting them', async () => {
+      router = createRouter({
+        routes: [
+          { path: '/item/:slug([()]+)', component: () => null },
+          { path: '*', component: () => null },
+        ],
+      });
+
+      await router.push('/item/(()');
+      expect(currentRoute.value.params).toEqual({ slug: '(()' });
+      expect(currentRoute.value.matched?.path).toBe('/item/:slug([()]+)');
+    });
+
+    it('should mix constrained and unconstrained params', async () => {
+      router = createRouter({
+        routes: [{ path: '/user/:id(\\d+)/:action', component: () => null }],
+      });
+
+      await router.push('/user/42/edit');
+      expect(currentRoute.value.params).toEqual({ id: '42', action: 'edit' });
+    });
+
+    it('should still support basic params without constraints', async () => {
+      router = createRouter({
+        routes: [{ path: '/user/:id', component: () => null }],
+      });
+
+      await router.push('/user/anything-works');
+      expect(currentRoute.value.params).toEqual({ id: 'anything-works' });
+    });
+
+    it('should match long wildcard paths with literal suffixes', async () => {
+      router = createRouter({
+        routes: [
+          { path: '/docs/*.md', component: () => null, name: 'markdownDocs' },
+          { path: '*', component: () => null, name: 'notFound' },
+        ],
+      });
+
+      const longPath = `/docs/${'guide/'.repeat(200)}intro.md`;
+      await router.push(longPath);
+
+      expect(currentRoute.value.matched?.name).toBe('markdownDocs');
+      expect(currentRoute.value.path).toBe(longPath);
+    });
+
+    it('should match long constrained params followed by literal suffixes', async () => {
+      router = createRouter({
+        routes: [
+          { path: '/file/:id(\\d+).json', component: () => null, name: 'fileJson' },
+          { path: '*', component: () => null, name: 'notFound' },
+        ],
+      });
+
+      const longDigits = '1234567890'.repeat(300);
+      await router.push(`/file/${longDigits}.json`);
+
+      expect(currentRoute.value.matched?.name).toBe('fileJson');
+      expect(currentRoute.value.params).toEqual({ id: longDigits });
+    });
+  });
+
+  // ============================================================================
+  // redirectTo
+  // ============================================================================
+
+  describe('redirectTo', () => {
+    let mockHistory: ReturnType<typeof setupMockHistory>;
+    let router: Router;
+
+    beforeEach(() => {
+      mockHistory = setupMockHistory();
+    });
+
+    afterEach(() => {
+      router?.destroy();
+      mockHistory.restore();
+    });
+
+    it('should redirect to specified path on push', async () => {
+      router = createRouter({
+        routes: [
+          { path: '/', component: () => null },
+          { path: '/old-page', redirectTo: '/new-page' },
+          { path: '/new-page', component: () => null },
+        ],
+      });
+
+      await router.push('/old-page');
+      expect(currentRoute.value.path).toBe('/new-page');
+      expect(currentRoute.value.matched?.path).toBe('/new-page');
+    });
+
+    it('should redirect to specified path on replace', async () => {
+      router = createRouter({
+        routes: [
+          { path: '/', component: () => null },
+          { path: '/legacy', redirectTo: '/modern' },
+          { path: '/modern', component: () => null },
+        ],
+      });
+
+      await router.replace('/legacy');
+      expect(currentRoute.value.path).toBe('/modern');
+    });
+
+    it('should not require component on redirect routes', async () => {
+      router = createRouter({
+        routes: [
+          { path: '/', component: () => null },
+          { path: '/redirect-only', redirectTo: '/' },
+        ],
+      });
+
+      await router.push('/redirect-only');
+      expect(currentRoute.value.path).toBe('/');
+    });
+
+    it('should handle chained redirects', async () => {
+      router = createRouter({
+        routes: [
+          { path: '/a', redirectTo: '/b' },
+          { path: '/b', redirectTo: '/c' },
+          { path: '/c', component: () => null },
+        ],
+      });
+
+      await router.push('/a');
+      expect(currentRoute.value.path).toBe('/c');
+    });
+
+    it('should fail fast on redirect loops', async () => {
+      router = createRouter({
+        routes: [{ path: '/a', redirectTo: '/a' }],
+      });
+
+      await expect(router.push('/a')).rejects.toThrow(/redirect loop/i);
+    });
+  });
+
+  // ============================================================================
+  // beforeEnter (route-level guards)
+  // ============================================================================
+
+  describe('beforeEnter guards', () => {
+    let mockHistory: ReturnType<typeof setupMockHistory>;
+    let router: Router;
+
+    beforeEach(() => {
+      mockHistory = setupMockHistory();
+    });
+
+    afterEach(() => {
+      router?.destroy();
+      mockHistory.restore();
+    });
+
+    it('should execute beforeEnter guard before navigation', async () => {
+      const calls: string[] = [];
+
+      router = createRouter({
+        routes: [
+          { path: '/', component: () => null },
+          {
+            path: '/guarded',
+            component: () => null,
+            beforeEnter: (to, from) => {
+              calls.push(`beforeEnter:${from.path}->${to.path}`);
+            },
+          },
+        ],
+      });
+
+      await router.push('/guarded');
+      expect(calls).toEqual(['beforeEnter:/->/guarded']);
+      expect(currentRoute.value.path).toBe('/guarded');
+    });
+
+    it('should cancel navigation when beforeEnter returns false', async () => {
+      router = createRouter({
+        routes: [
+          { path: '/', component: () => null },
+          {
+            path: '/blocked',
+            component: () => null,
+            beforeEnter: () => false,
+          },
+        ],
+      });
+
+      await router.push('/blocked');
+      expect(currentRoute.value.path).toBe('/');
+    });
+
+    it('should support async beforeEnter guards', async () => {
+      router = createRouter({
+        routes: [
+          { path: '/', component: () => null },
+          {
+            path: '/async',
+            component: () => null,
+            beforeEnter: async () => {
+              await new Promise((r) => setTimeout(r, 10));
+              // Allow navigation
+            },
+          },
+        ],
+      });
+
+      await router.push('/async');
+      expect(currentRoute.value.path).toBe('/async');
+    });
+
+    it('should run beforeEnter BEFORE global beforeEach', async () => {
+      const calls: string[] = [];
+
+      router = createRouter({
+        routes: [
+          { path: '/', component: () => null },
+          {
+            path: '/page',
+            component: () => null,
+            beforeEnter: () => {
+              calls.push('beforeEnter');
+            },
+          },
+        ],
+      });
+
+      router.beforeEach(() => {
+        calls.push('beforeEach');
+      });
+
+      await router.push('/page');
+      expect(calls).toEqual(['beforeEnter', 'beforeEach']);
+    });
+
+    it('should not run global beforeEach if beforeEnter blocks', async () => {
+      const calls: string[] = [];
+
+      router = createRouter({
+        routes: [
+          { path: '/', component: () => null },
+          {
+            path: '/blocked',
+            component: () => null,
+            beforeEnter: () => {
+              calls.push('beforeEnter');
+              return false;
+            },
+          },
+        ],
+      });
+
+      router.beforeEach(() => {
+        calls.push('beforeEach');
+      });
+
+      await router.push('/blocked');
+      expect(calls).toEqual(['beforeEnter']);
+      expect(currentRoute.value.path).toBe('/');
+    });
+  });
+
+  // ============================================================================
+  // useRoute composable
+  // ============================================================================
+
+  describe('useRoute', () => {
+    let mockHistory: ReturnType<typeof setupMockHistory>;
+    let router: Router;
+
+    beforeEach(() => {
+      mockHistory = setupMockHistory();
+    });
+
+    afterEach(() => {
+      router?.destroy();
+      mockHistory.restore();
+    });
+
+    it('should export useRoute function', async () => {
+      const mod = await import('../src/router/index');
+      expect(typeof mod.useRoute).toBe('function');
+    });
+
+    it('should return reactive path, params, query, hash, matched', async () => {
+      const { useRoute } = await import('../src/router/index');
+
+      router = createRouter({
+        routes: [
+          { path: '/', component: () => null },
+          { path: '/user/:id', component: () => null },
+        ],
+      });
+
+      const { path, params, query, hash, matched, route } = useRoute();
+
+      expect(path.value).toBe('/');
+      expect(params.value).toEqual({});
+      expect(query.value).toEqual({});
+      expect(hash.value).toBe('');
+      expect(route.value.path).toBe('/');
+
+      await router.push('/user/99?tab=profile#top');
+
+      expect(path.value).toBe('/user/99');
+      expect(params.value).toEqual({ id: '99' });
+      expect(query.value).toEqual({ tab: 'profile' });
+      expect(hash.value).toBe('top');
+      expect(matched.value?.path).toBe('/user/:id');
+    });
+
+    it('should update when route changes', async () => {
+      const { useRoute } = await import('../src/router/index');
+
+      router = createRouter({
+        routes: [
+          { path: '/', component: () => null },
+          { path: '/a', component: () => null },
+          { path: '/b', component: () => null },
+        ],
+      });
+
+      const { path } = useRoute();
+      expect(path.value).toBe('/');
+
+      await router.push('/a');
+      expect(path.value).toBe('/a');
+
+      await router.push('/b');
+      expect(path.value).toBe('/b');
+    });
+  });
+
+  // ============================================================================
+  // Scroll position restoration
+  // ============================================================================
+
+  describe('scroll restoration', () => {
+    let mockHistory: ReturnType<typeof setupMockHistory>;
+    let router: Router;
+    let scrollToSpy: ReturnType<typeof spyOn>;
+
+    beforeEach(() => {
+      mockHistory = setupMockHistory();
+      scrollToSpy = spyOn(window, 'scrollTo').mockImplementation(() => {});
+    });
+
+    afterEach(() => {
+      router?.destroy();
+      mockHistory.restore();
+      scrollToSpy.mockRestore();
+    });
+
+    it('should scroll to top on push navigation when enabled', async () => {
+      router = createRouter({
+        routes: [
+          { path: '/', component: () => null },
+          { path: '/page', component: () => null },
+        ],
+        scrollRestoration: true,
+      });
+
+      await router.push('/page');
+      expect(scrollToSpy).toHaveBeenCalledWith(0, 0);
+    });
+
+    it('should not scroll when scrollRestoration is disabled', async () => {
+      router = createRouter({
+        routes: [
+          { path: '/', component: () => null },
+          { path: '/page', component: () => null },
+        ],
+        scrollRestoration: false,
+      });
+
+      await router.push('/page');
+      expect(scrollToSpy).not.toHaveBeenCalled();
+    });
+
+    it('should set history.scrollRestoration to manual when enabled', () => {
+      router = createRouter({
+        routes: [{ path: '/', component: () => null }],
+        scrollRestoration: true,
+      });
+
+      expect(history.scrollRestoration).toBe('manual');
+    });
+
+    it('should restore history.scrollRestoration to the previous value on destroy', () => {
+      history.scrollRestoration = 'manual';
+      router = createRouter({
+        routes: [{ path: '/', component: () => null }],
+        scrollRestoration: true,
+      });
+
+      router.destroy();
+      expect(history.scrollRestoration).toBe('manual');
+    });
+
+    it('should store scroll key in history state', async () => {
+      router = createRouter({
+        routes: [
+          { path: '/', component: () => null },
+          { path: '/page', component: () => null },
+        ],
+        scrollRestoration: true,
+      });
+
+      await router.push('/page');
+      const stack = mockHistory.getStack();
+      const lastEntry = stack[stack.length - 1];
+      expect(lastEntry.state).toHaveProperty('__bqScrollKey');
+      expect(typeof (lastEntry.state as Record<string, unknown>).__bqScrollKey).toBe('string');
+    });
+
+    it('should preserve the same scroll key when using replace navigation', async () => {
+      router = createRouter({
+        routes: [
+          { path: '/', component: () => null },
+          { path: '/page1', component: () => null },
+          { path: '/page2', component: () => null },
+        ],
+        scrollRestoration: true,
+      });
+
+      await router.push('/page1');
+      const stackAfterPush = mockHistory.getStack();
+      const keyAfterPush = (
+        stackAfterPush[mockHistory.getCurrentIndex()].state as Record<string, unknown>
+      ).__bqScrollKey;
+
+      await router.replace('/page2');
+      const stackAfterReplace = mockHistory.getStack();
+      const keyAfterReplace = (
+        stackAfterReplace[mockHistory.getCurrentIndex()].state as Record<string, unknown>
+      ).__bqScrollKey;
+
+      expect(keyAfterReplace).toBe(keyAfterPush);
+    });
+
+    it('should preserve existing history state when adding scroll restoration state', async () => {
+      const originalStateDescriptor = Object.getOwnPropertyDescriptor(history, 'state');
+      mockHistory.getStack()[0]!.state = Object.assign(Object.create(null), {
+        preserved: 'value',
+        constructor: 'ignored',
+        __proto__: 'ignored',
+      });
+
+      Object.defineProperty(history, 'state', {
+        configurable: true,
+        get: () => mockHistory.getStack()[mockHistory.getCurrentIndex()]?.state,
+      });
+
+      try {
+        router = createRouter({
+          routes: [
+            { path: '/', component: () => null },
+            { path: '/page', component: () => null },
+          ],
+          scrollRestoration: true,
+        });
+
+        await router.push('/page');
+        const stack = mockHistory.getStack();
+        const lastEntry = stack[stack.length - 1];
+        expect(lastEntry.state).toMatchObject({
+          preserved: 'value',
+          __bqScrollKey: expect.any(String),
+        });
+        expect(
+          Object.prototype.hasOwnProperty.call(
+            lastEntry.state as Record<string, unknown>,
+            '__proto__'
+          )
+        ).toBe(false);
+        expect(
+          Object.prototype.hasOwnProperty.call(
+            lastEntry.state as Record<string, unknown>,
+            'constructor'
+          )
+        ).toBe(false);
+      } finally {
+        if (originalStateDescriptor) {
+          Object.defineProperty(history, 'state', originalStateDescriptor);
+        } else {
+          delete (history as History & { state?: unknown }).state;
+        }
+      }
+    });
+
+    it('should prune old scroll position entries after many navigations', async () => {
+      const deleteSpy = spyOn(Map.prototype, 'delete');
+      const routes: RouteDefinition[] = [{ path: '/', component: () => null }];
+
+      for (let i = 0; i < 105; i++) {
+        routes.push({ path: `/page-${i}`, component: () => null });
+      }
+
+      try {
+        router = createRouter({
+          routes,
+          scrollRestoration: true,
+        });
+
+        for (let i = 0; i < 105; i++) {
+          await router.push(`/page-${i}`);
+        }
+
+        expect(deleteSpy).toHaveBeenCalled();
+        expect(deleteSpy).toHaveBeenCalledWith('0');
+      } finally {
+        deleteSpy.mockRestore();
+      }
+    });
+
+    it('should generate unique scroll keys for push navigations within the same millisecond', async () => {
+      const nowSpy = spyOn(Date, 'now').mockReturnValue(1234567890);
+
+      try {
+        router = createRouter({
+          routes: [
+            { path: '/', component: () => null },
+            { path: '/page1', component: () => null },
+            { path: '/page2', component: () => null },
+          ],
+          scrollRestoration: true,
+        });
+
+        await router.push('/page1');
+        await router.push('/page2');
+
+        const stack = mockHistory.getStack();
+        const page1Key = (stack[1].state as Record<string, unknown>).__bqScrollKey;
+        const page2Key = (stack[2].state as Record<string, unknown>).__bqScrollKey;
+
+        expect(page1Key).not.toBe(page2Key);
+      } finally {
+        nowSpy.mockRestore();
+      }
+    });
+
+    it('should save scroll for the entry being left on popstate and restore the destination entry', async () => {
+      const originalScrollX = Object.getOwnPropertyDescriptor(window, 'scrollX');
+      const originalScrollY = Object.getOwnPropertyDescriptor(window, 'scrollY');
+      const setScrollPosition = (x: number, y: number) => {
+        Object.defineProperty(window, 'scrollX', { value: x, configurable: true });
+        Object.defineProperty(window, 'scrollY', { value: y, configurable: true });
+      };
+
+      try {
+        router = createRouter({
+          routes: [
+            { path: '/', component: () => null },
+            { path: '/page', component: () => null },
+          ],
+          scrollRestoration: true,
+        });
+
+        setScrollPosition(10, 20);
+        await router.push('/page');
+
+        setScrollPosition(30, 40);
+        scrollToSpy.mockClear();
+        router.back();
+        await new Promise((resolve) => setTimeout(resolve, 0));
+
+        expect(scrollToSpy).toHaveBeenLastCalledWith(10, 20);
+
+        scrollToSpy.mockClear();
+        router.forward();
+        await new Promise((resolve) => setTimeout(resolve, 0));
+
+        expect(scrollToSpy).toHaveBeenLastCalledWith(30, 40);
+      } finally {
+        if (originalScrollX) {
+          Object.defineProperty(window, 'scrollX', originalScrollX);
+        }
+        if (originalScrollY) {
+          Object.defineProperty(window, 'scrollY', originalScrollY);
+        }
+      }
+    });
+
+    it('should preserve the scroll restoration key when popstate navigation is canceled', async () => {
+      router = createRouter({
+        routes: [
+          { path: '/', component: () => null },
+          { path: '/page', component: () => null },
+        ],
+        scrollRestoration: true,
+      });
+
+      router.beforeEach((to) => {
+        if (to.path === '/') return false;
+      });
+
+      await router.push('/page');
+      const pageEntry = mockHistory.getStack()[mockHistory.getCurrentIndex()];
+      expect(pageEntry.state).toHaveProperty('__bqScrollKey');
+
+      router.back();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      const restoredEntry = mockHistory.getStack()[mockHistory.getCurrentIndex()];
+      expect(restoredEntry.url).toBe('/page');
+      expect(restoredEntry.state).toHaveProperty('__bqScrollKey');
+      expect(typeof (restoredEntry.state as Record<string, unknown>).__bqScrollKey).toBe('string');
+    });
+  });
+
+  // ==========================================================================
+  // <bq-link> Custom Element
+  // ==========================================================================
+  describe('bq-link custom element', () => {
+    let mockHistory: ReturnType<typeof setupMockHistory>;
+    let router: Router;
+
+    it('should stay importable when HTMLElement is unavailable', async () => {
+      const originalHTMLElementDescriptor = Object.getOwnPropertyDescriptor(
+        globalThis,
+        'HTMLElement'
+      );
+      const originalCustomElementsDescriptor = Object.getOwnPropertyDescriptor(
+        globalThis,
+        'customElements'
+      );
+
+      try {
+        Object.defineProperty(globalThis, 'HTMLElement', {
+          value: undefined,
+          configurable: true,
+        });
+        Object.defineProperty(globalThis, 'customElements', {
+          value: undefined,
+          configurable: true,
+        });
+
+        const mod = await import(`../src/router/bq-link.ts?ssr-safe=${Date.now()}`);
+        expect(mod.BqLinkElement).toBeDefined();
+        expect(() => mod.registerBqLink()).not.toThrow();
+      } finally {
+        if (originalHTMLElementDescriptor) {
+          Object.defineProperty(globalThis, 'HTMLElement', originalHTMLElementDescriptor);
+        }
+        if (originalCustomElementsDescriptor) {
+          Object.defineProperty(globalThis, 'customElements', originalCustomElementsDescriptor);
+        }
+      }
+    });
+
+    beforeEach(() => {
+      mockHistory = setupMockHistory();
+      registerBqLink();
+    });
+
+    afterEach(() => {
+      router?.destroy();
+      mockHistory.restore();
+    });
+
+    it('should export BqLinkElement and registerBqLink', () => {
+      expect(BqLinkElement).toBeDefined();
+      expect(typeof registerBqLink).toBe('function');
+    });
+
+    it('should register the custom element idempotently', () => {
+      registerBqLink();
+      // Second call should not throw
+      registerBqLink();
+      expect(customElements.get('bq-link')).toBe(BqLinkElement);
+    });
+
+    it('should create a bq-link element with default attributes', () => {
+      const el = document.createElement('bq-link') as BqLinkElement;
+      document.body.appendChild(el);
+
+      expect(el.to).toBe('/');
+      expect(el.replace).toBe(false);
+      expect(el.exact).toBe(false);
+      expect(el.activeClass).toBe('active');
+
+      el.remove();
+    });
+
+    it('should set and get the "to" attribute', () => {
+      const el = document.createElement('bq-link') as BqLinkElement;
+      el.to = '/about';
+      document.body.appendChild(el);
+
+      expect(el.to).toBe('/about');
+      expect(el.getAttribute('to')).toBe('/about');
+
+      el.remove();
+    });
+
+    it('should set and get the "replace" attribute', () => {
+      const el = document.createElement('bq-link') as BqLinkElement;
+      document.body.appendChild(el);
+
+      expect(el.replace).toBe(false);
+
+      el.replace = true;
+      expect(el.hasAttribute('replace')).toBe(true);
+
+      el.replace = false;
+      expect(el.hasAttribute('replace')).toBe(false);
+
+      el.remove();
+    });
+
+    it('should set and get the "exact" attribute', () => {
+      const el = document.createElement('bq-link') as BqLinkElement;
+      document.body.appendChild(el);
+
+      expect(el.exact).toBe(false);
+
+      el.exact = true;
+      expect(el.hasAttribute('exact')).toBe(true);
+
+      el.exact = false;
+      expect(el.hasAttribute('exact')).toBe(false);
+
+      el.remove();
+    });
+
+    it('should set and get the "activeClass" attribute', () => {
+      const el = document.createElement('bq-link') as BqLinkElement;
+      document.body.appendChild(el);
+
+      expect(el.activeClass).toBe('active');
+
+      el.activeClass = 'selected';
+      expect(el.getAttribute('active-class')).toBe('selected');
+      expect(el.activeClass).toBe('selected');
+
+      el.remove();
+    });
+
+    it('should set role="link" and tabindex on connect', () => {
+      const el = document.createElement('bq-link') as BqLinkElement;
+      document.body.appendChild(el);
+
+      expect(el.getAttribute('role')).toBe('link');
+      expect(el.getAttribute('tabindex')).toBe('0');
+
+      el.remove();
+    });
+
+    it('should not override existing role attribute', () => {
+      const el = document.createElement('bq-link') as BqLinkElement;
+      el.setAttribute('role', 'button');
+      document.body.appendChild(el);
+
+      expect(el.getAttribute('role')).toBe('button');
+
+      el.remove();
+    });
+
+    it('should not override existing tabindex', () => {
+      const el = document.createElement('bq-link') as BqLinkElement;
+      el.setAttribute('tabindex', '-1');
+      document.body.appendChild(el);
+
+      expect(el.getAttribute('tabindex')).toBe('-1');
+
+      el.remove();
+    });
+
+    it('should apply active class when path matches', async () => {
+      router = createRouter({
+        routes: [
+          { path: '/', component: () => null },
+          { path: '/about', component: () => null },
+        ],
+      });
+
+      const el = document.createElement('bq-link') as BqLinkElement;
+      el.to = '/';
+      document.body.appendChild(el);
+
+      // Wait for effect to run
+      await new Promise((r) => setTimeout(r, 10));
+
+      expect(el.classList.contains('active')).toBe(true);
+      expect(el.getAttribute('aria-current')).toBe('page');
+
+      el.remove();
+    });
+
+    it('should remove active class when path does not match', async () => {
+      router = createRouter({
+        routes: [
+          { path: '/', component: () => null },
+          { path: '/about', component: () => null },
+        ],
+      });
+
+      const el = document.createElement('bq-link') as BqLinkElement;
+      el.to = '/nonexistent-path-xyz';
+      el.exact = true;
+      document.body.appendChild(el);
+
+      await new Promise((r) => setTimeout(r, 10));
+
+      expect(el.classList.contains('active')).toBe(false);
+      expect(el.getAttribute('aria-current')).toBeNull();
+
+      el.remove();
+    });
+
+    it('should apply custom active class', async () => {
+      router = createRouter({
+        routes: [{ path: '/', component: () => null }],
+      });
+
+      const el = document.createElement('bq-link') as BqLinkElement;
+      el.to = '/';
+      el.activeClass = 'selected';
+      document.body.appendChild(el);
+
+      await new Promise((r) => setTimeout(r, 10));
+
+      expect(el.classList.contains('selected')).toBe(true);
+      expect(el.classList.contains('active')).toBe(false);
+
+      el.remove();
+    });
+
+    it('should apply each class token from a whitespace-separated active-class', async () => {
+      router = createRouter({
+        routes: [{ path: '/', component: () => null }],
+      });
+
+      const el = document.createElement('bq-link') as BqLinkElement;
+      el.to = '/';
+      el.activeClass = 'selected current';
+      document.body.appendChild(el);
+
+      await new Promise((r) => setTimeout(r, 10));
+
+      expect(el.classList.contains('selected')).toBe(true);
+      expect(el.classList.contains('current')).toBe(true);
+
+      el.remove();
+    });
+
+    it('should remove previously tracked active classes when the active-class attribute changes', async () => {
+      router = createRouter({
+        routes: [{ path: '/', component: () => null }],
+      });
+
+      const el = document.createElement('bq-link') as BqLinkElement;
+      el.to = '/';
+      el.activeClass = 'selected current';
+      document.body.appendChild(el);
+
+      await new Promise((r) => setTimeout(r, 10));
+      expect(el.classList.contains('selected')).toBe(true);
+      expect(el.classList.contains('current')).toBe(true);
+
+      el.activeClass = 'active-now';
+
+      await new Promise((r) => setTimeout(r, 10));
+      expect(el.classList.contains('selected')).toBe(false);
+      expect(el.classList.contains('current')).toBe(false);
+      expect(el.classList.contains('active-now')).toBe(true);
+
+      el.remove();
+    });
+
+    it('should preserve user-authored active classes when the route does not match', async () => {
+      router = createRouter({
+        routes: [
+          { path: '/', component: () => null },
+          { path: '/about', component: () => null },
+        ],
+      });
+
+      await router.push('/about');
+
+      const el = document.createElement('bq-link') as BqLinkElement;
+      el.to = '/';
+      el.classList.add('active');
+      document.body.appendChild(el);
+
+      await new Promise((r) => setTimeout(r, 10));
+
+      expect(el.classList.contains('active')).toBe(true);
+      expect(el.getAttribute('aria-current')).toBeNull();
+
+      el.remove();
+    });
+
+    it('should restore user-authored active classes after disconnect or active-class changes', async () => {
+      router = createRouter({
+        routes: [{ path: '/', component: () => null }],
+      });
+
+      const el = document.createElement('bq-link') as BqLinkElement;
+      el.to = '/';
+      el.activeClass = 'active selected';
+      el.classList.add('active');
+      document.body.appendChild(el);
+
+      await new Promise((r) => setTimeout(r, 10));
+      expect(el.classList.contains('active')).toBe(true);
+      expect(el.classList.contains('selected')).toBe(true);
+
+      el.activeClass = 'current';
+
+      await new Promise((r) => setTimeout(r, 10));
+      expect(el.classList.contains('active')).toBe(true);
+      expect(el.classList.contains('selected')).toBe(false);
+      expect(el.classList.contains('current')).toBe(true);
+
+      el.remove();
+
+      expect(el.classList.contains('active')).toBe(true);
+      expect(el.classList.contains('current')).toBe(false);
+    });
+
+    it('should match with path prefix by default (not exact)', async () => {
+      router = createRouter({
+        routes: [
+          { path: '/', component: () => null },
+          { path: '/about', component: () => null },
+          { path: '/about/team', component: () => null },
+        ],
+      });
+
+      await router.push('/about/team');
+
+      const el = document.createElement('bq-link') as BqLinkElement;
+      el.to = '/about';
+      document.body.appendChild(el);
+
+      await new Promise((r) => setTimeout(r, 10));
+
+      // '/about/team' starts with '/about/' so it matches
+      expect(el.classList.contains('active')).toBe(true);
+
+      el.remove();
+    });
+
+    it('should not match partial path segments in non-exact mode', async () => {
+      router = createRouter({
+        routes: [
+          { path: '/', component: () => null },
+          { path: '/user', component: () => null },
+          { path: '/user-profile', component: () => null },
+        ],
+      });
+
+      await router.push('/user-profile');
+
+      const el = document.createElement('bq-link') as BqLinkElement;
+      el.to = '/user';
+      document.body.appendChild(el);
+
+      await new Promise((r) => setTimeout(r, 10));
+
+      // '/user-profile' should NOT match '/user' (different segment)
+      expect(el.classList.contains('active')).toBe(false);
+
+      el.remove();
+    });
+
+    it('should not match prefix when exact is set', async () => {
+      router = createRouter({
+        routes: [
+          { path: '/', component: () => null },
+          { path: '/about', component: () => null },
+        ],
+      });
+
+      await router.push('/about');
+
+      const el = document.createElement('bq-link') as BqLinkElement;
+      el.to = '/';
+      el.exact = true;
+      document.body.appendChild(el);
+
+      await new Promise((r) => setTimeout(r, 10));
+
+      // '/about' !== '/' with exact
+      expect(el.classList.contains('active')).toBe(false);
+
+      el.remove();
+    });
+
+    it('should navigate on click', async () => {
+      router = createRouter({
+        routes: [
+          { path: '/', component: () => null },
+          { path: '/about', component: () => null },
+        ],
+      });
+
+      const el = document.createElement('bq-link') as BqLinkElement;
+      el.to = '/about';
+      document.body.appendChild(el);
+
+      const event = new MouseEvent('click', { button: 0, bubbles: true });
+      el.dispatchEvent(event);
+
+      await new Promise((r) => setTimeout(r, 50));
+
+      expect(currentRoute.value.path).toBe('/about');
+
+      el.remove();
+    });
+
+    it('should navigate on Enter keypress', async () => {
+      router = createRouter({
+        routes: [
+          { path: '/', component: () => null },
+          { path: '/about', component: () => null },
+        ],
+      });
+
+      const el = document.createElement('bq-link') as BqLinkElement;
+      el.to = '/about';
+      document.body.appendChild(el);
+
+      const event = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true });
+      el.dispatchEvent(event);
+
+      await new Promise((r) => setTimeout(r, 50));
+
+      expect(currentRoute.value.path).toBe('/about');
+
+      el.remove();
+    });
+
+    it('should not navigate on Space keypress', async () => {
+      router = createRouter({
+        routes: [
+          { path: '/', component: () => null },
+          { path: '/about', component: () => null },
+          { path: '/contact', component: () => null },
+        ],
+      });
+
+      const el = document.createElement('bq-link') as BqLinkElement;
+      el.to = '/contact';
+      document.body.appendChild(el);
+
+      const event = new KeyboardEvent('keydown', { key: ' ', bubbles: true });
+      el.dispatchEvent(event);
+
+      await new Promise((r) => setTimeout(r, 50));
+
+      expect(currentRoute.value.path).toBe('/');
+
+      el.remove();
+    });
+
+    it('should not navigate on non-left click', async () => {
+      router = createRouter({
+        routes: [
+          { path: '/', component: () => null },
+          { path: '/about', component: () => null },
+        ],
+      });
+
+      const el = document.createElement('bq-link') as BqLinkElement;
+      el.to = '/about';
+      document.body.appendChild(el);
+
+      // Middle-click (button 1)
+      const event = new MouseEvent('click', { button: 1, bubbles: true });
+      el.dispatchEvent(event);
+
+      await new Promise((r) => setTimeout(r, 50));
+
+      expect(currentRoute.value.path).toBe('/');
+
+      el.remove();
+    });
+
+    it('should ignore ctrl+click so modified clicks are not swallowed', async () => {
+      router = createRouter({
+        routes: [
+          { path: '/', component: () => null },
+          { path: '/about', component: () => null },
+        ],
+      });
+
+      const el = document.createElement('bq-link') as BqLinkElement;
+      el.to = '/about';
+      document.body.appendChild(el);
+
+      const event = new MouseEvent('click', {
+        button: 0,
+        ctrlKey: true,
+        bubbles: true,
+      });
+      el.dispatchEvent(event);
+
+      await new Promise((r) => setTimeout(r, 50));
+
+      expect(currentRoute.value.path).toBe('/');
+      expect(event.defaultPrevented).toBe(false);
+
+      el.remove();
+    });
+
+    it('should ignore meta+click so modified clicks are not swallowed', async () => {
+      router = createRouter({
+        routes: [
+          { path: '/', component: () => null },
+          { path: '/about', component: () => null },
+        ],
+      });
+
+      const el = document.createElement('bq-link') as BqLinkElement;
+      el.to = '/about';
+      document.body.appendChild(el);
+
+      const event = new MouseEvent('click', {
+        button: 0,
+        metaKey: true,
+        bubbles: true,
+      });
+      el.dispatchEvent(event);
+
+      await new Promise((r) => setTimeout(r, 50));
+
+      expect(currentRoute.value.path).toBe('/');
+      expect(event.defaultPrevented).toBe(false);
+
+      el.remove();
+    });
+
+    it('should ignore clicks that were already prevented', async () => {
+      router = createRouter({
+        routes: [
+          { path: '/', component: () => null },
+          { path: '/about', component: () => null },
+        ],
+      });
+
+      const el = document.createElement('bq-link') as BqLinkElement;
+      el.to = '/about';
+      document.body.appendChild(el);
+
+      const capturingPreventListener = (event: Event) => event.preventDefault();
+      document.body.addEventListener('click', capturingPreventListener, { capture: true });
+
+      const event = new MouseEvent('click', { button: 0, bubbles: true, cancelable: true });
+      el.dispatchEvent(event);
+
+      await new Promise((r) => setTimeout(r, 50));
+
+      expect(currentRoute.value.path).toBe('/');
+      expect(event.defaultPrevented).toBe(true);
+
+      document.body.removeEventListener('click', capturingPreventListener, { capture: true });
+      el.remove();
+    });
+
+    it('should use replace navigation when replace attribute is set', async () => {
+      router = createRouter({
+        routes: [
+          { path: '/', component: () => null },
+          { path: '/about', component: () => null },
+        ],
+      });
+
+      const el = document.createElement('bq-link') as BqLinkElement;
+      el.to = '/about';
+      el.replace = true;
+      document.body.appendChild(el);
+
+      const initialLength = mockHistory.getStack().length;
+
+      const event = new MouseEvent('click', { button: 0, bubbles: true });
+      el.dispatchEvent(event);
+
+      await new Promise((r) => setTimeout(r, 50));
+
+      expect(currentRoute.value.path).toBe('/about');
+      // Replace should not increase history length
+      expect(mockHistory.getStack().length).toBe(initialLength);
+
+      el.remove();
+    });
+
+    it('should cleanup effect on disconnect', async () => {
+      router = createRouter({
+        routes: [
+          { path: '/', component: () => null },
+          { path: '/about', component: () => null },
+        ],
+      });
+
+      const el = document.createElement('bq-link') as BqLinkElement;
+      el.to = '/';
+      document.body.appendChild(el);
+
+      await new Promise((r) => setTimeout(r, 10));
+
+      expect(el.classList.contains('active')).toBe(true);
+
+      // Disconnect
+      el.remove();
+
+      // Should not throw after disconnect
+      await router.push('/about');
+      await new Promise((r) => setTimeout(r, 10));
+    });
+
+    it('should update active class when "to" attribute changes', async () => {
+      router = createRouter({
+        routes: [
+          { path: '/', component: () => null },
+          { path: '/about', component: () => null },
+          { path: '/contact', component: () => null },
+        ],
+      });
+
+      await router.push('/about');
+
+      const el = document.createElement('bq-link') as BqLinkElement;
+      el.to = '/about';
+      el.exact = true;
+      document.body.appendChild(el);
+
+      await new Promise((r) => setTimeout(r, 10));
+      expect(el.classList.contains('active')).toBe(true);
+
+      // Change target path
+      el.to = '/contact';
+
+      await new Promise((r) => setTimeout(r, 10));
+      expect(el.classList.contains('active')).toBe(false);
+
+      el.remove();
+    });
+
+    it('should handle empty "to" attribute gracefully', async () => {
+      const el = document.createElement('bq-link') as BqLinkElement;
+      el.setAttribute('to', '');
+      document.body.appendChild(el);
+
+      // Should not throw (no router but we catch errors)
+      const event = new MouseEvent('click', { button: 0, bubbles: true });
+      el.dispatchEvent(event);
+
+      await new Promise((r) => setTimeout(r, 50));
+
+      el.remove();
+    });
+
+    it('should normalize empty "to" attributes to "/" without matching every route', async () => {
+      router = createRouter({
+        routes: [
+          { path: '/', component: () => null },
+          { path: '/about', component: () => null },
+        ],
+      });
+
+      await router.push('/about');
+
+      const el = document.createElement('bq-link') as BqLinkElement;
+      el.setAttribute('to', '');
+      document.body.appendChild(el);
+
+      await new Promise((r) => setTimeout(r, 10));
+
+      expect(el.to).toBe('/');
+      expect(el.classList.contains('active')).toBe(false);
+
+      el.remove();
+    });
+
+    it('should not navigate on non-Enter key', async () => {
+      router = createRouter({
+        routes: [
+          { path: '/', component: () => null },
+          { path: '/about', component: () => null },
+        ],
+      });
+
+      const el = document.createElement('bq-link') as BqLinkElement;
+      el.to = '/about';
+      document.body.appendChild(el);
+
+      const event = new KeyboardEvent('keydown', { key: 'Tab', bubbles: true });
+      el.dispatchEvent(event);
+
+      await new Promise((r) => setTimeout(r, 50));
+
+      expect(currentRoute.value.path).toBe('/');
+
+      el.remove();
     });
   });
 });

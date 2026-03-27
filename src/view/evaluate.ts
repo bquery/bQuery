@@ -1,3 +1,4 @@
+import { isPrototypePollutionKey } from '../core/utils/object';
 import { isComputed, isSignal, type Signal } from '../reactive/index';
 import type { BindingContext } from './types';
 
@@ -281,6 +282,7 @@ export const parseObjectExpression = (expression: string): Record<string, string
         .slice(0, colonIndex)
         .trim()
         .replace(/^['"]|['"]$/g, '');
+      if (isPrototypePollutionKey(key)) continue;
       const value = part.slice(colonIndex + 1).trim();
       result[key] = value;
     }
