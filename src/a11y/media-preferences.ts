@@ -23,7 +23,7 @@ const withDestroy = <T>(
     enumerable: false,
     value: (): void => {
       const currentDestroy = destroyImpl;
-      // Make cleanup idempotent so repeated destroy() calls are safe.
+      // Make cleanup idempotent so repeated destroy() calls from user code stay safe.
       destroyImpl = (): void => {};
       currentDestroy();
     },
