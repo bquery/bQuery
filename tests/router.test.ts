@@ -23,6 +23,7 @@ import {
   type RouteDefinition,
   type Router,
 } from '../src/router/index';
+import { matchRoute } from '../src/router/match';
 
 // ============================================================================
 // Test Setup - Mock History API and Location
@@ -988,12 +989,12 @@ describe('Router', () => {
     });
 
     it('should throw error for invalid param constraint syntax when resolving', () => {
-      router = createRouter({
-        routes: [{ path: '/user/:id(\\d+', component: () => null, name: 'user' }],
-      });
-
-      expect(() => resolve('user', { id: '42' })).toThrow(
-        'Invalid constraint syntax in path "/user/:id(\\d+" for route "user"'
+      expect(() =>
+        createRouter({
+          routes: [{ path: '/user/:id(\\d+', component: () => null, name: 'user' }],
+        })
+      ).toThrow(
+        'bQuery router: Invalid route param constraint syntax in path "/user/:id(\\d+" at index 9.'
       );
     });
 
@@ -1905,6 +1906,14 @@ describe('Router', () => {
           routes: [{ path: '/item/:slug((foo|bar)-\\1)', component: () => null }],
         })
       ).toThrow('bQuery router: Route constraints cannot use backreferences.');
+    });
+
+    it('should throw for invalid param constraint syntax when matching routes', () => {
+      expect(() =>
+        matchRoute('/user/42', [{ path: '/user/:id(\\d+', component: () => null }])
+      ).toThrow(
+        'bQuery router: Invalid route param constraint syntax in path "/user/:id(\\d+" at index 9.'
+      );
     });
 
     it('should support literal closing parentheses inside constraint character classes', async () => {

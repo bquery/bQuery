@@ -21,6 +21,19 @@ const escapeRegexLiteral = (value: string): string => {
   return escaped;
 };
 
+const readConstraintOrThrow = (
+  path: string,
+  startIndex: number
+): { constraint: string; endIndex: number } => {
+  const parsedConstraint = readConstraint(path, startIndex);
+  if (!parsedConstraint) {
+    throw new Error(
+      `bQuery router: Invalid route param constraint syntax in path "${path}" at index ${startIndex}.`
+    );
+  }
+  return parsedConstraint;
+};
+
 const normalizeConstraintCaptures = (constraint: string): string => {
   let normalized = '';
   let inCharacterClass = false;
@@ -123,11 +136,9 @@ const pathToRegex = (path: string): RegExp => {
       let constraint = '[^/]+';
 
       if (path[nameEnd] === '(') {
-        const parsedConstraint = readConstraint(path, nameEnd);
-        if (parsedConstraint) {
-          constraint = parsedConstraint.constraint;
-          nextIndex = parsedConstraint.endIndex;
-        }
+        const parsedConstraint = readConstraintOrThrow(path, nameEnd);
+        constraint = parsedConstraint.constraint;
+        nextIndex = parsedConstraint.endIndex;
       }
 
       pattern += `(${normalizeConstraintCaptures(constraint)})`;
@@ -164,11 +175,9 @@ const extractParamNames = (path: string): string[] => {
     names.push(path.slice(i + 1, nameEnd));
 
     if (path[nameEnd] === '(') {
-      const parsedConstraint = readConstraint(path, nameEnd);
-      if (parsedConstraint) {
-        i = parsedConstraint.endIndex;
-        continue;
-      }
+      const parsedConstraint = readConstraintOrThrow(path, nameEnd);
+      i = parsedConstraint.endIndex;
+      continue;
     }
 
     i = nameEnd;
