@@ -27,6 +27,19 @@ type RouteParamDescriptor = {
   nextIndex: number;
 };
 
+const constraintRegexCache = new Map<string, RegExp>();
+
+const getConstraintRegex = (normalizedConstraint: string): RegExp => {
+  const cached = constraintRegexCache.get(normalizedConstraint);
+  if (cached) {
+    return cached;
+  }
+
+  const compiled = new RegExp(`^(?:${normalizedConstraint})$`);
+  constraintRegexCache.set(normalizedConstraint, compiled);
+  return compiled;
+};
+
 const readParamDescriptor = (
   path: string,
   index: number
@@ -127,7 +140,7 @@ const matchPathPattern = (
         const candidateValue = actualPath.slice(pathIndex, candidateEnd);
 
         if (normalizedConstraint) {
-          const constraintRegex = new RegExp(`^(?:${normalizedConstraint})$`);
+          const constraintRegex = getConstraintRegex(normalizedConstraint);
           if (!constraintRegex.test(candidateValue)) {
             continue;
           }

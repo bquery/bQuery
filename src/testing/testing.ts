@@ -299,6 +299,19 @@ function matchRoute(
  * @internal
  */
 function matchRoutePattern(pattern: string, path: string): Record<string, string> | null {
+  const constraintRegexCache = new Map<string, RegExp>();
+
+  const getConstraintRegex = (constraint: string): RegExp => {
+    const cached = constraintRegexCache.get(constraint);
+    if (cached) {
+      return cached;
+    }
+
+    const compiled = new RegExp(`^(?:${constraint})$`);
+    constraintRegexCache.set(constraint, compiled);
+    return compiled;
+  };
+
   if (pattern === '*') {
     return {};
   }
@@ -373,7 +386,7 @@ function matchRoutePattern(pattern: string, path: string): Record<string, string
       for (let candidateEnd = candidateLimit; candidateEnd > pathIndex; candidateEnd--) {
         const candidateValue = path.slice(pathIndex, candidateEnd);
         if (constraint) {
-          const constraintRegex = new RegExp(`^(?:${constraint})$`);
+          const constraintRegex = getConstraintRegex(constraint);
           if (!constraintRegex.test(candidateValue)) {
             continue;
           }

@@ -71,7 +71,7 @@ const serializeSSRNode = (node: Node): string => {
   }
 
   let attrs = '';
-  for (const attr of Array.from(el.attributes)) {
+  for (const attr of el.attributes) {
     const attrName = attr.name.toLowerCase();
     if (attrName.startsWith('on')) {
       continue;
@@ -87,7 +87,7 @@ const serializeSSRNode = (node: Node): string => {
   }
 
   let childrenHtml = '';
-  for (const child of Array.from(el.childNodes)) {
+  for (const child of el.childNodes) {
     childrenHtml += serializeSSRNode(child);
   }
 
@@ -481,7 +481,7 @@ export const renderToString = (
   }
 
   let html = '';
-  for (const child of Array.from(body.childNodes)) {
+  for (const child of body.childNodes) {
     html += serializeSSRNode(child);
   }
 
