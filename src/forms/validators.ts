@@ -98,9 +98,15 @@ export const maxLength = (len: number, message?: string): SyncValidator<string> 
  * ```
  */
 export const pattern = (regex: RegExp, message = 'Invalid format'): SyncValidator<string> => {
+  const safeRegex =
+    regex.global || regex.sticky
+      ? new RegExp(regex.source, regex.flags.replace(/[gy]/g, ''))
+      : regex;
+
   return (value: string) => {
     const str = typeof value === 'string' ? value : String(value ?? '');
-    return regex.test(str) ? true : message;
+    safeRegex.lastIndex = 0;
+    return safeRegex.test(str) ? true : message;
   };
 };
 

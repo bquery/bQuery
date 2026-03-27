@@ -2324,6 +2324,40 @@ describe('Router', () => {
       expect(keyAfterReplace).toBe(keyAfterPush);
     });
 
+    it('should preserve existing history state when adding scroll restoration state', async () => {
+      const originalStateDescriptor = Object.getOwnPropertyDescriptor(history, 'state');
+      mockHistory.getStack()[0]!.state = { preserved: 'value' };
+
+      Object.defineProperty(history, 'state', {
+        configurable: true,
+        get: () => mockHistory.getStack()[mockHistory.getCurrentIndex()]?.state,
+      });
+
+      try {
+        router = createRouter({
+          routes: [
+            { path: '/', component: () => null },
+            { path: '/page', component: () => null },
+          ],
+          scrollRestoration: true,
+        });
+
+        await router.push('/page');
+        const stack = mockHistory.getStack();
+        const lastEntry = stack[stack.length - 1];
+        expect(lastEntry.state).toMatchObject({
+          preserved: 'value',
+          __bqScrollKey: expect.any(String),
+        });
+      } finally {
+        if (originalStateDescriptor) {
+          Object.defineProperty(history, 'state', originalStateDescriptor);
+        } else {
+          delete (history as History & { state?: unknown }).state;
+        }
+      }
+    });
+
     it('should prune old scroll position entries after many navigations', async () => {
       const deleteSpy = spyOn(Map.prototype, 'delete');
       const routes: RouteDefinition[] = [{ path: '/', component: () => null }];

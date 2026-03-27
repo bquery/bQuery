@@ -178,6 +178,18 @@ export const deserializeStoreState = (
   globalKey = '__BQUERY_INITIAL_STATE__',
   scriptId = '__BQUERY_STORE_STATE__'
 ): DeserializedStoreState => {
+  if (isPrototypePollutionKey(globalKey)) {
+    throw new Error(
+      `deserializeStoreState: invalid globalKey "${globalKey}" - prototype-pollution keys are not allowed.`
+    );
+  }
+
+  if (isPrototypePollutionKey(scriptId)) {
+    throw new Error(
+      `deserializeStoreState: invalid scriptId "${scriptId}" - prototype-pollution keys are not allowed.`
+    );
+  }
+
   if (typeof window === 'undefined') {
     return {};
   }

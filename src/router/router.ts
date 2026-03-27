@@ -241,7 +241,11 @@ export const createRouter = (options: RouterOptions): Router => {
     const scrollKey =
       method === 'replaceState' && existingScrollKey ? existingScrollKey : createScrollKey();
     const fullPath = useHash ? `#${path}` : `${base}${path}`;
-    const state = scrollRestoration ? { __bqScrollKey: scrollKey } : {};
+    const baseState =
+      scrollRestoration && history.state && typeof history.state === 'object'
+        ? (history.state as Record<string, unknown>)
+        : {};
+    const state = scrollRestoration ? { ...baseState, __bqScrollKey: scrollKey } : {};
     history[method](state, '', fullPath);
     currentScrollKey = scrollKey;
 

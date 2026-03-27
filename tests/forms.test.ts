@@ -122,6 +122,14 @@ describe('forms/validators', () => {
       const v = pattern(/^[A-Z]+$/, 'Uppercase only');
       expect(v('abc')).toBe('Uppercase only');
     });
+
+    it('does not alternate results for global regex patterns', () => {
+      const v = pattern(/\d+/g, 'Numbers only');
+      expect(v('123')).toBe(true);
+      expect(v('123')).toBe(true);
+      expect(v('abc')).toBe('Numbers only');
+      expect(v('123')).toBe(true);
+    });
   });
 
   describe('email', () => {

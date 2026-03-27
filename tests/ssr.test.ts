@@ -605,6 +605,43 @@ describe('deserializeStoreState', () => {
     expect(Object.prototype.hasOwnProperty.call(state, '__proto__')).toBe(false);
     expect(Object.prototype.hasOwnProperty.call(state, 'constructor')).toBe(false);
   });
+
+  it('rejects prototype-pollution globalKey values before touching window state', () => {
+    const originalWindowPrototype = Object.getPrototypeOf(window);
+
+    expect(() => deserializeStoreState('__proto__')).toThrow(
+      'deserializeStoreState: invalid globalKey "__proto__" - prototype-pollution keys are not allowed.'
+    );
+
+    expect(Object.getPrototypeOf(window)).toBe(originalWindowPrototype);
+    expect(
+      (window as unknown as Record<string, unknown>).__BQUERY_INITIAL_STATE__
+    ).toBeUndefined();
+  });
+
+  it('rejects prototype-pollution scriptId values before cleanup side effects', () => {
+    const stateMap = {
+      safeStore: { count: 1 },
+    };
+    (window as unknown as Record<string, unknown>).__BQUERY_INITIAL_STATE__ = stateMap;
+
+    const script = document.createElement('script');
+    script.id = 'safe-ssr-state';
+    document.body.appendChild(script);
+
+    const originalWindowPrototype = Object.getPrototypeOf(window);
+
+    expect(() => deserializeStoreState('__BQUERY_INITIAL_STATE__', '__proto__')).toThrow(
+      'deserializeStoreState: invalid scriptId "__proto__" - prototype-pollution keys are not allowed.'
+    );
+
+    expect(Object.getPrototypeOf(window)).toBe(originalWindowPrototype);
+    expect((window as unknown as Record<string, unknown>).__BQUERY_INITIAL_STATE__).toBe(stateMap);
+    expect(document.getElementById('safe-ssr-state')).toBe(script);
+
+    script.remove();
+    delete (window as unknown as Record<string, unknown>).__BQUERY_INITIAL_STATE__;
+  });
 });
 
 // ============================================================================
