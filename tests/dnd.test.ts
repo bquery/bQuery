@@ -289,6 +289,29 @@ describe('dnd/draggable', () => {
     handle.destroy();
   });
 
+  it('should still clean up and call onDragEnd if releasing pointer capture throws', () => {
+    let endCalled = false;
+    const handle = draggable(box, {
+      draggingClass: 'drag-active',
+      onDragEnd: () => {
+        endCalled = true;
+      },
+    });
+
+    firePointerEvent(box, 'pointerdown', { clientX: 50, clientY: 50 });
+    box.releasePointerCapture = () => {
+      throw new DOMException('capture already released');
+    };
+
+    expect(() => {
+      firePointerEvent(box, 'pointerup', { clientX: 60, clientY: 60 });
+    }).not.toThrow();
+    expect(endCalled).toBe(true);
+    expect(box.classList.contains('drag-active')).toBe(false);
+
+    handle.destroy();
+  });
+
   it('should provide correct delta values', () => {
     const deltas: Array<{ x: number; y: number }> = [];
     const handle = draggable(box, {

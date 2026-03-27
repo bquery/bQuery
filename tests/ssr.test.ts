@@ -449,6 +449,37 @@ describe('serializeStoreState', () => {
     const parsed = JSON.parse(result.stateJson);
     expect(Object.keys(parsed).length).toBe(0);
   });
+
+  it('skips dangerous store IDs during serialization', () => {
+    createStore({ id: 'serialize-safe', state: () => ({ value: 1 }) });
+    createStore({ id: '__proto__', state: () => ({ ignored: true }) });
+
+    try {
+      const result = serializeStoreState({ storeIds: ['serialize-safe', '__proto__'] });
+      const parsed = JSON.parse(result.stateJson) as Record<string, Record<string, unknown>>;
+
+      expect(parsed['serialize-safe']).toEqual({ value: 1 });
+      expect(Object.prototype.hasOwnProperty.call(parsed, '__proto__')).toBe(false);
+    } finally {
+      destroyStore('__proto__');
+    }
+  });
+
+  it('sanitizes dangerous top-level store state keys during serialization', () => {
+    const pollutedState = Object.assign(Object.create(null), {
+      safe: 'ok',
+      constructor: 'bad',
+      prototype: 'bad',
+      ['__proto__']: 'bad',
+    }) as Record<string, unknown>;
+
+    createStore({ id: 'serialize-pollution', state: () => pollutedState });
+
+    const result = serializeStoreState({ storeIds: ['serialize-pollution'] });
+    const parsed = JSON.parse(result.stateJson) as Record<string, Record<string, unknown>>;
+
+    expect(parsed['serialize-pollution']).toEqual({ safe: 'ok' });
+  });
 });
 
 describe('deserializeStoreState', () => {

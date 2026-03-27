@@ -258,14 +258,23 @@ export const draggable = (
 
     isDragging = false;
     el.classList.remove(draggingClass);
-    el.releasePointerCapture(e.pointerId);
+    try {
+      if (
+        typeof el.releasePointerCapture === 'function' &&
+        (typeof el.hasPointerCapture !== 'function' || el.hasPointerCapture(e.pointerId))
+      ) {
+        el.releasePointerCapture(e.pointerId);
+      }
+    } catch {
+      // Pointer capture may already be released in some interrupted drag flows.
+    } finally {
+      removeGhost();
 
-    removeGhost();
+      // Remove from active drags
+      activeDrags.delete(el);
 
-    // Remove from active drags
-    activeDrags.delete(el);
-
-    onDragEnd?.(createEventData(e));
+      onDragEnd?.(createEventData(e));
+    }
   };
 
   // Attach listeners

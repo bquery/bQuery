@@ -722,8 +722,53 @@ describe('a11y/prefersContrast', () => {
       const sig = prefersContrast();
       sig.destroy();
       expect(removedQueries).toEqual(
-        new Set(['(prefers-contrast: more)', '(prefers-contrast: less)'])
+        new Set([
+          '(prefers-contrast: more)',
+          '(prefers-contrast: less)',
+          '(prefers-contrast: custom)',
+        ])
       );
+    } finally {
+      window.matchMedia = originalMatchMedia;
+    }
+  });
+
+  it('should react to custom contrast media-query changes', () => {
+    const registeredHandlers = new Map<string, (event: MediaQueryListEvent) => void>();
+    const states = new Map<string, boolean>([
+      ['(prefers-contrast: more)', false],
+      ['(prefers-contrast: less)', false],
+      ['(prefers-contrast: custom)', false],
+    ]);
+    const originalMatchMedia = window.matchMedia;
+
+    window.matchMedia = ((query: string) =>
+      ({
+        get matches() {
+          return states.get(query) ?? false;
+        },
+        media: query,
+        onchange: null,
+        addEventListener: (_type: string, handler: (event: MediaQueryListEvent) => void) => {
+          registeredHandlers.set(query, handler);
+        },
+        removeEventListener: () => {},
+        addListener: () => {},
+        removeListener: () => {},
+        dispatchEvent: () => true,
+      }) as MediaQueryList) as typeof window.matchMedia;
+
+    try {
+      const sig = prefersContrast();
+      expect(sig.value).toBe('no-preference');
+
+      states.set('(prefers-contrast: custom)', true);
+      registeredHandlers.get('(prefers-contrast: custom)')?.(
+        new Event('change') as MediaQueryListEvent
+      );
+
+      expect(sig.value).toBe('custom');
+      sig.destroy();
     } finally {
       window.matchMedia = originalMatchMedia;
     }

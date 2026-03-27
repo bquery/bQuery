@@ -41,8 +41,8 @@ export type UseRouteReturn = {
  *
  * @example
  * ```ts
- * import { useRoute } from 'bquery/router';
- * import { effect } from 'bquery/reactive';
+ * import { useRoute } from '@bquery/bquery/router';
+ * import { effect } from '@bquery/bquery/reactive';
  *
  * const { path, params, query, hash } = useRoute();
  *

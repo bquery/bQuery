@@ -188,16 +188,20 @@ export const prefersContrast = (): MediaPreferenceSignal<ContrastPreference> => 
 
     update();
 
-    // Listen for changes on the 'more' variant as a proxy
+    // Listen for changes on the contrast preference variants
     try {
       const mql = window.matchMedia('(prefers-contrast: more)');
       mql.addEventListener('change', update);
 
       const mqlLess = window.matchMedia('(prefers-contrast: less)');
       mqlLess.addEventListener('change', update);
+
+      const mqlCustom = window.matchMedia('(prefers-contrast: custom)');
+      mqlCustom.addEventListener('change', update);
       destroy = (): void => {
         mql.removeEventListener('change', update);
         mqlLess.removeEventListener('change', update);
+        mqlCustom.removeEventListener('change', update);
         s.dispose();
       };
     } catch {

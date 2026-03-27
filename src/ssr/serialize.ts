@@ -99,12 +99,16 @@ export const serializeStoreState = (options: SerializeOptions = {}): SerializeRe
   } = options;
 
   const ids = storeIds ?? listStores();
-  const stateMap: Record<string, Record<string, unknown>> = {};
+  const stateMap = Object.create(null) as Record<string, Record<string, unknown>>;
 
   for (const id of ids) {
+    if (isPrototypePollutionKey(id)) {
+      continue;
+    }
+
     const store = getStore<{ $state: Record<string, unknown> }>(id);
     if (store) {
-      stateMap[id] = store.$state;
+      stateMap[id] = sanitizeHydrationState(store.$state);
     }
   }
 
