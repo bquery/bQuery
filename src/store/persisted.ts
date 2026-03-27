@@ -105,7 +105,7 @@ export const createPersistedStore = <
   const serializer = opts.serializer ?? defaultSerializer;
   const version = opts.version;
   const migrate = opts.migrate;
-  let shouldPersistVersion = storage !== undefined && version !== undefined;
+  let canPersistVersion = storage !== undefined && version !== undefined;
 
   const originalStateFactory = definition.state;
 
@@ -140,7 +140,7 @@ export const createPersistedStore = <
               return defaultState;
             }
             persisted = migrated;
-            shouldPersistVersion = false;
+            canPersistVersion = false;
             // Save the migrated state and the new version immediately
             try {
               storage.setItem(key, serializer.serialize(persisted));
@@ -166,7 +166,7 @@ export const createPersistedStore = <
   const store = createStore(wrappedDefinition);
 
   // Persist the version number on first creation
-  if (storage && version !== undefined && shouldPersistVersion) {
+  if (storage && version !== undefined && canPersistVersion) {
     try {
       storage.setItem(key + VERSION_SUFFIX, String(version));
     } catch {
