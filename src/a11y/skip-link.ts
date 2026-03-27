@@ -144,6 +144,10 @@ export const skipLink = (targetSelector: string, options: SkipLinkOptions = {}):
       return;
     }
 
+    if (target.tabIndex !== -1) {
+      return;
+    }
+
     trackedFocusTarget = {
       target,
       hadTabIndex: false,

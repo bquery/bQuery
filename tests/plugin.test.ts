@@ -154,6 +154,34 @@ describe('Plugin System', () => {
       expect(getCustomDirective('recoverable')).toBe(handler);
     });
 
+    it('should not define staged custom elements when install throws', () => {
+      const tagName = `bq-rollback-widget-${Date.now()}`;
+      class RollbackWidget extends HTMLElement {}
+
+      expect(() => {
+        use({
+          name: 'component-rollback-test',
+          install(ctx) {
+            ctx.component(tagName, RollbackWidget);
+            throw new Error('component install failed');
+          },
+        });
+      }).toThrow('component install failed');
+
+      expect(customElements.get(tagName)).toBeUndefined();
+      expect(isInstalled('component-rollback-test')).toBe(false);
+
+      use({
+        name: 'component-rollback-test',
+        install(ctx) {
+          ctx.component(tagName, RollbackWidget);
+        },
+      });
+
+      expect(customElements.get(tagName)).toBe(RollbackWidget);
+      expect(isInstalled('component-rollback-test')).toBe(true);
+    });
+
     it('should throw for null/undefined plugin', () => {
       expect(() => use(null as unknown as BQueryPlugin)).toThrow(
         'bQuery plugin: use() expects a plugin object'

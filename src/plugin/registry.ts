@@ -25,6 +25,12 @@ const installedPlugins = new Set<string>();
 /** Custom directives contributed by plugins. */
 const customDirectives = new Map<string, CustomDirectiveHandler>();
 
+type PendingComponentRegistration = {
+  tagName: string;
+  constructor: CustomElementConstructor;
+  options?: ElementDefinitionOptions;
+};
+
 registerCustomDirectiveResolver((name) => customDirectives.get(name));
 
 // ---------------------------------------------------------------------------
@@ -35,7 +41,9 @@ registerCustomDirectiveResolver((name) => customDirectives.get(name));
  * Build the `PluginInstallContext` handed to each plugin's `install()`.
  * @internal
  */
-const createInstallContext = (): PluginInstallContext => ({
+const createInstallContext = (
+  pendingComponents: PendingComponentRegistration[]
+): PluginInstallContext => ({
   directive(name: string, handler: CustomDirectiveHandler): void {
     if (typeof name !== 'string' || name.length === 0) {
       throw new Error('bQuery plugin directive: name must be a non-empty string');
@@ -72,9 +80,12 @@ const createInstallContext = (): PluginInstallContext => ({
         'bQuery plugin component: customElements is not available in this environment'
       );
     }
-    // Idempotent — skip if already defined
-    if (!customElements.get(tagName)) {
-      customElements.define(tagName, constructor, options);
+    // Idempotent — skip if already defined or already staged during this install
+    if (
+      !customElements.get(tagName) &&
+      !pendingComponents.some((entry) => entry.tagName === tagName)
+    ) {
+      pendingComponents.push({ tagName, constructor, options });
     }
   },
 });
@@ -124,7 +135,8 @@ export const use = <TOptions = unknown>(
   // Deduplicate
   if (installedPlugins.has(plugin.name)) return;
 
-  const ctx = createInstallContext();
+  const pendingComponents: PendingComponentRegistration[] = [];
+  const ctx = createInstallContext(pendingComponents);
   const directivesSnapshot = new Map(customDirectives);
 
   try {
@@ -135,6 +147,12 @@ export const use = <TOptions = unknown>(
       customDirectives.set(name, handler);
     }
     throw error;
+  }
+
+  for (const entry of pendingComponents) {
+    if (!customElements.get(entry.tagName)) {
+      customElements.define(entry.tagName, entry.constructor, entry.options);
+    }
   }
 
   installedPlugins.add(plugin.name);

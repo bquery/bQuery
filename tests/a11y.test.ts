@@ -607,6 +607,21 @@ describe('a11y/skipLink', () => {
     target.remove();
   });
 
+  it('should not add tabindex to naturally focusable targets', () => {
+    const target = document.createElement('button');
+    target.id = 'main-button';
+    document.body.appendChild(target);
+
+    const handle = skipLink('#main-button');
+    getSkipLinkElement(handle).click();
+
+    expect(document.activeElement).toBe(target);
+    expect(target.hasAttribute('tabindex')).toBe(false);
+
+    handle.destroy();
+    target.remove();
+  });
+
   it('should prepend # when targetSelector lacks it', () => {
     const target = document.createElement('div');
     target.id = 'main-section';
@@ -711,6 +726,10 @@ describe('a11y/skipLink', () => {
 
       const handle = skipLink('#main');
       expect(handle.element).toBeNull();
+      expect(handle).toEqual({
+        destroy: expect.any(Function),
+        element: null,
+      });
       expect(() => handle.destroy()).not.toThrow();
     } finally {
       if (originalDocumentDescriptor) {
