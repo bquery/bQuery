@@ -1948,6 +1948,12 @@ describe('Router', () => {
       ).toThrow('bQuery router: Route constraints cannot use backreferences.');
     });
 
+    it('should wrap invalid constraint regex syntax in a router-specific error', () => {
+      expect(() => getRouteConstraintRegex('[a-')).toThrow(
+        'bQuery router: Invalid route constraint regex: [a-'
+      );
+    });
+
     it('should throw for invalid param constraint syntax when matching routes', () => {
       expect(() =>
         matchRoute('/user/42', [{ path: '/user/:id(\\d+', component: () => null }])
@@ -2795,6 +2801,48 @@ describe('Router', () => {
 
       expect(el.classList.contains('selected')).toBe(true);
       expect(el.classList.contains('active')).toBe(false);
+
+      el.remove();
+    });
+
+    it('should apply each class token from a whitespace-separated active-class', async () => {
+      router = createRouter({
+        routes: [{ path: '/', component: () => null }],
+      });
+
+      const el = document.createElement('bq-link') as BqLinkElement;
+      el.to = '/';
+      el.activeClass = 'selected current';
+      document.body.appendChild(el);
+
+      await new Promise((r) => setTimeout(r, 10));
+
+      expect(el.classList.contains('selected')).toBe(true);
+      expect(el.classList.contains('current')).toBe(true);
+
+      el.remove();
+    });
+
+    it('should remove previously tracked active classes when the active-class attribute changes', async () => {
+      router = createRouter({
+        routes: [{ path: '/', component: () => null }],
+      });
+
+      const el = document.createElement('bq-link') as BqLinkElement;
+      el.to = '/';
+      el.activeClass = 'selected current';
+      document.body.appendChild(el);
+
+      await new Promise((r) => setTimeout(r, 10));
+      expect(el.classList.contains('selected')).toBe(true);
+      expect(el.classList.contains('current')).toBe(true);
+
+      el.activeClass = 'active-now';
+
+      await new Promise((r) => setTimeout(r, 10));
+      expect(el.classList.contains('selected')).toBe(false);
+      expect(el.classList.contains('current')).toBe(false);
+      expect(el.classList.contains('active-now')).toBe(true);
 
       el.remove();
     });

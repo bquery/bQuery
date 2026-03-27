@@ -25,9 +25,8 @@ const setBoundedCacheEntry = <T>(cache: Map<string, T>, key: string, value: T): 
 };
 
 /**
- * Detects potentially super-linear (ReDoS) patterns such as nested quantifiers.
- * Rejects constraints like `(a+)+`, `(a*)*`, or `(a|a)*` that can cause
- * catastrophic backtracking.
+ * Detects potentially super-linear (ReDoS) patterns caused by quantified
+ * groups that already contain inner quantifiers, such as `(a+)+` or `(a*)*`.
  * @internal
  */
 const hasNestedQuantifier = (pattern: string): boolean => {
@@ -165,9 +164,16 @@ export const getRouteConstraintRegex = (constraint: string): RegExp => {
     );
   }
 
-  const compiled = new RegExp(`^(?:${normalizedConstraint})$`);
-  setBoundedCacheEntry(compiledConstraintRegexCache, normalizedConstraint, compiled);
-  return compiled;
+  try {
+    const compiled = new RegExp(`^(?:${normalizedConstraint})$`);
+    setBoundedCacheEntry(compiledConstraintRegexCache, normalizedConstraint, compiled);
+    return compiled;
+  } catch (error) {
+    if (error instanceof SyntaxError) {
+      throw new Error(`bQuery router: Invalid route constraint regex: ${constraint}`);
+    }
+    throw error;
+  }
 };
 
 export const routeConstraintMatches = (constraint: string, value: string): boolean => {

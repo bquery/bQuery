@@ -7,8 +7,8 @@
  * @module bquery/dnd
  */
 
-import type { DropEventData, DroppableHandle, DroppableOptions } from './types';
 import { getActiveDrag } from './draggable';
+import type { DropEventData, DroppableHandle, DroppableOptions } from './types';
 
 type DroppableListener = {
   handlePointerMove: (event: PointerEvent) => void;
@@ -175,18 +175,13 @@ export const droppable = (el: HTMLElement, options: DroppableOptions = {}): Drop
       return;
     }
 
-    if (isInside && !isOver) {
+    if (!isOver) {
       isOver = true;
       currentDragged = dragged;
       el.classList.add(overClass);
       onDragEnter?.(createEventData(dragged, e));
-    } else if (isInside && isOver) {
+    } else {
       onDragOver?.(createEventData(dragged, e));
-    } else if (!isInside && isOver) {
-      isOver = false;
-      el.classList.remove(overClass);
-      onDragLeave?.(createEventData(dragged, e));
-      currentDragged = null;
     }
   };
 

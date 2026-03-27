@@ -25,6 +25,14 @@ import { getActiveRouter, routeSignal } from './state';
  */
 const DEFAULT_ACTIVE_CLASS = 'active';
 
+/** @internal */
+const tokenizeClassNames = (value: string): string[] => {
+  return value
+    .split(/\s+/)
+    .map((token) => token.trim())
+    .filter((token) => token.length > 0);
+};
+
 /** @internal SSR-safe base class for environments without HTMLElement. */
 const BQ_LINK_BASE =
   typeof HTMLElement !== 'undefined' ? HTMLElement : (class {} as unknown as typeof HTMLElement);
@@ -57,6 +65,9 @@ const BQ_LINK_BASE =
 export class BqLinkElement extends BQ_LINK_BASE {
   /** @internal */
   private _cleanup: CleanupFn | null = null;
+
+  /** @internal */
+  private _trackedActiveClasses: string[] = [];
 
   static get observedAttributes(): string[] {
     return ['to', 'replace', 'exact', 'active-class'];
@@ -136,6 +147,8 @@ export class BqLinkElement extends BQ_LINK_BASE {
       this._cleanup();
       this._cleanup = null;
     }
+
+    this._clearTrackedActiveClasses();
   }
 
   /** @internal */
@@ -154,6 +167,8 @@ export class BqLinkElement extends BQ_LINK_BASE {
    * @internal
    */
   private _setupActiveTracking(): void {
+    this._clearTrackedActiveClasses();
+
     // Clean up previous effect
     if (this._cleanup) {
       this._cleanup();
@@ -162,7 +177,8 @@ export class BqLinkElement extends BQ_LINK_BASE {
 
     const targetPath = this.to;
     const exactMatch = this.exact;
-    const cssClass = this.activeClass;
+    const cssClasses = tokenizeClassNames(this.activeClass);
+    this._trackedActiveClasses = cssClasses;
 
     this._cleanup = effect(() => {
       const current = routeSignal.value.path;
@@ -173,7 +189,9 @@ export class BqLinkElement extends BQ_LINK_BASE {
           : current === targetPath ||
             current.startsWith(targetPath.endsWith('/') ? targetPath : targetPath + '/');
 
-      this.classList.toggle(cssClass, isMatch);
+      for (const cssClass of cssClasses) {
+        this.classList.toggle(cssClass, isMatch);
+      }
 
       // Update aria-current for accessibility
       if (isMatch) {
@@ -182,6 +200,14 @@ export class BqLinkElement extends BQ_LINK_BASE {
         this.removeAttribute('aria-current');
       }
     });
+  }
+
+  /** @internal */
+  private _clearTrackedActiveClasses(): void {
+    for (const cssClass of this._trackedActiveClasses) {
+      this.classList.remove(cssClass);
+    }
+    this._trackedActiveClasses = [];
   }
 
   /**
