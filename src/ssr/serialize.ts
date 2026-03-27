@@ -125,6 +125,27 @@ export const serializeStoreState = (options: SerializeOptions = {}): SerializeRe
   }
 
   const stateJson = serialize(stateMap);
+  if (typeof stateJson !== 'string') {
+    throw new Error(
+      'serializeStoreState: custom serialize function must return a JSON object string.'
+    );
+  }
+
+  let parsedStateJson: unknown;
+  try {
+    parsedStateJson = JSON.parse(stateJson);
+  } catch {
+    throw new Error(
+      'serializeStoreState: custom serialize function returned invalid JSON.'
+    );
+  }
+
+  if (!isStoreStateObject(parsedStateJson)) {
+    throw new Error(
+      'serializeStoreState: custom serialize function must return a JSON object string.'
+    );
+  }
+
   const escapedJson = escapeForScript(stateJson);
   const escapedGlobalKey = escapeForScript(JSON.stringify(globalKey));
   const escapedScriptId = escapeForHtmlAttribute(scriptId);
@@ -190,7 +211,17 @@ export const deserializeStoreState = (
     }
   }
 
-  return state as DeserializedStoreState;
+  const sanitizedStateMap = Object.create(null) as DeserializedStoreState;
+
+  for (const [storeId, storeState] of Object.entries(state)) {
+    if (isPrototypePollutionKey(storeId) || !isStoreStateObject(storeState)) {
+      continue;
+    }
+
+    sanitizedStateMap[storeId] = sanitizeHydrationState(storeState);
+  }
+
+  return sanitizedStateMap;
 };
 
 /**

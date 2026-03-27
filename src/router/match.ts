@@ -23,18 +23,19 @@ const escapeRegexLiteral = (value: string): string => {
 
 const normalizeConstraintCaptures = (constraint: string): string => {
   let normalized = '';
+  let inCharacterClass = false;
 
   for (let i = 0; i < constraint.length; i++) {
     const char = constraint[i];
 
     if (char === '\\' && i + 1 < constraint.length) {
-      if (constraint[i + 1] >= '1' && constraint[i + 1] <= '9') {
+      if (!inCharacterClass && constraint[i + 1] >= '1' && constraint[i + 1] <= '9') {
         throw new Error(
           'bQuery router: Route constraints cannot use backreferences.'
         );
       }
 
-      if (constraint[i + 1] === 'k' && constraint[i + 2] === '<') {
+      if (!inCharacterClass && constraint[i + 1] === 'k' && constraint[i + 2] === '<') {
         throw new Error(
           'bQuery router: Route constraints cannot use backreferences.'
         );
@@ -45,7 +46,19 @@ const normalizeConstraintCaptures = (constraint: string): string => {
       continue;
     }
 
-    if (char === '(') {
+    if (char === '[' && !inCharacterClass) {
+      inCharacterClass = true;
+      normalized += char;
+      continue;
+    }
+
+    if (char === ']' && inCharacterClass) {
+      inCharacterClass = false;
+      normalized += char;
+      continue;
+    }
+
+    if (!inCharacterClass && char === '(') {
       if (i + 1 < constraint.length && constraint[i + 1] === '?') {
         if (constraint[i + 2] === '<') {
           if (constraint[i + 3] === '=' || constraint[i + 3] === '!') {

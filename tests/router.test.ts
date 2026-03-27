@@ -1897,6 +1897,32 @@ describe('Router', () => {
       ).toThrow('bQuery router: Route constraints cannot use backreferences.');
     });
 
+    it('should support literal closing parentheses inside constraint character classes', async () => {
+      router = createRouter({
+        routes: [
+          { path: '/item/:slug([)])/edit', component: () => null },
+          { path: '*', component: () => null },
+        ],
+      });
+
+      await router.push('/item/)/edit');
+      expect(currentRoute.value.params).toEqual({ slug: ')' });
+      expect(currentRoute.value.matched?.path).toBe('/item/:slug([)])/edit');
+    });
+
+    it('should support parentheses inside character classes without rewriting them', async () => {
+      router = createRouter({
+        routes: [
+          { path: '/item/:slug([()]+)', component: () => null },
+          { path: '*', component: () => null },
+        ],
+      });
+
+      await router.push('/item/(()');
+      expect(currentRoute.value.params).toEqual({ slug: '(()' });
+      expect(currentRoute.value.matched?.path).toBe('/item/:slug([()]+)');
+    });
+
     it('should mix constrained and unconstrained params', async () => {
       router = createRouter({
         routes: [

@@ -20,6 +20,7 @@ export const readConstraint = (
   let depth = 1;
   let constraint = '';
   let i = startIndex + 1;
+  let inCharacterClass = false;
 
   while (i < path.length) {
     const char = path[i];
@@ -30,9 +31,13 @@ export const readConstraint = (
       continue;
     }
 
-    if (char === '(') {
+    if (char === '[' && !inCharacterClass) {
+      inCharacterClass = true;
+    } else if (char === ']' && inCharacterClass) {
+      inCharacterClass = false;
+    } else if (!inCharacterClass && char === '(') {
       depth++;
-    } else if (char === ')') {
+    } else if (!inCharacterClass && char === ')') {
       depth--;
       if (depth === 0) {
         return { constraint, endIndex: i + 1 };

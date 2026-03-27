@@ -431,6 +431,22 @@ describe('serializeStoreState', () => {
     expect(result.stateJson).toContain('  '); // indented JSON
   });
 
+  it('throws when custom serializer returns invalid JSON', () => {
+    expect(() =>
+      serializeStoreState({
+        serialize: (() => '{invalid json}') as (data: unknown) => string,
+      })
+    ).toThrow('serializeStoreState: custom serialize function returned invalid JSON.');
+  });
+
+  it('throws when custom serializer returns non-object JSON', () => {
+    expect(() =>
+      serializeStoreState({
+        serialize: (() => '[]') as (data: unknown) => string,
+      })
+    ).toThrow('serializeStoreState: custom serialize function must return a JSON object string.');
+  });
+
   it('escapes dangerous HTML characters in script tag', () => {
     createStore({
       id: 'serialize-xss',
@@ -559,6 +575,24 @@ describe('deserializeStoreState', () => {
 
     const state = deserializeStoreState();
     expect(state).toEqual({});
+  });
+
+  it('sanitizes dangerous store IDs and state keys during deserialization', () => {
+    const stateMap = Object.create(null) as Record<string, unknown>;
+    stateMap.safeStore = Object.assign(Object.create(null), {
+      safe: 'ok',
+      constructor: 'bad',
+    }) as Record<string, unknown>;
+    stateMap['__proto__'] = { polluted: true };
+    stateMap['constructor'] = { polluted: true };
+
+    (window as unknown as Record<string, unknown>).__BQUERY_INITIAL_STATE__ = stateMap;
+
+    const state = deserializeStoreState();
+
+    expect(state).toEqual({ safeStore: { safe: 'ok' } });
+    expect(Object.prototype.hasOwnProperty.call(state, '__proto__')).toBe(false);
+    expect(Object.prototype.hasOwnProperty.call(state, 'constructor')).toBe(false);
   });
 });
 

@@ -17,8 +17,8 @@
  *
  * @example
  * ```ts
- * import { createRouter, navigate, currentRoute, useRoute } from 'bquery/router';
- * import { effect } from 'bquery/reactive';
+ * import { createRouter, navigate, currentRoute, useRoute } from '@bquery/bquery/router';
+ * import { effect } from '@bquery/bquery/reactive';
  *
  * const router = createRouter({
  *   routes: [
