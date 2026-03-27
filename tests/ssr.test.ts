@@ -480,6 +480,18 @@ describe('serializeStoreState', () => {
 
     expect(parsed['serialize-pollution']).toEqual({ safe: 'ok' });
   });
+
+  it('throws for dangerous global keys during serialization', () => {
+    expect(() => serializeStoreState({ globalKey: '__proto__' })).toThrow(
+      'serializeStoreState: invalid globalKey "__proto__" - prototype-pollution keys are not allowed.'
+    );
+  });
+
+  it('throws for dangerous script IDs during serialization', () => {
+    expect(() => serializeStoreState({ scriptId: 'constructor' })).toThrow(
+      'serializeStoreState: invalid scriptId "constructor" - prototype-pollution keys are not allowed.'
+    );
+  });
 });
 
 describe('deserializeStoreState', () => {

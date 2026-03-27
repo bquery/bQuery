@@ -11,6 +11,7 @@ import type { AnnouncePriority } from './types';
 
 /** Cache for live region containers, keyed by priority. */
 const liveRegions = new Map<AnnouncePriority, HTMLElement>();
+const pendingAnnouncements = new Map<AnnouncePriority, ReturnType<typeof setTimeout>>();
 
 /**
  * Delay in milliseconds before updating the live region text.
@@ -85,15 +86,24 @@ export const announceToScreenReader = (
   if (!message) return;
 
   const region = getOrCreateLiveRegion(priority);
+  const pendingTimeout = pendingAnnouncements.get(priority);
+  if (pendingTimeout !== undefined) {
+    clearTimeout(pendingTimeout);
+  }
 
   // Clear first, then set after a microtask to ensure screen readers
   // detect the change even if the same message is announced twice.
   region.textContent = '';
 
   // Use setTimeout to ensure the DOM update triggers a live region change event
-  setTimeout(() => {
-    region.textContent = message;
+  const timeout = setTimeout(() => {
+    pendingAnnouncements.delete(priority);
+    if (region.isConnected) {
+      region.textContent = message;
+    }
   }, ANNOUNCEMENT_DELAY_MS);
+
+  pendingAnnouncements.set(priority, timeout);
 };
 
 /**
@@ -108,6 +118,11 @@ export const announceToScreenReader = (
  * ```
  */
 export const clearAnnouncements = (): void => {
+  for (const timeout of pendingAnnouncements.values()) {
+    clearTimeout(timeout);
+  }
+  pendingAnnouncements.clear();
+
   for (const [, el] of liveRegions) {
     el.remove();
   }

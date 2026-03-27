@@ -98,6 +98,18 @@ export const serializeStoreState = (options: SerializeOptions = {}): SerializeRe
     serialize = JSON.stringify,
   } = options;
 
+  if (isPrototypePollutionKey(globalKey)) {
+    throw new Error(
+      `serializeStoreState: invalid globalKey "${globalKey}" - prototype-pollution keys are not allowed.`
+    );
+  }
+
+  if (isPrototypePollutionKey(scriptId)) {
+    throw new Error(
+      `serializeStoreState: invalid scriptId "${scriptId}" - prototype-pollution keys are not allowed.`
+    );
+  }
+
   const ids = storeIds ?? listStores();
   const stateMap = Object.create(null) as Record<string, Record<string, unknown>>;
 

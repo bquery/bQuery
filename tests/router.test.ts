@@ -2248,14 +2248,15 @@ describe('Router', () => {
       expect(history.scrollRestoration).toBe('manual');
     });
 
-    it('should restore history.scrollRestoration to auto on destroy', () => {
+    it('should restore history.scrollRestoration to the previous value on destroy', () => {
+      history.scrollRestoration = 'manual';
       router = createRouter({
         routes: [{ path: '/', component: () => null }],
         scrollRestoration: true,
       });
 
       router.destroy();
-      expect(history.scrollRestoration).toBe('auto');
+      expect(history.scrollRestoration).toBe('manual');
     });
 
     it('should store scroll key in history state', async () => {

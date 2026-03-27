@@ -286,6 +286,16 @@ describe('a11y/clearAnnouncements', () => {
     const regions = document.querySelectorAll('[aria-live]');
     expect(regions.length).toBe(0);
   });
+
+  it('should cancel pending announcements before they update detached regions', async () => {
+    announceToScreenReader('Pending');
+    clearAnnouncements();
+
+    await new Promise((resolve) => setTimeout(resolve, 100));
+
+    const regions = document.querySelectorAll('[aria-live]');
+    expect(regions.length).toBe(0);
+  });
 });
 
 // ─── rovingTabIndex ──────────────────────────────────────────────────────────

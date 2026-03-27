@@ -63,10 +63,14 @@ export const createRouter = (options: RouterOptions): Router => {
   const scrollPositions = new Map<string, { x: number; y: number }>();
   let currentScrollKey = '0';
   let scrollKeyCounter = 0;
+  let previousScrollRestoration: History['scrollRestoration'] | null = null;
 
   // Enable manual scroll restoration if scrollRestoration is configured
   if (scrollRestoration && typeof history !== 'undefined' && 'scrollRestoration' in history) {
-    history.scrollRestoration = 'manual';
+    previousScrollRestoration = history.scrollRestoration;
+    if (history.scrollRestoration !== 'manual') {
+      history.scrollRestoration = 'manual';
+    }
 
     const state =
       history.state && typeof history.state === 'object'
@@ -365,9 +369,13 @@ export const createRouter = (options: RouterOptions): Router => {
       beforeGuards.length = 0;
       afterHooks.length = 0;
       scrollPositions.clear();
-      // Restore auto scroll restoration on destroy
-      if (scrollRestoration && typeof history !== 'undefined' && 'scrollRestoration' in history) {
-        history.scrollRestoration = 'auto';
+      // Restore the previous scroll restoration mode on destroy
+      if (
+        previousScrollRestoration !== null &&
+        typeof history !== 'undefined' &&
+        'scrollRestoration' in history
+      ) {
+        history.scrollRestoration = previousScrollRestoration;
       }
       setActiveRouter(null);
     },
