@@ -71,6 +71,15 @@ if (prefersReducedMotion()) {
 }
 ```
 
+Override the preference globally when you need deterministic behavior in demos, tests, or admin-controlled experiences:
+
+```ts
+import { setReducedMotion } from '@bquery/bquery/motion';
+
+setReducedMotion(true); // force instant motion-safe behavior
+setReducedMotion(null); // return to the user's system preference
+```
+
 ## FLIP animations
 
 ```ts
@@ -202,6 +211,48 @@ const cleanup = scrollAnimate(document.querySelectorAll('.reveal'), {
 
 // later
 cleanup();
+```
+
+## Morph animations
+
+`morphElement()` animates between two elements using FLIP-style geometry capture and falls back gracefully when the browser cannot animate the transition.
+
+```ts
+import { morphElement } from '@bquery/bquery/motion';
+
+await morphElement(sourceCard, targetCard, {
+  duration: 220,
+  easing: 'ease-out',
+  fade: true,
+});
+```
+
+## Parallax
+
+```ts
+import { parallax } from '@bquery/bquery/motion';
+
+const stopParallax = parallax(document.querySelector('.hero')!, {
+  speed: 0.25,
+  axis: 'y',
+  clamp: true,
+});
+
+stopParallax();
+```
+
+## Typewriter
+
+```ts
+import { typewriter } from '@bquery/bquery/motion';
+
+const typing = typewriter(document.querySelector('#headline')!, 'Hello from bQuery', {
+  speed: 28,
+  cursor: true,
+});
+
+await typing.play();
+typing.destroy();
 ```
 
 ## Springs

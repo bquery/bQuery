@@ -110,21 +110,44 @@ import {
 
 // Storybook helpers
 import { storyHtml, when } from '@bquery/bquery/storybook';
+
+// Forms, i18n, accessibility, drag & drop, media
+import { createForm, required } from '@bquery/bquery/forms';
+import { createI18n } from '@bquery/bquery/i18n';
+import { trapFocus, skipLink } from '@bquery/bquery/a11y';
+import { draggable, sortable } from '@bquery/bquery/dnd';
+import { mediaQuery, useViewport, clipboard } from '@bquery/bquery/media';
+
+// Plugins, devtools, testing, SSR
+import { use } from '@bquery/bquery/plugin';
+import { enableDevtools } from '@bquery/bquery/devtools';
+import { renderComponent, waitFor } from '@bquery/bquery/testing';
+import { renderToString, hydrateMount } from '@bquery/bquery/ssr';
 ```
 
 ## Modules at a glance
 
-| Module        | Description                                        | Size (gzip) |
-| ------------- | -------------------------------------------------- | ----------- |
-| **Core**      | Selectors, DOM manipulation, events, utilities     | ~8.1 KB     |
-| **Reactive**  | `signal`, `computed`, `effect`, async data/fetch   | ~0.4 KB     |
-| **Component** | Lightweight Web Components with props and defaults | ~1.6 KB     |
-| **Motion**    | View transitions, FLIP, timelines, scroll, springs | ~3.5 KB     |
-| **Security**  | HTML sanitizing, Trusted Types, CSP                | ~0.6 KB     |
-| **Platform**  | Storage, cache, cookies, page meta, announcers     | ~1.6 KB     |
-| **Router**    | SPA routing, navigation guards, history API        | ~2.0 KB     |
-| **Store**     | Signal-based state management, persistence         | ~0.4 KB     |
-| **View**      | Declarative DOM bindings, directives               | ~3.3 KB     |
+| Module        | Description                                                                    |
+| ------------- | ------------------------------------------------------------------------------ |
+| **Core**      | Selectors, DOM manipulation, traversal, events, and typed utilities            |
+| **Reactive**  | Signals, computed values, effects, batching, and async composables             |
+| **Component** | Typed Web Components with scoped reactivity and Shadow DOM control             |
+| **Storybook** | Safe string-template helpers for stories and boolean attributes                |
+| **Motion**    | Transitions, morphing, parallax, typewriter, FLIP, scroll, and springs         |
+| **Security**  | Sanitization, Trusted Types, CSP helpers, and trusted fragments                |
+| **Platform**  | Storage, cache, cookies, page metadata, announcers, and shared config          |
+| **Router**    | SPA routing, redirects, constrained params, guards, and declarative links      |
+| **Store**     | Signal-based state, persistence, migrations, and action lifecycle hooks        |
+| **View**      | Declarative bindings, directives, and plugin-powered custom directives         |
+| **Forms**     | Reactive form state, validation, and submit orchestration                      |
+| **i18n**      | Reactive locale state, translation, pluralization, and Intl formatting         |
+| **A11y**      | Focus management, skip navigation, live regions, media preferences, and audits |
+| **DnD**       | Draggable elements, drop zones, and sortable lists                             |
+| **Media**     | Viewport, network, battery, geolocation, sensors, and clipboard wrappers       |
+| **Plugin**    | Global plugin registration for custom directives and components                |
+| **Devtools**  | Runtime inspection helpers for signals, stores, components, and timelines      |
+| **Testing**   | Component mounts, mock signals/router, event helpers, and async assertions     |
+| **SSR**       | HTML rendering, hydration, and serialized store-state handoff                  |
 
 ## Quick Examples
 
@@ -246,6 +269,24 @@ export const Playground = {
 };
 ```
 
+### SSR and testing
+
+```ts
+import { renderComponent, fireEvent, waitFor } from '@bquery/bquery/testing';
+import { renderToString } from '@bquery/bquery/ssr';
+
+const mounted = renderComponent('ui-button', { props: { variant: 'primary' } });
+fireEvent(mounted.el, 'click');
+await waitFor(() => mounted.el.isConnected);
+
+const { html } = renderToString('<div><p bq-text="title"></p></div>', {
+  title: 'Hello from the server',
+});
+
+console.log(html);
+mounted.unmount();
+```
+
 ## Local Development
 
 If you're developing bQuery itself:
@@ -287,6 +328,16 @@ bun run build:docs
 - [Agents](./agents.md) - Build agent UIs with bQuery
 - [Reactive](./reactive.md) - Understand signals and reactivity
 - [Components](./components.md) - Build Web Components
+- [Storybook](./storybook.md) - Author safe Storybook stories
 - [Motion](./motion.md) - Add animations and transitions
 - [Security](./security.md) - Sanitization and CSP
 - [Platform](./platform.md) - Storage, cache, cookies, page meta, announcers, and config
+- [Forms](./forms.md) - Build reactive forms with validators
+- [i18n](./i18n.md) - Localize messages and formatting
+- [Accessibility](./a11y.md) - Manage focus, announcements, and audits
+- [Drag & Drop](./dnd.md) - Add draggable and sortable interactions
+- [Media](./media.md) - Read browser and device state reactively
+- [Plugin System](./plugin.md) - Register custom directives and components
+- [Devtools](./devtools.md) - Inspect signals, stores, and timelines
+- [Testing](./testing.md) - Mount components and assert async behavior
+- [SSR](./ssr.md) - Render templates on the server and hydrate on the client

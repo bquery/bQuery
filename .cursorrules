@@ -11,6 +11,7 @@ You are working on bQuery.js, a TypeScript-first, zero-build DOM library.
 - No runtime dependencies. Zero `dependencies` in package.json.
 - `$()` throws if element not found → use `$$()` for optional queries.
 - Signal `.value` tracks dependencies → use `.peek()` to avoid tracking.
+- `useSignal()`, `useComputed()`, and `useEffect()` from `@bquery/bquery/component` must be called from component lifecycle hooks, not from `render()`.
 
 ## Module Imports
 
@@ -18,12 +19,22 @@ You are working on bQuery.js, a TypeScript-first, zero-build DOM library.
 import { $, $$ } from '@bquery/bquery/core';
 import { signal, computed, effect, batch } from '@bquery/bquery/reactive';
 import { component, html } from '@bquery/bquery/component';
+import { storyHtml, when } from '@bquery/bquery/storybook';
 import { animate, transition, spring } from '@bquery/bquery/motion';
 import { sanitizeHtml, escapeHtml } from '@bquery/bquery/security';
 import { storage, cache } from '@bquery/bquery/platform';
 import { createRouter, navigate } from '@bquery/bquery/router';
 import { createStore, defineStore } from '@bquery/bquery/store';
 import { mount } from '@bquery/bquery/view';
+import { createForm, required } from '@bquery/bquery/forms';
+import { createI18n } from '@bquery/bquery/i18n';
+import { trapFocus } from '@bquery/bquery/a11y';
+import { draggable } from '@bquery/bquery/dnd';
+import { mediaQuery } from '@bquery/bquery/media';
+import { use } from '@bquery/bquery/plugin';
+import { enableDevtools } from '@bquery/bquery/devtools';
+import { renderComponent } from '@bquery/bquery/testing';
+import { renderToString } from '@bquery/bquery/ssr';
 ```
 
 ## Test Pattern
@@ -44,6 +55,7 @@ it('description', () => {
 - Tests: `tests/<module>.test.ts`
 - Types: `src/<module>/types.ts`
 - Internal helpers: marked with `@internal` JSDoc
+- Public module docs: `docs/guide/<module>.md` plus `docs/.vitepress/config.ts`
 
 ## See Also
 

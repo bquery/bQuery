@@ -202,12 +202,30 @@ component('theme-badge', {
 
 Only declared signals trigger re-renders, which keeps component updates predictable and avoids accidental subscriptions to unrelated reactive reads.
 
+## Shadow DOM control
+
+Components render into an open shadow root by default, but you can opt into closed shadow roots or render directly into the host element.
+
+```ts
+component('inline-banner', {
+  shadow: false,
+  render: () => html`<p class="banner">Rendered in light DOM</p>`,
+});
+
+component('private-panel', {
+  shadow: 'closed',
+  render: () => html`<section>Closed shadow root</section>`,
+});
+```
+
 ## Lifecycle hooks
 
 - `beforeMount()` – runs before the element renders (can modify initial state)
 - `connected()` – runs when the element mounts
+- `onAttributeChanged(name, oldValue, newValue)` – runs for observed prop attributes plus anything listed in `observeAttributes`
 - `beforeUpdate(newProps, oldProps)` – runs before re-render; return `false` to prevent update
 - `updated(change?)` – runs after re-render; receives attribute-change metadata for prop-driven updates and `undefined` for state/signal updates
+- `onAdopted()` – runs when the element is adopted into a different `Document`
 - `disconnected()` – runs on teardown
 - `onError(error)` – handles errors during lifecycle/render
 
@@ -236,6 +254,48 @@ component('my-element', {
   },
   render({ props }) {
     return html`<div>Count: ${props.count}</div>`;
+  },
+});
+```
+
+### Observing extra attributes
+
+If you need lifecycle reactions for attributes that are not part of `props`, declare them via `observeAttributes`.
+
+```ts
+component('live-panel', {
+  observeAttributes: ['data-state'],
+  onAttributeChanged(name, oldValue, newValue) {
+    console.log(name, oldValue, newValue);
+  },
+  render: () => html`<div>Watching data-state</div>`,
+});
+```
+
+## Scoped reactivity helpers
+
+`useSignal()`, `useComputed()`, and `useEffect()` create component-local reactive resources that are cleaned up automatically when the element disconnects.
+
+Call them from lifecycle hooks such as `beforeMount()`, `connected()`, `onAdopted()`, or `onAttributeChanged()` — not from `render()`.
+
+```ts
+import { component, html, useComputed, useEffect, useSignal } from '@bquery/bquery/component';
+
+component('scoped-counter', {
+  connected() {
+    const count = useSignal(0);
+    const doubled = useComputed(() => count.value * 2);
+
+    useEffect(() => {
+      console.log('Scoped value:', doubled.value);
+    });
+
+    this.setState('count', count.value);
+    this.setState('doubled', doubled.value);
+  },
+  state: { count: 0, doubled: 0 },
+  render({ state }) {
+    return html`<p>${state.count} → ${state.doubled}</p>`;
   },
 });
 ```

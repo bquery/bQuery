@@ -28,8 +28,14 @@ features:
     details: Author safe stories with storyHtml(), when(), and boolean attribute shorthand.
   - title: Platform APIs
     details: Storage, cache, cookies, page metadata, announcers, and shared runtime config.
+  - title: Forms & i18n
+    details: Reactive forms, validators, locale-aware messages, pluralization, and Intl formatting.
+  - title: Accessibility & media
+    details: Focus traps, skip links, audits, media preference signals, viewport/network state, and clipboard helpers.
+  - title: Testing & SSR
+    details: Testing utilities, runtime devtools, and server-side rendering with hydration helpers.
 ---
 
 ## Why bQuery
 
-bQuery.js bridges vanilla JavaScript and build-step frameworks. It keeps the directness of jQuery while adding reactivity, async data composables, native components, motion, and platform helpers in a modular, progressive way.
+bQuery.js bridges vanilla JavaScript and build-step frameworks. It keeps the directness of jQuery while adding reactivity, async data composables, native components, motion, forms, i18n, accessibility, media signals, drag-and-drop, plugins, devtools, testing, and SSR in a modular, progressive way.

@@ -8,7 +8,7 @@
 
 ### 1.1 Mission Statement
 
-bQuery.js bridges **vanilla JavaScript** and **build-step frameworks**. It offers modern features (reactivity, async data, components, motion, routing, stores, declarative views) with the simplicity and directness that made jQuery successful.
+bQuery.js bridges **vanilla JavaScript** and **build-step frameworks**. It offers modern features (reactivity, async data, components, motion, routing, stores, declarative views, forms, i18n, accessibility, media signals, plugins, testing, and SSR) with the simplicity and directness that made jQuery successful.
 
 ### 1.2 Core Principles
 
@@ -46,7 +46,16 @@ bQuery.js
 ├── platform/   (storage, cache, cookies, announcers, page meta, config)
 ├── router/     (SPA routing, guards, current route)
 ├── store/      (signal-based state management)
-└── view/       (declarative DOM bindings)
+├── view/       (declarative DOM bindings)
+├── forms/      (reactive forms and validation)
+├── i18n/       (translations, pluralization, Intl formatting)
+├── a11y/       (focus management, announcements, audits)
+├── dnd/        (draggable, droppable, sortable)
+├── media/      (reactive browser/device signals)
+├── plugin/     (global plugin registration)
+├── devtools/   (runtime inspection helpers)
+├── testing/    (mounting and assertion helpers)
+└── ssr/        (server rendering and hydration)
 ```
 
 ### 2.2 Import Strategies

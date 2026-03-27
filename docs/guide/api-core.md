@@ -262,6 +262,16 @@ scrollHandler.cancel(); // Reset throttle, next call executes immediately
 const legacyId = utils.uid();
 ```
 
+`utils` is also explicitly typed as `BQueryUtils`, which makes namespace-style access play nicely with editor IntelliSense when you prefer `utils.debounce(...)` over named imports.
+
+```ts
+import { utils, type BQueryUtils } from '@bquery/bquery/core';
+
+const typedUtils: BQueryUtils = utils;
+const later = typedUtils.debounce(() => console.log('Saved'), 200);
+later.cancel();
+```
+
 ### Utility list
 
 - `clone(value)`

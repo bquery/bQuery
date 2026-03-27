@@ -20,7 +20,7 @@
 
 **The jQuery for the modern Web Platform.**
 
-bQuery.js is a slim, TypeScript-first library that combines jQuery's direct DOM workflow with modern features like reactivity, async data composables, Web Components, motion utilities, routing, stores, and declarative views — without a mandatory build step.
+bQuery.js is a slim, TypeScript-first library that combines jQuery's direct DOM workflow with modern features like reactivity, async data composables, Web Components, motion utilities, routing, stores, declarative views, accessibility helpers, forms, i18n, media signals, drag-and-drop, plugins, devtools, testing utilities, and SSR — without a mandatory build step.
 
 ## Highlights
 
@@ -133,23 +133,46 @@ import { createRouter, navigate } from '@bquery/bquery/router';
 import { createStore, defineStore } from '@bquery/bquery/store';
 import { mount, createTemplate } from '@bquery/bquery/view';
 
+// Forms, i18n, accessibility, drag & drop, media
+import { createForm, required, email } from '@bquery/bquery/forms';
+import { createI18n } from '@bquery/bquery/i18n';
+import { trapFocus, rovingTabIndex } from '@bquery/bquery/a11y';
+import { draggable, droppable, sortable } from '@bquery/bquery/dnd';
+import { mediaQuery, useViewport, clipboard } from '@bquery/bquery/media';
+
+// Plugins, devtools, testing, SSR
+import { use } from '@bquery/bquery/plugin';
+import { enableDevtools, inspectSignals } from '@bquery/bquery/devtools';
+import { renderComponent, fireEvent, waitFor } from '@bquery/bquery/testing';
+import { renderToString, hydrateMount, serializeStoreState } from '@bquery/bquery/ssr';
+
 // Storybook helpers
 import { storyHtml, when } from '@bquery/bquery/storybook';
 ```
 
 ## Modules at a glance
 
-| Module        | Description                                        | Size (gzip) |
-| ------------- | -------------------------------------------------- | ----------- |
-| **Core**      | Selectors, DOM manipulation, events, utilities     | ~11.3 KB    |
-| **Reactive**  | `signal`, `computed`, `effect`, async data/fetch   | ~0.3 KB     |
-| **Component** | Lightweight Web Components with props + defaults   | ~1.9 KB     |
-| **Motion**    | View transitions, FLIP, timelines, scroll, springs | ~4.0 KB     |
-| **Security**  | HTML sanitizing, Trusted Types, CSP                | ~0.7 KB     |
-| **Platform**  | Storage, cache, cookies, meta, announcers, config  | ~2.2 KB     |
-| **Router**    | SPA routing, navigation guards, history API        | ~2.2 KB     |
-| **Store**     | Signal-based state management, persistence         | ~0.3 KB     |
-| **View**      | Declarative DOM bindings, directives               | ~4.3 KB     |
+| Module        | Description                                                                           |
+| ------------- | ------------------------------------------------------------------------------------- |
+| **Core**      | Selectors, DOM manipulation, events, traversal, and typed utilities                   |
+| **Reactive**  | `signal`, `computed`, `effect`, batching, async data, and fetch composables           |
+| **Component** | Typed Web Components with scoped reactivity and configurable Shadow DOM               |
+| **Storybook** | Safe story template helpers with boolean-attribute shorthand                          |
+| **Motion**    | View transitions, FLIP, morphing, parallax, typewriter, springs, and timelines        |
+| **Security**  | HTML sanitization, Trusted Types, CSP helpers, and trusted fragment composition       |
+| **Platform**  | Storage, cache, cookies, page metadata, announcers, and shared runtime config         |
+| **Router**    | SPA routing, constrained params, redirects, guards, `useRoute()`, and `<bq-link>`     |
+| **Store**     | Signal-based state management, persistence, migrations, and action hooks              |
+| **View**      | Declarative DOM bindings, directives, and plugin-provided custom directives           |
+| **Forms**     | Reactive form state with sync/async validation and submit handling                    |
+| **i18n**      | Reactive locales, interpolation, pluralization, lazy loading, and Intl formatting     |
+| **A11y**      | Focus traps, live-region announcements, roving tabindex, skip links, and audits       |
+| **DnD**       | Draggable elements, droppable zones, and sortable lists                               |
+| **Media**     | Reactive browser/device signals for viewport, network, battery, geolocation, and more |
+| **Plugin**    | Global plugin registration for custom directives and Web Components                   |
+| **Devtools**  | Runtime inspection helpers for signals, stores, components, and timelines             |
+| **Testing**   | Component mounting, mock signals/router helpers, and async test utilities             |
+| **SSR**       | Server-side rendering, hydration, and store-state serialization                       |
 
 Storybook authoring helpers are also available as a dedicated entry point via `@bquery/bquery/storybook`.
 
@@ -429,6 +452,93 @@ effect(() => {
 });
 ```
 
+### Forms – reactive validation
+
+```ts
+import { createForm, email, required } from '@bquery/bquery/forms';
+
+const form = createForm({
+  fields: {
+    name: { initialValue: '', validators: [required()] },
+    email: { initialValue: '', validators: [required(), email()] },
+  },
+  onSubmit: async (values) => {
+    await fetch('/api/signup', {
+      method: 'POST',
+      body: JSON.stringify(values),
+    });
+  },
+});
+
+await form.handleSubmit();
+console.log(form.isValid.value, form.fields.email.error.value);
+```
+
+### i18n – locale-aware content
+
+```ts
+import { createI18n } from '@bquery/bquery/i18n';
+
+const i18n = createI18n({
+  locale: 'en',
+  fallbackLocale: 'en',
+  messages: {
+    en: { greeting: 'Hello, {name}!' },
+    de: { greeting: 'Hallo, {name}!' },
+  },
+});
+
+console.log(i18n.t('greeting', { name: 'Ada' }));
+i18n.$locale.value = 'de';
+```
+
+### Accessibility, media, and drag & drop
+
+```ts
+import { trapFocus, announceToScreenReader } from '@bquery/bquery/a11y';
+import { mediaQuery, useViewport } from '@bquery/bquery/media';
+import { draggable } from '@bquery/bquery/dnd';
+
+const modalTrap = trapFocus(document.querySelector('#dialog')!);
+announceToScreenReader('Dialog opened');
+
+const isDark = mediaQuery('(prefers-color-scheme: dark)');
+const viewport = useViewport();
+const drag = draggable(document.querySelector('#card')!, { bounds: 'parent' });
+
+console.log(isDark.value, viewport.value.width);
+
+drag.destroy();
+modalTrap.release();
+```
+
+### Plugins, devtools, testing, and SSR
+
+```ts
+import { use } from '@bquery/bquery/plugin';
+import { enableDevtools, getTimeline } from '@bquery/bquery/devtools';
+import { renderComponent, fireEvent } from '@bquery/bquery/testing';
+import { renderToString } from '@bquery/bquery/ssr';
+
+use({
+  name: 'focus-plugin',
+  install(ctx) {
+    ctx.directive('focus', (el) => (el as HTMLElement).focus());
+  },
+});
+
+enableDevtools(true, { logToConsole: true });
+console.log(getTimeline());
+
+const mounted = renderComponent('ui-button', { props: { variant: 'primary' } });
+fireEvent(mounted.el, 'click');
+
+const { html } = renderToString('<p bq-text="label"></p>', { label: 'Hello SSR' });
+console.log(html);
+
+mounted.unmount();
+```
+
 ### Store – state management
 
 ```ts
@@ -515,6 +625,7 @@ mount('#app', {
 - **Core API**: [docs/guide/api-core.md](docs/guide/api-core.md)
 - **Agents**: [docs/guide/agents.md](docs/guide/agents.md)
 - **Components**: [docs/guide/components.md](docs/guide/components.md)
+- **Storybook**: [docs/guide/storybook.md](docs/guide/storybook.md)
 - **Reactivity**: [docs/guide/reactive.md](docs/guide/reactive.md)
 - **Motion**: [docs/guide/motion.md](docs/guide/motion.md)
 - **Security**: [docs/guide/security.md](docs/guide/security.md)
@@ -522,6 +633,15 @@ mount('#app', {
 - **Router**: [docs/guide/router.md](docs/guide/router.md)
 - **Store**: [docs/guide/store.md](docs/guide/store.md)
 - **View**: [docs/guide/view.md](docs/guide/view.md)
+- **Forms**: [docs/guide/forms.md](docs/guide/forms.md)
+- **i18n**: [docs/guide/i18n.md](docs/guide/i18n.md)
+- **Accessibility**: [docs/guide/a11y.md](docs/guide/a11y.md)
+- **Drag & Drop**: [docs/guide/dnd.md](docs/guide/dnd.md)
+- **Media**: [docs/guide/media.md](docs/guide/media.md)
+- **Plugin System**: [docs/guide/plugin.md](docs/guide/plugin.md)
+- **Devtools**: [docs/guide/devtools.md](docs/guide/devtools.md)
+- **Testing Utilities**: [docs/guide/testing.md](docs/guide/testing.md)
+- **SSR / Hydration**: [docs/guide/ssr.md](docs/guide/ssr.md)
 
 ## Local Development
 
@@ -556,12 +676,22 @@ bQuery.js
 │   ├── core/       # Selectors, DOM ops, events, utils
 │   ├── reactive/   # Signals, computed, effects, async data
 │   ├── component/  # Web Components helper + default library
+│   ├── storybook/  # Story template helpers
 │   ├── motion/     # View transitions, FLIP, springs
 │   ├── security/   # Sanitizer, CSP, Trusted Types
 │   ├── platform/   # Storage, cache, cookies, meta, config
 │   ├── router/     # SPA routing, navigation guards
 │   ├── store/      # State management, persistence
-│   └── view/       # Declarative DOM bindings
+│   ├── view/       # Declarative DOM bindings
+│   ├── forms/      # Reactive forms + validators
+│   ├── i18n/       # Internationalization + formatting
+│   ├── a11y/       # Accessibility utilities
+│   ├── dnd/        # Drag & drop helpers
+│   ├── media/      # Browser and device reactive signals
+│   ├── plugin/     # Global plugin system
+│   ├── devtools/   # Runtime inspection helpers
+│   ├── testing/    # Test utilities
+│   └── ssr/        # Server-side rendering + hydration
 ├── docs/           # VitePress documentation
 ├── .storybook/     # Storybook config
 ├── stories/        # Component stories

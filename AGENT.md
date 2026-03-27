@@ -9,7 +9,7 @@
 | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Name        | bQuery.js                                                                                                                                                                             |
 | Package     | `@bquery/bquery`                                                                                                                                                                      |
-| Version     | 1.6.0                                                                                                                                                                                 |
+| Version     | 1.7.0                                                                                                                                                                                 |
 | License     | MIT                                                                                                                                                                                   |
 | Language    | TypeScript (strict)                                                                                                                                                                   |
 | Runtime     | Browser (ESM, UMD, IIFE) — tests run via Bun                                                                                                                                          |
@@ -41,14 +41,23 @@ src/
 ├── full.ts             # Full bundle with explicit named exports (CDN)
 ├── core/               # $, $$, BQueryElement, BQueryCollection, utils
 ├── reactive/           # signal, computed, effect, batch, watch, async data/fetch
-├── component/          # component(), defineComponent(), html/safeHtml/bool helpers, defaults
+├── component/          # component(), defineComponent(), scoped reactivity, defaults
 ├── storybook/          # storyHtml(), when() helpers for Storybook stories
-├── motion/             # animate, transition, flip, spring, timeline, scroll
+├── motion/             # animate, transition, flip, morph, spring, timeline, scroll
 ├── security/           # sanitizeHtml, escapeHtml, Trusted Types, CSP
 ├── platform/           # storage, cache, cookies, announcers, page meta, config
-├── router/             # createRouter, navigate, guards, currentRoute
+├── router/             # createRouter, navigate, guards, currentRoute, bq-link
 ├── store/              # createStore, defineStore, plugins, persistence
-└── view/               # mount(), bq-* directives, declarative DOM bindings
+├── view/               # mount(), bq-* directives, declarative DOM bindings
+├── forms/              # createForm(), validators, field state
+├── i18n/               # createI18n(), formatting, lazy locale loading
+├── a11y/               # focus traps, announcements, audits, media prefs
+├── dnd/                # draggable, droppable, sortable
+├── media/              # viewport, network, battery, clipboard, sensors
+├── plugin/             # plugin registry for directives/components
+├── devtools/           # runtime inspection and timeline helpers
+├── testing/            # renderComponent(), mockSignal(), waitFor()
+└── ssr/                # renderToString(), hydrateMount(), store-state bridge
 
 tests/                  # Bun test suites (one file per module)
 .storybook/            # Storybook config
@@ -108,6 +117,9 @@ Each `src/<module>/index.ts` re-exports the module's public API.
 | `bool(name, enabled)`         | function | Boolean-attribute helper for `html` / `safeHtml`     |
 | `html`                        | tag fn   | Tagged template for component markup                 |
 | `safeHtml`                    | function | Sanitized HTML string helper                         |
+| `useSignal(init)`             | function | Component-scoped signal that auto-disposes           |
+| `useComputed(fn)`             | function | Component-scoped computed value                      |
+| `useEffect(fn)`               | function | Component-scoped effect with auto-cleanup            |
 
 ### Storybook (`@bquery/bquery/storybook`)
 
@@ -123,6 +135,9 @@ Each `src/<module>/index.ts` re-exports the module's public API.
 | `animate(el, opts)`                  | function  | Web Animations API wrapper                   |
 | `transition(fn \| options)`          | function  | View Transitions API with fallback + options |
 | `flip` / `flipElements` / `flipList` | functions | FLIP animation helpers                       |
+| `morphElement(from, to, opts)`       | function  | FLIP-style morph animation between elements  |
+| `parallax(el, opts)`                 | function  | Scroll-linked parallax helper                |
+| `typewriter(el, text, opts)`         | function  | Character-by-character text animation        |
 | `spring(init, config)`               | function  | Spring physics animation                     |
 | `timeline(steps)`                    | function  | Sequenced animation timeline                 |
 | `sequence(steps)`                    | function  | Run animations in order                      |
@@ -131,6 +146,7 @@ Each `src/<module>/index.ts` re-exports the module's public API.
 | `keyframePresets`                    | object    | Pre-built keyframe sets (pop, fadeIn, etc.)  |
 | `easingPresets`                      | object    | Named easing functions                       |
 | `prefersReducedMotion()`             | function  | Check user's motion preference               |
+| `setReducedMotion(value)`            | function  | Override reduced-motion behavior globally    |
 
 ### Security (`@bquery/bquery/security`)
 
@@ -162,29 +178,116 @@ Each `src/<module>/index.ts` re-exports the module's public API.
 
 ### Router (`@bquery/bquery/router`)
 
-| Export                  | Kind      | Description                             |
-| ----------------------- | --------- | --------------------------------------- |
-| `createRouter(opts)`    | function  | Create SPA router with routes + guards  |
-| `navigate(path, opts?)` | function  | Programmatic navigation                 |
-| `back()`, `forward()`   | functions | History navigation                      |
-| `currentRoute`          | signal    | Reactive current route state            |
-| `link(path)`            | function  | Generate link attributes                |
-| `interceptLinks(opts?)` | function  | Auto-intercept `<a>` clicks for SPA nav |
-| `isActive(path)`        | function  | Check if path matches current route     |
-| `resolve(path)`         | function  | Resolve a route without navigating      |
+| Export                  | Kind      | Description                                   |
+| ----------------------- | --------- | --------------------------------------------- |
+| `createRouter(opts)`    | function  | Create SPA router with routes + guards        |
+| `navigate(path, opts?)` | function  | Programmatic navigation                       |
+| `back()`, `forward()`   | functions | History navigation                            |
+| `currentRoute`          | signal    | Reactive current route state                  |
+| `link(path)`            | function  | Generate link attributes                      |
+| `interceptLinks(opts?)` | function  | Auto-intercept `<a>` clicks for SPA nav       |
+| `useRoute()`            | function  | Focused readonly signals for route properties |
+| `registerBqLink()`      | function  | Register declarative `<bq-link>` navigation   |
+| `BqLinkElement`         | class     | Custom element for SPA navigation             |
+| `isActive(path)`        | function  | Check if path matches current route           |
+| `resolve(path)`         | function  | Resolve a route without navigating            |
 
 ### Store (`@bquery/bquery/store`)
 
-| Export                                 | Kind      | Description                          |
-| -------------------------------------- | --------- | ------------------------------------ |
-| `createStore(def)`                     | function  | Create a signal-based store instance |
-| `defineStore(id, def)`                 | function  | Factory-style store (Pinia-like)     |
-| `createPersistedStore(def)`            | function  | Store with localStorage persistence  |
-| `mapActions`, `mapGetters`, `mapState` | functions | Helper mappers for stores            |
-| `watchStore(store, sel, cb)`           | function  | Watch specific store property        |
-| `registerPlugin(plugin)`               | function  | Register a global store plugin       |
-| `destroyStore(id)`                     | function  | Remove store from registry           |
-| `getStore(id)`, `listStores()`         | functions | Registry access                      |
+| Export                                 | Kind      | Description                                     |
+| -------------------------------------- | --------- | ----------------------------------------------- |
+| `createStore(def)`                     | function  | Create a signal-based store instance            |
+| `defineStore(id, def)`                 | function  | Factory-style store (Pinia-like)                |
+| `createPersistedStore(def, opts?)`     | function  | Store with storage/serializer/migration support |
+| `mapActions`, `mapGetters`, `mapState` | functions | Helper mappers for stores                       |
+| `watchStore(store, sel, cb)`           | function  | Watch specific store property                   |
+| `registerPlugin(plugin)`               | function  | Register a global store plugin                  |
+| `destroyStore(id)`                     | function  | Remove store from registry                      |
+| `getStore(id)`, `listStores()`         | functions | Registry access                                 |
+
+### Forms (`@bquery/bquery/forms`)
+
+| Export                    | Kind      | Description                                |
+| ------------------------- | --------- | ------------------------------------------ |
+| `createForm(config)`      | function  | Create a reactive form with validation     |
+| `required`, `email`, ...` | functions | Built-in sync and async validators         |
+| `Form`, `FormField`, ...` | types     | Public form state and validation contracts |
+
+### i18n (`@bquery/bquery/i18n`)
+
+| Export                           | Kind      | Description                                 |
+| -------------------------------- | --------- | ------------------------------------------- |
+| `createI18n(config)`             | function  | Create a reactive i18n instance             |
+| `formatDate`, `formatNumber`     | functions | Standalone Intl-based formatting helpers    |
+| `I18nInstance`, `Messages`, ...` | types     | Public translation and formatting contracts |
+
+### A11y (`@bquery/bquery/a11y`)
+
+| Export                                  | Kind      | Description                                |
+| --------------------------------------- | --------- | ------------------------------------------ |
+| `trapFocus`, `releaseFocus`             | functions | Trap and release focus in dialogs/overlays |
+| `announceToScreenReader`                | function  | Write to a shared ARIA live region         |
+| `rovingTabIndex()`                      | function  | Arrow-key keyboard navigation helper       |
+| `skipLink()`                            | function  | Create/manage skip-navigation links        |
+| `auditA11y()`                           | function  | Development-time accessibility audit       |
+| `prefersColorScheme`, `prefersContrast` | functions | Reactive media-preference signals          |
+
+### DnD (`@bquery/bquery/dnd`)
+
+| Export        | Kind     | Description                                |
+| ------------- | -------- | ------------------------------------------ |
+| `draggable()` | function | Pointer-based dragging with bounds/handles |
+| `droppable()` | function | Drop zones with filtering and callbacks    |
+| `sortable()`  | function | Sortable lists with animated reordering    |
+
+### Media (`@bquery/bquery/media`)
+
+| Export                                    | Kind      | Description                                 |
+| ----------------------------------------- | --------- | ------------------------------------------- |
+| `mediaQuery`, `breakpoints`               | functions | Reactive media-query and breakpoint helpers |
+| `useViewport`, `useNetworkStatus`         | functions | Reactive viewport and network state         |
+| `useBattery`, `useGeolocation`            | functions | Battery and geolocation wrappers            |
+| `useDeviceMotion`, `useDeviceOrientation` | functions | Device sensor wrappers                      |
+| `clipboard`                               | object    | Async clipboard read/write helpers          |
+
+### Plugin (`@bquery/bquery/plugin`)
+
+| Export                               | Kind      | Description                          |
+| ------------------------------------ | --------- | ------------------------------------ |
+| `use(plugin, options?)`              | function  | Install a global bQuery plugin       |
+| `isInstalled`, `getInstalledPlugins` | functions | Inspect plugin registry state        |
+| `getCustomDirective(s)`              | functions | Inspect registered custom directives |
+| `resetPlugins()`                     | function  | Reset plugin state for tests         |
+
+### Devtools (`@bquery/bquery/devtools`)
+
+| Export                                                 | Kind      | Description                         |
+| ------------------------------------------------------ | --------- | ----------------------------------- |
+| `enableDevtools`, `isDevtoolsEnabled`                  | functions | Toggle runtime inspection           |
+| `inspectSignals`, `inspectStores`, `inspectComponents` | functions | Snapshot runtime state              |
+| `recordEvent`, `getTimeline`, `clearTimeline`          | functions | Work with the event timeline        |
+| `logSignals`, `logStores`, `logTimeline`               | functions | Console-oriented inspection helpers |
+
+### Testing (`@bquery/bquery/testing`)
+
+| Export              | Kind     | Description                               |
+| ------------------- | -------- | ----------------------------------------- |
+| `renderComponent()` | function | Mount a custom element for tests          |
+| `flushEffects()`    | function | Flush pending reactive effects            |
+| `mockSignal()`      | function | Create a controllable signal              |
+| `mockRouter()`      | function | Create a lightweight reactive router mock |
+| `fireEvent()`       | function | Dispatch synthetic DOM events             |
+| `waitFor()`         | function | Poll async conditions until they pass     |
+
+### SSR (`@bquery/bquery/ssr`)
+
+| Export                              | Kind      | Description                              |
+| ----------------------------------- | --------- | ---------------------------------------- |
+| `renderToString()`                  | function  | Render directive-aware templates to HTML |
+| `hydrateMount()`                    | function  | Hydrate existing server-rendered DOM     |
+| `serializeStoreState()`             | function  | Serialize registered store state         |
+| `deserializeStoreState()`           | function  | Read serialized client bootstrap state   |
+| `hydrateStore()`, `hydrateStores()` | functions | Apply SSR state to one or many stores    |
 
 ### View (`@bquery/bquery/view`)
 
@@ -308,7 +411,7 @@ it('should add class', () => {
 | ------------------------------- | ---------------------------------------------- |
 | `src/index.ts`                  | Default entry point — re-exports all modules   |
 | `src/full.ts`                   | Full bundle with explicit named exports (CDN)  |
-| `vite.config.ts`                | Library build config (11 entry points, ESM)    |
+| `vite.config.ts`                | Library build config (21 entry points, ESM)    |
 | `vite.umd.config.ts`            | UMD bundle config for CDN/script tags          |
 | `tsconfig.json`                 | TypeScript config (strict, ES2020, Bundler)    |
 | `tsconfig.test.json`            | Test-specific TypeScript config                |

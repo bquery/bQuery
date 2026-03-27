@@ -7,7 +7,7 @@ bQuery.js is a slim, TypeScript-first, zero-build-capable DOM library that combi
 ## Package
 
 - npm: `@bquery/bquery`
-- Version: 1.6.0
+- Version: 1.7.0
 - License: MIT
 - Repository: https://github.com/bQuery/bQuery
 - Homepage: https://bQuery.flausch-code.de
@@ -26,10 +26,10 @@ DOM selection, manipulation, events, utilities. `$()` selects one element (throw
 Fine-grained reactivity system. `signal(value)` creates a reactive value. `computed(fn)` derives values with auto-tracking. `effect(fn)` runs side effects. `batch(fn)` groups updates. `watch(signal, callback)` observes changes. `linkedSignal(get, set)` creates writable computed values. `persistedSignal(key, init)` syncs to localStorage. `useAsyncData(handler)` wraps arbitrary async work in signal-driven `data` / `error` / `status` state. `useFetch(input, options)` adds query/header/body helpers and response parsing. `createUseFetch(defaults)` creates preconfigured fetch composables. `readonly(signal)` creates a read-only wrapper. Access via `.value` (tracks), `.peek()` (no tracking).
 
 ### Component (`@bquery/bquery/component`)
-Lightweight Web Components helper. `component(tag, definition)` creates and auto-registers a custom element with typed props, typed optional state, declared `signals`, Shadow DOM, lifecycle hooks (`connected`, `disconnected`, `beforeMount`, `beforeUpdate`, `updated`, `onError`), and automatic HTML sanitization of rendered output. `defineComponent()` returns the class without registering. `registerDefaultComponents()` registers a dependency-free default component library (`button`, `card`, `input`, `textarea`, `checkbox`). `html`, `safeHtml`, and `bool()` help author safe templates and boolean attributes.
+Lightweight Web Components helper. `component(tag, definition)` creates and auto-registers a custom element with typed props, typed optional state, declared `signals`, configurable `shadow` mode (`true`, `false`, `'open'`, `'closed'`), lifecycle hooks (`beforeMount`, `connected`, `disconnected`, `onAdopted`, `onAttributeChanged`, `beforeUpdate`, `updated`, `onError`), and automatic HTML sanitization of rendered output. `defineComponent()` returns the class without registering. `registerDefaultComponents()` registers a dependency-free default component library (`button`, `card`, `input`, `textarea`, `checkbox`). `html`, `safeHtml`, and `bool()` help author safe templates and boolean attributes. `useSignal()`, `useComputed()`, and `useEffect()` create component-scoped reactive resources that auto-dispose on disconnect.
 
 ### Motion (`@bquery/bquery/motion`)
-Animation utilities. `animate()` wraps the Web Animations API. `transition()` uses View Transitions API with fallback and supports classes, transition types, reduced-motion skipping, and ready/finish callbacks. `flip()` / `flipElements()` for FLIP animations. `spring()` for spring physics. `timeline()` and `sequence()` for choreographed animations. `stagger()` for staggered timing. `scrollAnimate()` for scroll-triggered animations. Includes `keyframePresets` and `easingPresets`. Respects `prefersReducedMotion()`.
+Animation utilities. `animate()` wraps the Web Animations API. `transition()` uses View Transitions API with fallback and supports classes, transition types, reduced-motion skipping, and ready/finish callbacks. `flip()` / `flipElements()` for FLIP animations. `morphElement()` animates between two elements. `parallax()` adds scroll-linked motion. `typewriter()` animates text content character by character. `spring()` provides spring physics. `timeline()` and `sequence()` choreograph animations. `stagger()` handles staggered timing. `scrollAnimate()` handles scroll-triggered animations. Includes `keyframePresets` and `easingPresets`. Respects `prefersReducedMotion()` and can be overridden globally with `setReducedMotion()`.
 
 ### Security (`@bquery/bquery/security`)
 HTML sanitization enabled by default across the library. `sanitizeHtml(html)` strips dangerous elements (script, iframe, svg, etc.), blocks DOM clobbering (reserved IDs), protects against Unicode URL bypasses, adds `rel="noopener noreferrer"` to external links. Also: `escapeHtml()`, `stripTags()`, `trusted()` for safe fragment composition, `generateNonce()`, Trusted Types support, CSP helpers.
@@ -41,13 +41,40 @@ String-template helpers for component stories. `storyHtml` sanitizes interpolate
 Browser API wrappers and shared runtime configuration. `storage` provides unified localStorage/sessionStorage/IndexedDB access. `cache` for TTL-based caching. `notifications` wraps the Notifications API. `buckets` for rate limiting. `defineBqueryConfig()` / `getBqueryConfig()` manage shared defaults for fetch, cookies, transitions, announcers, page metadata, and default component prefixes. `useCookie()` provides reactive cookie state. `definePageMeta()` manages document title/meta/link tags and temporary `html` / `body` attributes. `useAnnouncer()` manages accessible ARIA live-region announcements.
 
 ### Router (`@bquery/bquery/router`)
-SPA routing. `createRouter(options)` sets up routes with path matching, parameters, and wildcards. `navigate(path)` for programmatic navigation. Supports navigation guards (`beforeEach` / `afterEach`), hash mode, base path, and `currentRoute` as a reactive signal. `interceptLinks()` auto-handles `<a>` clicks.
+SPA routing. `createRouter(options)` sets up routes with path matching, wildcard support, repeated query params, regex-constrained params (`/user/:id(\d+)`), `redirectTo`, per-route `beforeEnter`, optional `scrollRestoration`, hash mode, and base path. `navigate(path)` is for programmatic navigation. `currentRoute` exposes the active route as a reactive signal. `useRoute()` returns focused readonly signals (`path`, `params`, `query`, `hash`, `matched`). `interceptLinks()` auto-handles `<a>` clicks, and `registerBqLink()` / `BqLinkElement` provide declarative SPA navigation via `<bq-link>`.
 
 ### Store (`@bquery/bquery/store`)
-Signal-based state management. `createStore(definition)` creates a store with state, getters, and actions. `defineStore()` for factory-style (Pinia-like) stores. `createPersistedStore()` for localStorage persistence. Supports plugins, subscriptions, `$patch`, `$reset`. Helpers: `mapActions`, `mapGetters`, `mapState`, `watchStore`.
+Signal-based state management. `createStore(definition)` creates a store with state, getters, and actions. Stores expose `$reset`, `$patch`, `$patchDeep`, `$subscribe`, `$state`, and `$onAction()` for action lifecycle observation. `defineStore()` provides factory-style (Pinia-like) stores. `createPersistedStore()` supports legacy string keys and richer options (`key`, `storage`, `serializer`, `version`, `migrate`). Helpers: `mapActions`, `mapGetters`, `mapState`, `watchStore`.
 
 ### View (`@bquery/bquery/view`)
 Declarative DOM bindings. `mount(selector, context)` binds reactive state to DOM using directives: `bq-text`, `bq-html`, `bq-if`, `bq-for`, `bq-model` (two-way), `bq-class`, `bq-style`, `bq-show`, `bq-bind`, `bq-on:event`. Uses `new Function()` internally (requires CSP `unsafe-eval`).
+
+### Forms (`@bquery/bquery/forms`)
+Reactive form handling. `createForm()` manages field values, errors, touched/dirty state, validation, submission, and `isSubmitting`. Built-in validators: `required`, `minLength`, `maxLength`, `pattern`, `email`, `url`, `min`, `max`, `custom`, and `customAsync`. Supports cross-field validation.
+
+### i18n (`@bquery/bquery/i18n`)
+Internationalization helpers. `createI18n()` manages reactive locale state, translations, interpolation, pluralization, lazy locale loading, and Intl-based formatting. `formatDate()` and `formatNumber()` are available standalone.
+
+### A11y (`@bquery/bquery/a11y`)
+Accessibility helpers. Includes `trapFocus()`, `releaseFocus()`, `getFocusableElements()`, `announceToScreenReader()`, `clearAnnouncements()`, `rovingTabIndex()`, `skipLink()`, `auditA11y()`, and reactive media-preference signals such as `prefersColorScheme()` and `prefersContrast()`.
+
+### DnD (`@bquery/bquery/dnd`)
+Drag-and-drop utilities. `draggable()` adds pointer-based dragging with bounds and handles. `droppable()` manages drop zones with accept filters and callbacks. `sortable()` adds list reordering with placeholders and sort events.
+
+### Media (`@bquery/bquery/media`)
+Reactive browser and device APIs. Includes `mediaQuery()`, `breakpoints()`, `useViewport()`, `useNetworkStatus()`, `useBattery()`, `useGeolocation()`, `useDeviceMotion()`, `useDeviceOrientation()`, and async clipboard helpers via `clipboard.read()` / `clipboard.write()`.
+
+### Plugin (`@bquery/bquery/plugin`)
+Global extension system. `use(plugin)` installs a plugin once by name. Plugins receive a `PluginInstallContext` that can register custom view directives and Web Components. Introspection helpers include `isInstalled()`, `getInstalledPlugins()`, `getCustomDirective()`, `getCustomDirectives()`, and `resetPlugins()`.
+
+### Devtools (`@bquery/bquery/devtools`)
+Runtime inspection utilities. `enableDevtools()` toggles collection. `inspectSignals()`, `inspectStores()`, and `inspectComponents()` snapshot runtime state. `recordEvent()`, `getTimeline()`, and `clearTimeline()` manage an event timeline. Console-oriented helpers such as `logSignals()` and `logTimeline()` are included.
+
+### Testing (`@bquery/bquery/testing`)
+Testing helpers. `renderComponent()` mounts custom elements, `flushEffects()` flushes pending reactive work, `mockSignal()` creates controllable signals, `mockRouter()` creates a lightweight reactive router, `fireEvent()` dispatches synthetic events, and `waitFor()` polls async conditions.
+
+### SSR (`@bquery/bquery/ssr`)
+Server-side rendering and hydration. `renderToString()` renders directive-aware templates to HTML strings. `hydrateMount()` attaches bindings to existing SSR markup. `serializeStoreState()`, `deserializeStoreState()`, `hydrateStore()`, and `hydrateStores()` bridge store state between server and client.
 
 ## Installation
 

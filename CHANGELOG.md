@@ -8,6 +8,11 @@ and this project adheres to Semantic Versioning.
 
 - [Changelog](#changelog)
   - [Releases](#releases)
+  - [\[1.7.0\] - 2026-03-27](#170---2026-03-27)
+    - [Added (1.7.0)](#added-170)
+    - [Changed (1.7.0)](#changed-170)
+    - [Fixed (1.7.0)](#fixed-170)
+    - [Security (1.7.0)](#security-170)
   - [\[1.6.0\] - 2026-03-14](#160---2026-03-14)
     - [Added (1.6.0)](#added-160)
     - [Changed (1.6.0)](#changed-160)
@@ -43,6 +48,35 @@ and this project adheres to Semantic Versioning.
     - [Fixed (1.0.1)](#fixed-101)
   - [\[1.0.0\] - 2026-01-21](#100---2026-01-21)
     - [Added (1.0.0)](#added-100)
+
+## [1.7.0] - 2026-03-27
+
+### Added (1.7.0)
+
+- **New modules**: Added dedicated `@bquery/bquery/a11y`, `@bquery/bquery/forms`, `@bquery/bquery/i18n`, `@bquery/bquery/media`, `@bquery/bquery/dnd`, `@bquery/bquery/plugin`, `@bquery/bquery/devtools`, `@bquery/bquery/testing`, and `@bquery/bquery/ssr` entry points, all re-exported from the root bundle and documented as first-class modules.
+- **Component**: Added `shadow` mode control (`true`, `false`, `'open'`, `'closed'`), `observeAttributes`, `onAttributeChanged()`, `onAdopted()`, component-scoped `useSignal()`, `useComputed()`, and `useEffect()` helpers, plus the exported `ComponentStateKey` type for strongly typed state access.
+- **Core**: Added jQuery-style parity helpers on `BQueryElement` and `BQueryCollection`: `detach()`, `index()`, `contents()`, `offsetParent()`, `position()`, `outerWidth()`, and `outerHeight()`.
+- **Motion**: Added `morphElement()`, `parallax()`, `typewriter()`, and `setReducedMotion()` for richer animation workflows and global reduced-motion overrides.
+- **Router**: Added regex-constrained params (`/user/:id(\\d+)`), `redirectTo`, per-route `beforeEnter` guards, `useRoute()` for fine-grained route signals, optional scroll restoration, and the declarative `<bq-link>` / `registerBqLink()` API.
+- **Store**: Added `$onAction()` lifecycle hooks and expanded `createPersistedStore()` with configurable `key`, `storage`, `serializer`, `version`, and `migrate` options while preserving backward compatibility with the legacy string-key signature.
+- **Core / Types**: Added explicit type annotations for the `utils` namespace and exported `BQueryUtils` consistently for typed namespace-style utility access.
+
+### Changed (1.7.0)
+
+- **Bundle exports**: The package metadata, root entry point, and full bundle now expose all currently shipped modules, including accessibility, drag and drop, forms, i18n, media, plugins, devtools, testing, and SSR utilities.
+- **Docs**: README, agent context files, and VitePress guides now describe the expanded modular surface area, new component/router/store APIs, and the new SSR/testing workflows.
+- **Storybook**: Story template parsing and boolean-attribute handling were tightened so interpolated attributes are scanned more predictably while preserving authored custom-element markup.
+
+### Fixed (1.7.0)
+
+- **Component**: Tightened state/update semantics around deferred attribute changes, scoped resource setup, and lifecycle-driven rerenders so component-local reactive resources clean up more safely across disconnects and attribute updates.
+- **Router**: `<bq-link>` active matching now respects path-segment boundaries, preserves user-authored active classes, and route matching / history-state handling behaves more defensively across redirects, wildcards, and scroll restoration.
+- **Store**: Persisted stores now ignore invalid deserialization payloads more safely and surface warnings when migrated state or version metadata cannot be written back to storage.
+- **Motion / DnD / Media / SSR**: Follow-up fixes improved teardown safety, ghost-offset handling, hydration guards, parallax cleanup, network/media listener cleanup, and other environment-specific edge cases.
+
+### Security (1.7.0)
+
+- **i18n / Router / View / SSR / Core**: Hardened deep merges, query parsing, object-expression evaluation, SSR state serialization, and form serialization against prototype pollution, malformed input, and DOM/XSS edge cases discovered during review and code scanning.
 
 ## [1.6.0] - 2026-03-14
 
