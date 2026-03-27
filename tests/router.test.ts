@@ -1989,15 +1989,19 @@ describe('Router', () => {
       expect(currentRoute.value.path).toBe(longPath);
     });
 
-    it('should match long constrained params followed by literal suffixes', () => {
+    it('should match long constrained params followed by literal suffixes', async () => {
+      router = createRouter({
+        routes: [
+          { path: '/file/:id(\\d+).json', component: () => null, name: 'fileJson' },
+          { path: '*', component: () => null, name: 'notFound' },
+        ],
+      });
+
       const longDigits = '1234567890'.repeat(300);
+      await router.push(`/file/${longDigits}.json`);
 
-      const result = matchRoute(`/file/${longDigits}.json`, [
-        { path: '/file/:id(\\d+).json', component: () => null },
-      ]);
-
-      expect(result).not.toBeNull();
-      expect(result?.params).toEqual({ id: longDigits });
+      expect(currentRoute.value.matched?.name).toBe('fileJson');
+      expect(currentRoute.value.params).toEqual({ id: longDigits });
     });
   });
 
