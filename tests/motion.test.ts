@@ -885,9 +885,9 @@ describe('motion/parallax', () => {
       cleanup();
 
       expect(cancelledFrame).toBe(123);
-      el.style.transform = 'translate3d(9px, 9px, 0)';
+      el.style.transform = 'rotate(1deg)';
       queuedFrame?.(Date.now());
-      expect(el.style.transform).toBe('translate3d(9px, 9px, 0)');
+      expect(el.style.transform).toBe('rotate(1deg)');
     } finally {
       globalThis.requestAnimationFrame = originalRaf;
       globalThis.cancelAnimationFrame = originalCancelRaf;
