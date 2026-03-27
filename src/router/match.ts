@@ -175,7 +175,7 @@ const matchPathPattern = (
             return null;
           }
         : (callback: (candidateEnd: number) => Record<string, string> | null) => {
-            for (let candidateEnd = actualPath.length; candidateEnd >= pathIndex; candidateEnd--) {
+            for (let candidateEnd = actualPath.length; candidateEnd > pathIndex; candidateEnd--) {
               const result = callback(candidateEnd);
               if (result) {
                 return result;
@@ -216,6 +216,9 @@ const matchPathPattern = (
       const iterateCandidateEnds = anchoredCandidateEnds
         ? (callback: (candidateEnd: number) => Record<string, string> | null) => {
             for (const candidateEnd of anchoredCandidateEnds) {
+              if (candidateEnd <= pathIndex) {
+                continue;
+              }
               const result = callback(candidateEnd);
               if (result) {
                 return result;
@@ -224,7 +227,7 @@ const matchPathPattern = (
             return null;
           }
         : (callback: (candidateEnd: number) => Record<string, string> | null) => {
-            for (let candidateEnd = candidateLimit; candidateEnd >= pathIndex; candidateEnd--) {
+            for (let candidateEnd = candidateLimit; candidateEnd > pathIndex; candidateEnd--) {
               const result = callback(candidateEnd);
               if (result) {
                 return result;
