@@ -104,9 +104,9 @@ const getFormEntries = (form: HTMLFormElement): Array<[string, string]> => {
         entries.push([key, value]);
       }
 
-      if (entries.length > 0) {
-        return entries;
-      }
+      // Some environments expose FormData(form) but fail to populate entries for
+      // successful controls. Fall back to manual collection only in that zero-entry case.
+      return entries.length > 0 ? entries : collectFormEntries(form);
     } catch {
       // Fall back to manual collection when FormData is unavailable for this form
       // or the environment does not fully support constructing it.
