@@ -598,6 +598,13 @@ describe('media/useGeolocation', () => {
     }).toThrow();
   });
 
+  it('defines destroy as a non-enumerable property', () => {
+    const geo = useGeolocation();
+
+    expect(Object.prototype.propertyIsEnumerable.call(geo, 'destroy')).toBe(false);
+    expect(Object.keys(geo)).not.toContain('destroy');
+  });
+
   it('clears an active geolocation watch when destroyed', () => {
     const originalGeolocation = navigator.geolocation;
     let clearedWatchId: number | null = null;

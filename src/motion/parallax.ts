@@ -54,12 +54,24 @@ export const parallax = (element: Element, options: ParallaxOptions = {}): Paral
   let destroyed = false;
   let frameId: number | null = null;
 
+  const cleanup = (): void => {
+    if (destroyed) return;
+    destroyed = true;
+    window.removeEventListener('scroll', onScroll);
+    if (frameId !== null) {
+      cancelAnimationFrame(frameId);
+      frameId = null;
+    }
+    ticking = false;
+    el.style.transform = previousTransform;
+  };
+
   const updatePosition = () => {
     if (destroyed) return;
 
     // Re-check reduced motion on each frame (in case toggle changed)
     if (respectReducedMotion && prefersReducedMotion()) {
-      el.style.transform = previousTransform;
+      cleanup();
       return;
     }
 
@@ -83,6 +95,11 @@ export const parallax = (element: Element, options: ParallaxOptions = {}): Paral
   };
 
   const onScroll = () => {
+    if (destroyed) return;
+    if (respectReducedMotion && prefersReducedMotion()) {
+      cleanup();
+      return;
+    }
     if (!ticking) {
       ticking = true;
       frameId = requestAnimationFrame(() => {
@@ -99,14 +116,5 @@ export const parallax = (element: Element, options: ParallaxOptions = {}): Paral
   // Listen to scroll events
   window.addEventListener('scroll', onScroll, { passive: true });
 
-  return () => {
-    destroyed = true;
-    window.removeEventListener('scroll', onScroll);
-    if (frameId !== null) {
-      cancelAnimationFrame(frameId);
-      frameId = null;
-    }
-    ticking = false;
-    el.style.transform = previousTransform;
-  };
+  return cleanup;
 };

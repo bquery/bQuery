@@ -1038,6 +1038,32 @@ describe('motion/parallax', () => {
     }
   });
 
+  it('stops scheduling work once reduced motion becomes enabled', () => {
+    const el = document.createElement('div');
+    const originalRaf = globalThis.requestAnimationFrame;
+    let rafCalls = 0;
+
+    globalThis.requestAnimationFrame = ((callback: FrameRequestCallback) => {
+      rafCalls++;
+      return originalRaf(callback);
+    }) as typeof globalThis.requestAnimationFrame;
+
+    try {
+      const cleanup = parallax(el, { speed: 0.3 });
+      expect(el.style.transform).toBe('translate3d(0px, 0px, 0)');
+
+      setReducedMotion(true);
+      window.dispatchEvent(new Event('scroll'));
+
+      expect(rafCalls).toBe(0);
+      expect(el.style.transform).toBe('');
+
+      cleanup();
+    } finally {
+      globalThis.requestAnimationFrame = originalRaf;
+    }
+  });
+
   it('supports horizontal direction', () => {
     const el = document.createElement('div');
     const cleanup = parallax(el, { speed: 0.5, direction: 'horizontal' });

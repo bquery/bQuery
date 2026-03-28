@@ -104,12 +104,16 @@ export const useGeolocation = (options: GeolocationOptions = {}): GeolocationSig
 
   const ro = readonly(s) as GeolocationSignal;
   let destroyed = false;
-  ro.destroy = (): void => {
-    if (destroyed) return;
-    destroyed = true;
-    destroyWatcher?.();
-    s.dispose();
-  };
+  Object.defineProperty(ro, 'destroy', {
+    enumerable: false,
+    configurable: true,
+    value(): void {
+      if (destroyed) return;
+      destroyed = true;
+      destroyWatcher?.();
+      s.dispose();
+    },
+  });
 
   return ro;
 };

@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, spyOn, type Mock } from 'b
 import { computed, signal } from '../src/reactive/index';
 import { parseObjectExpression } from '../src/view/evaluate';
 import { clearExpressionCache, createTemplate, mount, type View } from '../src/view/index';
+import { getCustomDirective, registerCustomDirectiveResolver } from '../src/view/custom-directives';
 
 describe('View', () => {
   let container: HTMLElement;
@@ -22,7 +23,20 @@ describe('View', () => {
       view.destroy();
       view = null;
     }
+    registerCustomDirectiveResolver(null);
     container.remove();
+  });
+
+  describe('custom directive resolver', () => {
+    it('can unregister the custom directive resolver', () => {
+      registerCustomDirectiveResolver((name) => (name === 'tooltip' ? (() => {}) : undefined));
+
+      expect(getCustomDirective('tooltip')).toBeDefined();
+
+      registerCustomDirectiveResolver(null);
+
+      expect(getCustomDirective('tooltip')).toBeUndefined();
+    });
   });
 
   describe('mount', () => {

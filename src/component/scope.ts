@@ -5,13 +5,12 @@
  * dispose when their owning component disconnects from the DOM.
  *
  * @module bquery/component
- * @internal
  */
 
 import { Computed, computed } from '../reactive/computed';
 import { Signal, signal } from '../reactive/core';
 import { effect } from '../reactive/effect';
-import type { CleanupFn } from '../reactive/internals';
+import type { CleanupFn } from '../reactive/index';
 
 /**
  * Holds disposable resources created inside a component scope.

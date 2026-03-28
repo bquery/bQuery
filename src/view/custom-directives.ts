@@ -11,9 +11,13 @@ let customDirectiveResolver: CustomDirectiveResolver | null = null;
 
 /**
  * Registers the resolver used by the view pipeline for custom directives.
+ *
+ * Pass `null` to unregister the current resolver and reset to the default behavior.
  * @internal
  */
-export const registerCustomDirectiveResolver = (resolver: CustomDirectiveResolver): void => {
+export const registerCustomDirectiveResolver = (
+  resolver: CustomDirectiveResolver | null
+): void => {
   customDirectiveResolver = resolver;
 };
 
