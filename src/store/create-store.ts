@@ -76,6 +76,13 @@ export const createStore = <
     );
   };
 
+  const warnAsyncOnActionListener = (actionName: string): void => {
+    if (!isDev() || typeof console === 'undefined' || typeof console.warn !== 'function') return;
+    console.warn(
+      `[bQuery store "${id}"] $onAction listeners must register after()/onError() hooks synchronously; Promise-returning listeners cannot attach hooks after awaiting for action "${actionName}".`
+    );
+  };
+
   /**
    * Executes an action observer callback without allowing observer failures to
    * affect the action result. Handles both synchronous exceptions and async
@@ -91,6 +98,9 @@ export const createStore = <
     try {
       const result = callback();
       if (isPromise(result)) {
+        if (phase === 'listener') {
+          warnAsyncOnActionListener(actionName);
+        }
         void result.catch((error) => {
           reportOnActionError(phase, actionName, error);
         });

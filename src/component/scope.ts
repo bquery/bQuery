@@ -7,9 +7,11 @@
  * @module bquery/component
  */
 
-import { Computed, computed } from '../reactive/computed';
+import type { Computed } from '../reactive/computed';
+import { computed } from '../reactive/computed';
 import { detectDevEnvironment } from '../core/env';
-import { Signal, signal } from '../reactive/core';
+import type { Signal } from '../reactive/core';
+import { signal } from '../reactive/core';
 import { effect } from '../reactive/effect';
 import type { CleanupFn } from '../reactive/index';
 

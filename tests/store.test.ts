@@ -987,6 +987,7 @@ describe('Store', () => {
         },
       });
       const consoleErrorSpy = spyOn(console, 'error').mockImplementation(() => {});
+      const consoleWarnSpy = spyOn(console, 'warn').mockImplementation(() => {});
 
       try {
         store.$onAction(async () => {
@@ -1003,7 +1004,42 @@ describe('Store', () => {
           expect.objectContaining({ message: 'async listener boom' })
         );
       } finally {
+        consoleWarnSpy.mockRestore();
         consoleErrorSpy.mockRestore();
+      }
+    });
+
+    it('should warn that promise-returning listeners must register hooks synchronously', async () => {
+      const store = createStore<{ count: number }, Record<string, never>, { increment(): number }>({
+        id: 'on-action-async-listener-warning',
+        state: () => ({ count: 0 }),
+        actions: {
+          increment() {
+            (this as { count: number }).count++;
+            return (this as { count: number }).count;
+          },
+        },
+      });
+      const consoleWarnSpy = spyOn(console, 'warn').mockImplementation(() => {});
+      let lateAfterCalled = false;
+
+      try {
+        store.$onAction(async ({ after }) => {
+          await Promise.resolve();
+          after(() => {
+            lateAfterCalled = true;
+          });
+        });
+
+        expect(store.increment()).toBe(1);
+        await Promise.resolve();
+
+        expect(lateAfterCalled).toBe(false);
+        expect(consoleWarnSpy).toHaveBeenCalledWith(
+          `[bQuery store "on-action-async-listener-warning"] $onAction listeners must register after()/onError() hooks synchronously; Promise-returning listeners cannot attach hooks after awaiting for action "increment".`
+        );
+      } finally {
+        consoleWarnSpy.mockRestore();
       }
     });
 

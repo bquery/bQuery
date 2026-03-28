@@ -73,6 +73,10 @@ type ActionResult<A extends StoreActionRecord, K extends ActionName<A>> = Awaite
  *   onError((err) => console.error(`Failed:`, err));
  * });
  * ```
+ *
+ * Hook registration is synchronous: call `after()` and `onError()` before the
+ * callback returns. Promise-returning listeners may still observe errors, but
+ * any hooks registered after an `await` will not affect the current action.
  */
 export type ActionContext<
   S extends Record<string, unknown>,
@@ -148,6 +152,10 @@ export type Store<
      *   onError((e) => console.error(`${name} failed`, e));
      * });
      * ```
+     *
+     * Register hooks synchronously before the callback returns. Async listeners
+     * that await before calling `after()` or `onError()` cannot affect the
+     * current action invocation.
      */
     $onAction: (callback: OnActionCallback<S, G, A>) => () => void;
   };

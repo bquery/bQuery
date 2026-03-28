@@ -287,6 +287,10 @@ const stop = counterStore.$onAction(({ name, args, after, onError }) => {
 stop();
 ```
 
+Register `after()` and `onError()` hooks synchronously before the callback
+returns. Promise-returning listeners can still report their own failures, but
+hooks registered after an `await` do not affect the current action call.
+
 ## Store Registry
 
 ### getStore
