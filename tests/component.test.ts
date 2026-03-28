@@ -17,7 +17,6 @@ import {
 } from '../src/component/index';
 import { computed, signal } from '../src/reactive/index';
 import { sanitizeHtml, trusted } from '../src/security/sanitize';
-import { createComponentScope } from '../src/component/scope';
 
 const expectType = <T>(_value: T): void => {};
 
@@ -2596,21 +2595,54 @@ describe('component/useEffect', () => {
 });
 
 describe('component/createComponentScope', () => {
-  it('does not log disposer errors in production mode', () => {
-    const scope = createComponentScope();
+  it('does not log disposer errors in production mode', async () => {
     const errorSpy = spyOn(console, 'error').mockImplementation(() => {});
     const originalNodeEnv = process.env.NODE_ENV;
 
     process.env.NODE_ENV = 'production';
-    scope.addDisposer(() => {
-      throw new Error('dispose failed');
-    });
 
     try {
+      const { createComponentScope: createComponentScopeInProduction } = await import(
+        `../src/component/scope.ts?production=${Date.now()}`
+      );
+      const scope = createComponentScopeInProduction();
+      scope.addDisposer(() => {
+        throw new Error('dispose failed');
+      });
       scope.dispose();
       expect(errorSpy).not.toHaveBeenCalled();
     } finally {
       process.env.NODE_ENV = originalNodeEnv;
+      errorSpy.mockRestore();
+    }
+  });
+
+  it('does not log disposer errors when process is unavailable', async () => {
+    const originalProcessDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'process');
+    const errorSpy = spyOn(console, 'error').mockImplementation(() => {});
+
+    Object.defineProperty(globalThis, 'process', {
+      value: undefined,
+      configurable: true,
+    });
+
+    try {
+      const { createComponentScope: createComponentScopeWithoutProcess } = await import(
+        `../src/component/scope.ts?no-process=${Date.now()}`
+      );
+      const scope = createComponentScopeWithoutProcess();
+      scope.addDisposer(() => {
+        throw new Error('dispose failed');
+      });
+
+      scope.dispose();
+      expect(errorSpy).not.toHaveBeenCalled();
+    } finally {
+      if (originalProcessDescriptor) {
+        Object.defineProperty(globalThis, 'process', originalProcessDescriptor);
+      } else {
+        delete (globalThis as { process?: unknown }).process;
+      }
       errorSpy.mockRestore();
     }
   });

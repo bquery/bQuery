@@ -11,15 +11,9 @@ import { Computed, computed } from '../reactive/computed';
 import { Signal, signal } from '../reactive/core';
 import { effect } from '../reactive/effect';
 import type { CleanupFn } from '../reactive/index';
+import { detectDevEnvironment } from '../store/utils';
 
-const shouldLogScopeDisposalErrors = (): boolean => {
-  try {
-    const globalProcess = (globalThis as { process?: { env?: { NODE_ENV?: string } } }).process;
-    return !(typeof globalProcess !== 'undefined' && globalProcess.env?.NODE_ENV === 'production');
-  } catch {
-    return true;
-  }
-};
+const shouldLogScopeDisposalErrors = detectDevEnvironment();
 
 /**
  * Holds disposable resources created inside a component scope.
@@ -70,7 +64,7 @@ export function createComponentScope(): ComponentScope {
         try {
           fn();
         } catch (error) {
-          if (shouldLogScopeDisposalErrors()) {
+          if (shouldLogScopeDisposalErrors) {
             console.error('bQuery component: Error disposing scoped resource', error);
           }
         }

@@ -574,6 +574,35 @@ describe('Plugin System', () => {
       }
     });
 
+    it('should not warn for unknown directives when the environment cannot be detected', async () => {
+      const originalProcessDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'process');
+      const warnSpy = spyOn(console, 'warn').mockImplementation(() => {});
+
+      Object.defineProperty(globalThis, 'process', {
+        value: undefined,
+        configurable: true,
+      });
+
+      try {
+        const { processElement: processElementWithoutProcess } = await import(
+          `../src/view/process.ts?no-process=${Date.now()}`
+        );
+        const el = document.createElement('div');
+        el.setAttribute('bq-unknown', 'test');
+
+        processElementWithoutProcess(el, {}, 'bq', [], createDirectiveHandlers());
+
+        expect(warnSpy).not.toHaveBeenCalled();
+      } finally {
+        if (originalProcessDescriptor) {
+          Object.defineProperty(globalThis, 'process', originalProcessDescriptor);
+        } else {
+          delete (globalThis as { process?: unknown }).process;
+        }
+        warnSpy.mockRestore();
+      }
+    });
+
     it('should pass cleanups to custom directive handler', () => {
       let cleanedUp = false;
 

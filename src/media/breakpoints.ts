@@ -104,7 +104,8 @@ export const breakpoints = <T extends BreakpointMap>(
   let destroyed = false;
   return Object.defineProperty(signals, 'destroy', {
     enumerable: false,
-    value: (): void => {
+    configurable: true,
+    value(): void {
       if (destroyed) return;
       destroyed = true;
       destroyers.forEach((destroy) => {

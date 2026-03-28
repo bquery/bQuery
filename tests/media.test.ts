@@ -193,6 +193,9 @@ describe('media/breakpoints', () => {
 
     expect(Object.keys(bp.sm)).not.toContain('destroy');
     expect(Object.getOwnPropertyDescriptor(bp.sm, 'destroy')?.enumerable ?? true).toBe(false);
+    expect(Object.getOwnPropertyDescriptor(bp.sm, 'destroy')?.configurable ?? false).toBe(true);
+    expect(Object.getOwnPropertyDescriptor(bp, 'destroy')?.enumerable ?? true).toBe(false);
+    expect(Object.getOwnPropertyDescriptor(bp, 'destroy')?.configurable ?? false).toBe(true);
   });
 
   it('falls back to legacy addListener/removeListener for breakpoint signals', () => {

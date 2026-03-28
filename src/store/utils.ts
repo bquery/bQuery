@@ -129,13 +129,21 @@ export const detectNestedMutations = <S extends Record<string, unknown>>(
   return mutatedKeys;
 };
 
-/** @internal Flag to enable/disable development warnings */
-export const isDev: boolean = (() => {
+/** @internal Shared development-environment detector */
+export const detectDevEnvironment = (): boolean => {
   try {
     const globalProcess = (globalThis as { process?: { env?: { NODE_ENV?: string } } }).process;
-    // Default to dev mode unless explicitly set to production
-    return !(typeof globalProcess !== 'undefined' && globalProcess.env?.NODE_ENV === 'production');
+
+    const nodeEnv = globalProcess?.env?.NODE_ENV;
+    if (typeof nodeEnv === 'string') {
+      return nodeEnv !== 'production';
+    }
+
+    return false;
   } catch {
-    return true;
+    return false;
   }
-})();
+};
+
+/** @internal Flag to enable/disable development warnings */
+export const isDev: boolean = detectDevEnvironment();

@@ -1,15 +1,9 @@
 import type { CleanupFn } from '../reactive/index';
+import { detectDevEnvironment } from '../store/utils';
 import { getCustomDirective } from './custom-directives';
 import type { BindingContext, DirectiveHandler } from './types';
 
-const isDevEnvironment = (): boolean => {
-  try {
-    const globalProcess = (globalThis as { process?: { env?: { NODE_ENV?: string } } }).process;
-    return !(typeof globalProcess !== 'undefined' && globalProcess.env?.NODE_ENV === 'production');
-  } catch {
-    return true;
-  }
-};
+const isDevEnvironment = detectDevEnvironment();
 
 export type DirectiveHandlers = {
   text: DirectiveHandler;
@@ -79,7 +73,7 @@ export const processElement = (
       const customHandler = getCustomDirective(directive);
       if (customHandler) {
         customHandler(el, value, context, cleanups);
-      } else if (isDevEnvironment() && typeof console !== 'undefined' && typeof console.warn === 'function') {
+      } else if (isDevEnvironment && typeof console !== 'undefined' && typeof console.warn === 'function') {
         console.warn(
           `[bQuery][view] Unknown directive "${name}" (parsed as "${directive}") on <${el.tagName.toLowerCase()}>. This may be a typo or a missing custom directive registration.`
         );
