@@ -3,6 +3,8 @@
  * @internal
  */
 
+import { detectDevEnvironment } from '../core/env';
+
 /**
  * Check if a value is a plain object (not array, null, Date, etc.).
  * @internal
@@ -17,8 +19,6 @@ export const isPlainObject = (value: unknown): value is Record<string, unknown> 
  * Deep clones an object. Used for deep reactivity support.
  * @internal
  */
-import { detectDevEnvironment } from '../core/env';
-
 export const deepClone = <T>(obj: T): T => {
   if (obj === null || typeof obj !== 'object') {
     return obj;

@@ -647,6 +647,48 @@ describe('Plugin System', () => {
       }
     });
 
+    it('should respect late dev override toggles after the module is imported', async () => {
+      const originalProcessDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'process');
+      const originalDevOverride = (globalThis as { __BQUERY_DEV__?: boolean }).__BQUERY_DEV__;
+      const warnSpy = spyOn(console, 'warn').mockImplementation(() => {});
+
+      Object.defineProperty(globalThis, 'process', {
+        value: undefined,
+        configurable: true,
+      });
+      delete (globalThis as { __BQUERY_DEV__?: boolean }).__BQUERY_DEV__;
+
+      try {
+        const { processElement: processElementWithoutInitialOverride } = await import(
+          `../src/view/process.ts?late-dev-override=${Date.now()}`
+        );
+        const el = document.createElement('div');
+        el.setAttribute('bq-unknown', 'test');
+
+        processElementWithoutInitialOverride(el, {}, 'bq', [], createDirectiveHandlers());
+        expect(warnSpy).not.toHaveBeenCalled();
+
+        (globalThis as { __BQUERY_DEV__?: boolean }).__BQUERY_DEV__ = true;
+
+        processElementWithoutInitialOverride(el, {}, 'bq', [], createDirectiveHandlers());
+        expect(warnSpy).toHaveBeenCalledWith(
+          '[bQuery][view] Unknown directive "bq-unknown" (parsed as "unknown") on <div>. This may be a typo or a missing custom directive registration.'
+        );
+      } finally {
+        if (originalProcessDescriptor) {
+          Object.defineProperty(globalThis, 'process', originalProcessDescriptor);
+        } else {
+          delete (globalThis as { process?: unknown }).process;
+        }
+        if (originalDevOverride === undefined) {
+          delete (globalThis as { __BQUERY_DEV__?: boolean }).__BQUERY_DEV__;
+        } else {
+          (globalThis as { __BQUERY_DEV__?: boolean }).__BQUERY_DEV__ = originalDevOverride;
+        }
+        warnSpy.mockRestore();
+      }
+    });
+
     it('should pass cleanups to custom directive handler', () => {
       let cleanedUp = false;
 

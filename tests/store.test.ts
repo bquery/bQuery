@@ -1770,6 +1770,33 @@ describe('Store', () => {
 });
 
 describe('store/isDev', () => {
+  it('defaults to development when process exists without NODE_ENV', async () => {
+    const originalProcessDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'process');
+    const originalDevOverride = (globalThis as { __BQUERY_DEV__?: boolean }).__BQUERY_DEV__;
+
+    Object.defineProperty(globalThis, 'process', {
+      value: { env: {} },
+      configurable: true,
+    });
+    delete (globalThis as { __BQUERY_DEV__?: boolean }).__BQUERY_DEV__;
+
+    try {
+      const { isDev } = await import(`../src/store/utils.ts?missing-node-env=${Date.now()}`);
+      expect(isDev).toBe(true);
+    } finally {
+      if (originalProcessDescriptor) {
+        Object.defineProperty(globalThis, 'process', originalProcessDescriptor);
+      } else {
+        delete (globalThis as { process?: unknown }).process;
+      }
+      if (originalDevOverride === undefined) {
+        delete (globalThis as { __BQUERY_DEV__?: boolean }).__BQUERY_DEV__;
+      } else {
+        (globalThis as { __BQUERY_DEV__?: boolean }).__BQUERY_DEV__ = originalDevOverride;
+      }
+    }
+  });
+
   it('enables dev mode when the global dev override is set without process', async () => {
     const originalProcessDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'process');
     const originalDevOverride = (globalThis as { __BQUERY_DEV__?: boolean }).__BQUERY_DEV__;

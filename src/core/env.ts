@@ -19,7 +19,8 @@ type BQueryEnvGlobal = typeof globalThis & {
  * Priority:
  * 1. Explicit global override via `globalThis.__BQUERY_DEV__`
  * 2. `process.env.NODE_ENV`
- * 3. Production-safe fallback (`false`)
+ * 3. Node-like `process` without `NODE_ENV` defaults to development
+ * 4. Production-safe fallback (`false`)
  *
  * @internal
  */
@@ -34,6 +35,10 @@ export const detectDevEnvironment = (): boolean => {
     const nodeEnv = globalObject.process?.env?.NODE_ENV;
     if (typeof nodeEnv === 'string') {
       return nodeEnv !== 'production';
+    }
+
+    if (typeof globalObject.process === 'object') {
+      return true;
     }
 
     return false;

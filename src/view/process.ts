@@ -3,8 +3,6 @@ import { detectDevEnvironment } from '../core/env';
 import { getCustomDirective } from './custom-directives';
 import type { BindingContext, DirectiveHandler } from './types';
 
-const isDevEnvironment = detectDevEnvironment();
-
 export type DirectiveHandlers = {
   text: DirectiveHandler;
   html: DirectiveHandler;
@@ -73,7 +71,11 @@ export const processElement = (
       const customHandler = getCustomDirective(directive);
       if (customHandler) {
         customHandler(el, value, context, cleanups);
-      } else if (isDevEnvironment && typeof console !== 'undefined' && typeof console.warn === 'function') {
+      } else if (
+        detectDevEnvironment() &&
+        typeof console !== 'undefined' &&
+        typeof console.warn === 'function'
+      ) {
         console.warn(
           `[bQuery][view] Unknown directive "${name}" (parsed as "${directive}") on <${el.tagName.toLowerCase()}>. This may be a typo or a missing custom directive registration.`
         );
