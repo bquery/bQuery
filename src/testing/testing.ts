@@ -8,8 +8,7 @@
  * @module bquery/testing
  */
 
-import { batch } from '../reactive/batch';
-import { Signal, signal } from '../reactive/core';
+import { batch, Signal, signal } from '../reactive/index';
 import { getNormalizedRouteConstraint } from '../router/constraints';
 import type {
   FireEventOptions,

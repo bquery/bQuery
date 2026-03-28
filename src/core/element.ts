@@ -92,6 +92,30 @@ const collectFormEntries = (form: HTMLFormElement): Array<[string, string]> => {
   return entries;
 };
 
+const getFormEntries = (form: HTMLFormElement): Array<[string, string]> => {
+  if (typeof FormData === 'function') {
+    try {
+      const entries: Array<[string, string]> = [];
+
+      for (const [key, value] of new FormData(form).entries()) {
+        if (isPrototypePollutionKey(key) || typeof value !== 'string') {
+          continue;
+        }
+        entries.push([key, value]);
+      }
+
+      if (entries.length > 0) {
+        return entries;
+      }
+    } catch {
+      // Fall back to manual collection when FormData is unavailable for this form
+      // or the environment does not fully support constructing it.
+    }
+  }
+
+  return collectFormEntries(form);
+};
+
 export class BQueryElement {
   /**
    * Stores delegated event handlers for cleanup via undelegate().
@@ -880,7 +904,7 @@ export class BQueryElement {
 
     const result = Object.create(null) as Record<string, string | string[]>;
 
-    for (const [key, value] of collectFormEntries(form)) {
+    for (const [key, value] of getFormEntries(form)) {
       if (Object.prototype.hasOwnProperty.call(result, key)) {
         // Handle multiple values (e.g., checkboxes)
         const existing = result[key];
@@ -916,7 +940,7 @@ export class BQueryElement {
 
     const params = new URLSearchParams();
 
-    for (const [key, value] of collectFormEntries(form)) {
+    for (const [key, value] of getFormEntries(form)) {
       params.append(key, value);
     }
 

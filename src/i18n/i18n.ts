@@ -3,8 +3,7 @@
  * @module bquery/i18n
  */
 
-import { signal } from '../reactive/core';
-import { computed } from '../reactive/computed';
+import { computed, signal } from '../reactive/index';
 import { clone } from '../core/utils/object';
 import { formatDate, formatNumber } from './formatting';
 import { deepMerge, translate } from './translate';

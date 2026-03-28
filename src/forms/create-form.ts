@@ -4,8 +4,7 @@
  * @module bquery/forms
  */
 
-import { signal } from '../reactive/core';
-import { computed } from '../reactive/computed';
+import { computed, signal } from '../reactive/index';
 import { isPromise } from '../core/utils/type-guards';
 import type {
   CrossFieldValidator,

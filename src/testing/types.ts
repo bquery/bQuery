@@ -3,7 +3,7 @@
  * @module bquery/testing
  */
 
-import type { Signal } from '../reactive/core';
+import type { Signal } from '../reactive/index';
 // ---------------------------------------------------------------------------
 // routing / mockRouter route types
 // ---------------------------------------------------------------------------

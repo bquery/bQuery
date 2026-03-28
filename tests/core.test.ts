@@ -868,6 +868,75 @@ describe('core/BQueryElement - new methods', () => {
     form.remove();
   });
 
+  it('serialize prefers FormData entries when available and filters unsafe values', () => {
+    const form = document.createElement('form');
+    const originalFormData = globalThis.FormData;
+    let receivedExpectedForm = false;
+
+    class MockFormData {
+      constructor(target: HTMLFormElement) {
+        receivedExpectedForm = target === form;
+      }
+
+      *entries(): IterableIterator<[string, FormDataEntryValue]> {
+        yield ['email', 'formdata@example.com'];
+        yield ['__proto__', 'polluted'];
+        yield ['avatar', { name: 'avatar.png' } as unknown as FormDataEntryValue];
+      }
+    }
+
+    Object.defineProperty(globalThis, 'FormData', {
+      configurable: true,
+      value: MockFormData,
+    });
+
+    try {
+      const data = new BQueryElement(form).serialize();
+
+      expect(receivedExpectedForm).toBe(true);
+      expect(Object.getPrototypeOf(data)).toBeNull();
+      expect(data.email).toBe('formdata@example.com');
+      expect(Object.prototype.hasOwnProperty.call(data, '__proto__')).toBe(false);
+      expect(Object.prototype.hasOwnProperty.call(data, 'avatar')).toBe(false);
+    } finally {
+      Object.defineProperty(globalThis, 'FormData', {
+        configurable: true,
+        value: originalFormData,
+      });
+      form.remove();
+    }
+  });
+
+  it('serialize falls back to manual form iteration when FormData throws', () => {
+    const form = document.createElement('form');
+    const input = document.createElement('input');
+    input.name = 'email';
+    input.value = 'fallback@example.com';
+    form.appendChild(input);
+
+    const originalFormData = globalThis.FormData;
+
+    Object.defineProperty(globalThis, 'FormData', {
+      configurable: true,
+      value: class ThrowingFormData {
+        constructor() {
+          throw new Error('FormData unavailable');
+        }
+      },
+    });
+
+    try {
+      const data = new BQueryElement(form).serialize();
+      expect(data.email).toBe('fallback@example.com');
+    } finally {
+      Object.defineProperty(globalThis, 'FormData', {
+        configurable: true,
+        value: originalFormData,
+      });
+      form.remove();
+    }
+  });
+
   it('serializeString returns URL-encoded string', () => {
     const form = document.createElement('form');
     const input = document.createElement('input');
@@ -887,6 +956,37 @@ describe('core/BQueryElement - new methods', () => {
     }
 
     form.remove();
+  });
+
+  it('serializeString prefers FormData entries when available and filters unsafe values', () => {
+    const form = document.createElement('form');
+    const originalFormData = globalThis.FormData;
+
+    class MockFormData {
+      constructor(_target: HTMLFormElement) {}
+
+      *entries(): IterableIterator<[string, FormDataEntryValue]> {
+        yield ['q', 'hello world'];
+        yield ['__proto__', 'polluted'];
+        yield ['file', { name: 'ignored.txt' } as unknown as FormDataEntryValue];
+      }
+    }
+
+    Object.defineProperty(globalThis, 'FormData', {
+      configurable: true,
+      value: MockFormData,
+    });
+
+    try {
+      const str = new BQueryElement(form).serializeString();
+      expect(str).toBe('q=hello+world');
+    } finally {
+      Object.defineProperty(globalThis, 'FormData', {
+        configurable: true,
+        value: originalFormData,
+      });
+      form.remove();
+    }
   });
 
   it('serialize returns empty object for non-form elements', () => {

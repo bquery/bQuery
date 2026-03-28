@@ -4,8 +4,7 @@
  * @module bquery/forms
  */
 
-import type { Signal } from '../reactive/core';
-import type { Computed } from '../reactive/computed';
+import type { Computed, Signal } from '../reactive/index';
 
 /**
  * Result of a single validation rule.

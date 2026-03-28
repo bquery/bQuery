@@ -3,8 +3,7 @@
  * @module bquery/i18n
  */
 
-import type { Signal } from '../reactive/core';
-import type { ReadonlySignal } from '../reactive/readonly';
+import type { ReadonlySignal, Signal } from '../reactive/index';
 
 /**
  * A nested record of translation messages.
