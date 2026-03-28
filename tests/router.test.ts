@@ -1961,6 +1961,9 @@ describe('Router', () => {
       expect(() => getRouteConstraintRegex('(a*)*')).toThrow(
         'bQuery router: Route constraint contains a potentially catastrophic (ReDoS) pattern. Nested quantifiers are not allowed.'
       );
+      expect(() => getRouteConstraintRegex('(\\d*)*')).toThrow(
+        'bQuery router: Route constraint contains a potentially catastrophic (ReDoS) pattern. Nested quantifiers are not allowed.'
+      );
       expect(() => getRouteConstraintRegex('(a+){2,}')).toThrow(
         'bQuery router: Route constraint contains a potentially catastrophic (ReDoS) pattern. Nested quantifiers are not allowed.'
       );
@@ -1982,6 +1985,9 @@ describe('Router', () => {
       expect(() => getRouteConstraintRegex('[a-zA-Z0-9_-]+')).not.toThrow();
       // Non-capturing groups without nesting are fine
       expect(() => getRouteConstraintRegex('(?:foo|bar)')).not.toThrow();
+      expect(() => getRouteConstraintRegex('(?:ab)+')).not.toThrow();
+      expect(() => getRouteConstraintRegex('(?:a|b)+')).not.toThrow();
+      expect(() => getRouteConstraintRegex('(ab){2,4}')).not.toThrow();
       expect(() => getRouteConstraintRegex('(foo(bar|baz))')).not.toThrow();
     });
 

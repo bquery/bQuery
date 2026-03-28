@@ -69,8 +69,14 @@ const hasNestedQuantifier = (pattern: string): boolean => {
       continue;
     }
 
-    if (groupQuantifierStack.length > 0 && (ch === '+' || ch === '*' || ch === '?' || ch === '{')) {
+    if (groupQuantifierStack.length > 0) {
+      if (ch === '?' && i > 0 && pattern[i - 1] === '(') {
+        continue;
+      }
+
+      if (ch === '+' || ch === '*' || ch === '?' || ch === '{') {
       groupQuantifierStack[groupQuantifierStack.length - 1] = true;
+      }
     }
   }
 
