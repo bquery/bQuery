@@ -996,6 +996,161 @@ describe('Store', () => {
         consoleErrorSpy.mockRestore();
       }
     });
+
+    it('should preserve listener registration order across multiple hooks', () => {
+      const store = createStore<
+        { count: number },
+        Record<string, never>,
+        { increment(): number }
+      >({
+        id: 'on-action-order-verification',
+        state: () => ({ count: 0 }),
+        actions: {
+          increment() {
+            (this as { count: number }).count++;
+            return (this as { count: number }).count;
+          },
+        },
+      });
+
+      const order: string[] = [];
+      store.$onAction(({ after }) => {
+        order.push('listener-A');
+        after(() => order.push('after-A'));
+      });
+      store.$onAction(({ after }) => {
+        order.push('listener-B');
+        after(() => order.push('after-B'));
+      });
+
+      store.increment();
+
+      expect(order).toEqual(['listener-A', 'listener-B', 'after-A', 'after-B']);
+    });
+
+    it('should run sync after hooks only after the action returns', () => {
+      const store = createStore<
+        { count: number },
+        Record<string, never>,
+        { increment(): number }
+      >({
+        id: 'on-action-after-timing',
+        state: () => ({ count: 0 }),
+        actions: {
+          increment() {
+            (this as { count: number }).count++;
+            return (this as { count: number }).count;
+          },
+        },
+      });
+
+      let afterResult: unknown = undefined;
+      store.$onAction(({ after }) => {
+        after((result) => {
+          afterResult = result;
+        });
+        // At this point the action hasn't run yet
+        expect(afterResult).toBeUndefined();
+      });
+
+      const result = store.increment();
+      // After the action call completes, the after hook has run
+      expect(afterResult).toBe(1);
+      expect(result).toBe(1);
+    });
+
+    it('should run async after hooks only after the promise resolves', async () => {
+      let resolved = false;
+      const store = createStore<
+        { data: string },
+        Record<string, never>,
+        { fetchData(): Promise<string> }
+      >({
+        id: 'on-action-async-after-timing',
+        state: () => ({ data: '' }),
+        actions: {
+          async fetchData() {
+            await new Promise((r) => setTimeout(r, 5));
+            resolved = true;
+            (this as { data: string }).data = 'done';
+            return 'done';
+          },
+        },
+      });
+
+      let afterCalled = false;
+      store.$onAction(({ after }) => {
+        after(() => {
+          afterCalled = true;
+          // The action must have resolved before after runs
+          expect(resolved).toBe(true);
+        });
+      });
+
+      expect(afterCalled).toBe(false);
+      await store.fetchData();
+      expect(afterCalled).toBe(true);
+    });
+
+    it('should not change the sync action return value when a listener throws', () => {
+      const store = createStore<
+        { count: number },
+        Record<string, never>,
+        { increment(): number }
+      >({
+        id: 'on-action-error-no-result-change',
+        state: () => ({ count: 0 }),
+        actions: {
+          increment() {
+            (this as { count: number }).count++;
+            return (this as { count: number }).count;
+          },
+        },
+      });
+      const consoleErrorSpy = spyOn(console, 'error').mockImplementation(() => {});
+
+      try {
+        store.$onAction(() => {
+          throw new Error('listener error');
+        });
+
+        // The action should still return 1 despite the listener error
+        expect(store.increment()).toBe(1);
+        expect(store.count).toBe(1);
+      } finally {
+        consoleErrorSpy.mockRestore();
+      }
+    });
+
+    it('should not change the async action result when a listener throws', async () => {
+      const store = createStore<
+        { data: string },
+        Record<string, never>,
+        { fetchData(): Promise<string> }
+      >({
+        id: 'on-action-error-no-async-change',
+        state: () => ({ data: '' }),
+        actions: {
+          async fetchData() {
+            (this as { data: string }).data = 'loaded';
+            return 'loaded';
+          },
+        },
+      });
+      const consoleErrorSpy = spyOn(console, 'error').mockImplementation(() => {});
+
+      try {
+        store.$onAction(() => {
+          throw new Error('listener error');
+        });
+
+        const result = await store.fetchData();
+        expect(result).toBe('loaded');
+        expect(store.data).toBe('loaded');
+      } finally {
+        consoleErrorSpy.mockRestore();
+      }
+    });
   });
 
   describe('createPersistedStore advanced options', () => {

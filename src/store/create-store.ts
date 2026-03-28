@@ -69,6 +69,7 @@ export const createStore = <
     actionName: string,
     error: unknown
   ): void => {
+    if (!isDev) return;
     console.error(
       `bQuery store: Error in $onAction ${phase} for store "${id}" action "${actionName}"`,
       error

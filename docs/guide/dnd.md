@@ -29,8 +29,8 @@ Useful options include axis locking, bounds, handle selectors, ghost previews, a
 ```ts
 const drop = droppable(document.querySelector('#drop-zone')!, {
   accept: '.draggable-card',
-  onDrop: ({ dragged, dropzone }) => {
-    console.log('Dropped', dragged, 'into', dropzone);
+  onDrop: ({ dragged, zone }) => {
+    console.log('Dropped', dragged, 'into', zone);
   },
 });
 

@@ -223,7 +223,6 @@ import { morphElement } from '@bquery/bquery/motion';
 await morphElement(sourceCard, targetCard, {
   duration: 220,
   easing: 'ease-out',
-  fade: true,
 });
 ```
 
@@ -234,8 +233,8 @@ import { parallax } from '@bquery/bquery/motion';
 
 const stopParallax = parallax(document.querySelector('.hero')!, {
   speed: 0.25,
-  axis: 'y',
-  clamp: true,
+  direction: 'vertical',
+  respectReducedMotion: true,
 });
 
 stopParallax();
@@ -251,8 +250,8 @@ const typing = typewriter(document.querySelector('#headline')!, 'Hello from bQue
   cursor: true,
 });
 
-await typing.play();
-typing.destroy();
+await typing.done;
+typing.stop();
 ```
 
 ## Springs

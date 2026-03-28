@@ -120,8 +120,20 @@ const canSkipInputRender = (
   if (oldProps.name !== newProps.name) return false;
   if (oldProps.disabled !== newProps.disabled) return false;
 
-  const control = element.shadowRoot?.querySelector('input.control') as HTMLInputElement | null;
+  // Verify shadow DOM still matches expected non-value props before skipping re-render
+  const shadowRoot = element.shadowRoot;
+  if (!shadowRoot) return false;
+
+  const labelEl = shadowRoot.querySelector('.label');
+  if (labelEl && labelEl.textContent !== newProps.label) return false;
+
+  const control = shadowRoot.querySelector('input.control') as HTMLInputElement | null;
   if (!control) return false;
+
+  if (control.type !== newProps.type) return false;
+  if (control.placeholder !== newProps.placeholder) return false;
+  if (control.name !== newProps.name) return false;
+  if (control.disabled !== newProps.disabled) return false;
 
   if (control.value !== newProps.value) {
     control.value = newProps.value;
@@ -163,10 +175,22 @@ const canSkipTextareaRender = (
   if (oldProps.rows !== newProps.rows) return false;
   if (oldProps.disabled !== newProps.disabled) return false;
 
-  const control = element.shadowRoot?.querySelector(
+  // Verify shadow DOM still matches expected non-value props before skipping re-render
+  const shadowRoot = element.shadowRoot;
+  if (!shadowRoot) return false;
+
+  const labelEl = shadowRoot.querySelector('.label');
+  if (labelEl && labelEl.textContent !== newProps.label) return false;
+
+  const control = shadowRoot.querySelector(
     'textarea.control'
   ) as HTMLTextAreaElement | null;
   if (!control) return false;
+
+  if (control.placeholder !== newProps.placeholder) return false;
+  if (control.name !== newProps.name) return false;
+  if (Number(control.rows) !== newProps.rows) return false;
+  if (control.disabled !== newProps.disabled) return false;
 
   if (control.value !== newProps.value) {
     control.value = newProps.value;

@@ -1948,6 +1948,33 @@ describe('Router', () => {
       ).toThrow('bQuery router: Route constraints cannot use backreferences.');
     });
 
+    it('should reject constraints that use named backreferences (\\k<name>)', () => {
+      expect(() =>
+        getRouteConstraintRegex('(?<word>[a-z]+)-\\k<word>')
+      ).toThrow('bQuery router: Route constraints cannot use backreferences.');
+    });
+
+    it('should reject constraints with nested quantifiers (ReDoS protection)', () => {
+      expect(() => getRouteConstraintRegex('(a+)+')).toThrow(
+        'bQuery router: Route constraint contains a potentially catastrophic (ReDoS) pattern. Nested quantifiers are not allowed.'
+      );
+      expect(() => getRouteConstraintRegex('(a*)*')).toThrow(
+        'bQuery router: Route constraint contains a potentially catastrophic (ReDoS) pattern. Nested quantifiers are not allowed.'
+      );
+      expect(() => getRouteConstraintRegex('(a+){2,}')).toThrow(
+        'bQuery router: Route constraint contains a potentially catastrophic (ReDoS) pattern. Nested quantifiers are not allowed.'
+      );
+    });
+
+    it('should allow safe constraints without nested quantifiers', () => {
+      // Simple character class constraints should work
+      expect(() => getRouteConstraintRegex('\\d+')).not.toThrow();
+      expect(() => getRouteConstraintRegex('[a-z]+')).not.toThrow();
+      expect(() => getRouteConstraintRegex('[a-zA-Z0-9_-]+')).not.toThrow();
+      // Non-capturing groups without nesting are fine
+      expect(() => getRouteConstraintRegex('(?:foo|bar)')).not.toThrow();
+    });
+
     it('should wrap invalid constraint regex syntax in a router-specific error', () => {
       expect(() => getRouteConstraintRegex('[a-')).toThrow(
         'bQuery router: Invalid route constraint regex: [a-'

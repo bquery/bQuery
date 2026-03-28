@@ -18,7 +18,7 @@ import {
 ## Enable devtools
 
 ```ts
-enableDevtools(true, { logToConsole: true, maxTimelineEntries: 200 });
+enableDevtools(true, { logToConsole: true });
 ```
 
 Use `isDevtoolsEnabled()` to check whether collection is active.
