@@ -70,7 +70,11 @@ export const hydrateMount = (
   context: BindingContext,
   options: HydrateMountOptions = {}
 ): View => {
-  const { hydrate: _hydrate, ...mountOptions } = options;
+  const { hydrate = true, ...mountOptions } = options;
+
+  if (!hydrate) {
+    throw new Error('bQuery ssr: hydrateMount() requires { hydrate: true } when options are provided.');
+  }
 
   // Hydration uses the standard mount which processes existing DOM
   // and attaches reactive effects without clearing content.

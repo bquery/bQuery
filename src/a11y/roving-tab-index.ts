@@ -145,10 +145,8 @@ export const rovingTabIndex = (
     destroy: () => {
       container.removeEventListener('keydown', handleKeyDown);
       // Restore original tabindex values
-      const allItems = getItems();
-      for (const item of allItems) {
-        const originalTabIndex = originalTabIndexes.get(item);
-        if (originalTabIndex === null || originalTabIndex === undefined) {
+      for (const [item, originalTabIndex] of originalTabIndexes) {
+        if (originalTabIndex === null) {
           item.removeAttribute('tabindex');
         } else {
           item.setAttribute('tabindex', originalTabIndex);

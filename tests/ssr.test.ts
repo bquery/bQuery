@@ -854,6 +854,14 @@ describe('hydrateMount', () => {
     val.value = 2;
     expect(container.querySelector('span')!.textContent).toBe('1');
   });
+
+  it('throws when hydrate is explicitly set to false', () => {
+    container.innerHTML = '<h1 bq-text="title">Server Title</h1>';
+
+    expect(() => hydrateMount(container, {}, { hydrate: false })).toThrow(
+      'bQuery ssr: hydrateMount() requires { hydrate: true } when options are provided.'
+    );
+  });
 });
 
 // ============================================================================

@@ -540,6 +540,19 @@ describe('a11y/rovingTabIndex', () => {
 
     handle.destroy();
   });
+
+  it('should not modify late-added items that were never tracked when destroyed', () => {
+    const toolbar = container.querySelector('#toolbar') as HTMLElement;
+    const handle = rovingTabIndex(toolbar, 'button');
+    const lateButton = document.createElement('button');
+    lateButton.textContent = 'Late';
+    lateButton.setAttribute('tabindex', '5');
+    toolbar.appendChild(lateButton);
+
+    handle.destroy();
+
+    expect(lateButton.getAttribute('tabindex')).toBe('5');
+  });
 });
 
 // ─── skipLink ────────────────────────────────────────────────────────────────

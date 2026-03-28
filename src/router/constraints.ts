@@ -60,7 +60,7 @@ const hasNestedQuantifier = (pattern: string): boolean => {
       const groupHasInnerQuantifier = groupQuantifierStack.pop() ?? false;
       // Check if the closing paren is followed by a quantifier
       const next = pattern[i + 1];
-      if (groupHasInnerQuantifier && (next === '+' || next === '*' || next === '{')) {
+      if (groupHasInnerQuantifier && (next === '+' || next === '*' || next === '?' || next === '{')) {
         return true;
       }
       if (groupHasInnerQuantifier && groupQuantifierStack.length > 0) {
@@ -69,7 +69,7 @@ const hasNestedQuantifier = (pattern: string): boolean => {
       continue;
     }
 
-    if (groupQuantifierStack.length > 0 && (ch === '+' || ch === '*' || ch === '{')) {
+    if (groupQuantifierStack.length > 0 && (ch === '+' || ch === '*' || ch === '?' || ch === '{')) {
       groupQuantifierStack[groupQuantifierStack.length - 1] = true;
     }
   }
