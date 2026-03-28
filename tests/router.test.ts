@@ -1991,9 +1991,18 @@ describe('Router', () => {
       expect(() => getRouteConstraintRegex('(foo(bar|baz))')).not.toThrow();
     });
 
-    it('should wrap invalid constraint regex syntax in a router-specific error', () => {
-      expect(() => getRouteConstraintRegex('[a-')).toThrow(
-        'bQuery router: Invalid route constraint regex: [a-'
+    it('should wrap invalid constraint regex syntax in a router-specific error with syntax details', () => {
+      let thrown: unknown;
+
+      try {
+        getRouteConstraintRegex('[a-');
+      } catch (error) {
+        thrown = error;
+      }
+
+      expect(thrown).toBeInstanceOf(Error);
+      expect((thrown as Error).message).toContain(
+        'bQuery router: Invalid route constraint regex "[a-":'
       );
     });
 

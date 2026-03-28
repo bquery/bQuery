@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from 'bun:test';
+import { afterEach, describe, expect, it, spyOn } from 'bun:test';
 import type {
   BQueryPlugin,
   CustomDirectiveHandler,
@@ -555,15 +555,23 @@ describe('Plugin System', () => {
       expect(calls[0].expr).toBe('yellow');
     });
 
-    it('should not invoke anything for unknown directives when no plugin registers them', () => {
+    it('should warn for unknown directives when no plugin registers them', () => {
       const el = document.createElement('div');
       el.setAttribute('bq-unknown', 'test');
 
       const handlers = createDirectiveHandlers();
-
       const cleanups: Array<() => void> = [];
-      // Should not throw
-      processElement(el, {}, 'bq', cleanups, handlers);
+      const warnSpy = spyOn(console, 'warn').mockImplementation(() => {});
+
+      try {
+        processElement(el, {}, 'bq', cleanups, handlers);
+
+        expect(warnSpy).toHaveBeenCalledWith(
+          '[bQuery][view] Unknown directive "bq-unknown" (parsed as "unknown") on <div>. This may be a typo or a missing custom directive registration.'
+        );
+      } finally {
+        warnSpy.mockRestore();
+      }
     });
 
     it('should pass cleanups to custom directive handler', () => {

@@ -37,6 +37,7 @@ const mergePersistedState = <S extends Record<string, unknown>>(
   const merged = { ...defaultState };
   for (const [key, value] of Object.entries(persisted)) {
     if (isPrototypePollutionKey(key)) continue;
+    if (!Object.prototype.hasOwnProperty.call(defaultState, key)) continue;
     merged[key as keyof S] = value as S[keyof S];
   }
   return merged;

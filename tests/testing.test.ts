@@ -662,7 +662,13 @@ describe('testing module exports', () => {
     type TestingRoute = import('../src/testing/index').Route;
 
     const expectTypeEquality = <T extends TestingRoute>(_value: T): void => {};
-    expectTypeEquality<MainRoute>({ path: '/' });
+    expectTypeEquality<MainRoute>({
+      path: '/',
+      params: {},
+      query: {},
+      matched: null,
+      hash: '',
+    });
   });
 
   it('is exported from full bundle', async () => {

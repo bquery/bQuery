@@ -75,7 +75,7 @@ const hasNestedQuantifier = (pattern: string): boolean => {
       }
 
       if (ch === '+' || ch === '*' || ch === '?' || ch === '{') {
-      groupQuantifierStack[groupQuantifierStack.length - 1] = true;
+        groupQuantifierStack[groupQuantifierStack.length - 1] = true;
       }
     }
   }
@@ -177,7 +177,9 @@ export const getRouteConstraintRegex = (constraint: string): RegExp => {
     return compiled;
   } catch (error) {
     if (error instanceof SyntaxError) {
-      throw new Error(`bQuery router: Invalid route constraint regex: ${constraint}`);
+      throw new Error(
+        `bQuery router: Invalid route constraint regex "${constraint}": ${error.message}`
+      );
     }
     throw error;
   }

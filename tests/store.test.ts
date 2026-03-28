@@ -1725,6 +1725,22 @@ describe('Store', () => {
       destroyStore('safe-persisted');
     });
 
+    it('should ignore unknown persisted keys that are not part of the default state schema', () => {
+      const mem = createMemoryStorage();
+      mem.store.set('bquery-store-schema-persisted', '{"val":"persisted","extra":"ignored"}');
+
+      const store = createPersistedStore(
+        { id: 'schema-persisted', state: () => ({ val: 'default' }) },
+        { storage: mem }
+      );
+
+      expect(store.val).toBe('persisted');
+      expect(Object.prototype.hasOwnProperty.call(store, 'extra')).toBe(false);
+      expect((store as { extra?: unknown }).extra).toBeUndefined();
+
+      destroyStore('schema-persisted');
+    });
+
     it('should fall back gracefully when default localStorage access throws', () => {
       const originalDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
 
