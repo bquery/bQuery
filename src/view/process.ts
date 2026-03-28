@@ -1,5 +1,5 @@
 import type { CleanupFn } from '../reactive/index';
-import { detectDevEnvironment } from '../store/utils';
+import { detectDevEnvironment } from '../core/env';
 import { getCustomDirective } from './custom-directives';
 import type { BindingContext, DirectiveHandler } from './types';
 

@@ -17,6 +17,8 @@ export const isPlainObject = (value: unknown): value is Record<string, unknown> 
  * Deep clones an object. Used for deep reactivity support.
  * @internal
  */
+import { detectDevEnvironment } from '../core/env';
+
 export const deepClone = <T>(obj: T): T => {
   if (obj === null || typeof obj !== 'object') {
     return obj;
@@ -127,22 +129,6 @@ export const detectNestedMutations = <S extends Record<string, unknown>>(
   }
 
   return mutatedKeys;
-};
-
-/** @internal Shared development-environment detector */
-export const detectDevEnvironment = (): boolean => {
-  try {
-    const globalProcess = (globalThis as { process?: { env?: { NODE_ENV?: string } } }).process;
-
-    const nodeEnv = globalProcess?.env?.NODE_ENV;
-    if (typeof nodeEnv === 'string') {
-      return nodeEnv !== 'production';
-    }
-
-    return false;
-  } catch {
-    return false;
-  }
 };
 
 /** @internal Flag to enable/disable development warnings */

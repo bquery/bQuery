@@ -2619,6 +2619,7 @@ describe('component/createComponentScope', () => {
 
   it('does not log disposer errors when process is unavailable', async () => {
     const originalProcessDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'process');
+    const originalDevOverride = (globalThis as { __BQUERY_DEV__?: boolean }).__BQUERY_DEV__;
     const errorSpy = spyOn(console, 'error').mockImplementation(() => {});
 
     Object.defineProperty(globalThis, 'process', {
@@ -2642,6 +2643,51 @@ describe('component/createComponentScope', () => {
         Object.defineProperty(globalThis, 'process', originalProcessDescriptor);
       } else {
         delete (globalThis as { process?: unknown }).process;
+      }
+      if (originalDevOverride === undefined) {
+        delete (globalThis as { __BQUERY_DEV__?: boolean }).__BQUERY_DEV__;
+      } else {
+        (globalThis as { __BQUERY_DEV__?: boolean }).__BQUERY_DEV__ = originalDevOverride;
+      }
+      errorSpy.mockRestore();
+    }
+  });
+
+  it('logs disposer errors when the dev override is enabled without process', async () => {
+    const originalProcessDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'process');
+    const originalDevOverride = (globalThis as { __BQUERY_DEV__?: boolean }).__BQUERY_DEV__;
+    const errorSpy = spyOn(console, 'error').mockImplementation(() => {});
+
+    Object.defineProperty(globalThis, 'process', {
+      value: undefined,
+      configurable: true,
+    });
+    (globalThis as { __BQUERY_DEV__?: boolean }).__BQUERY_DEV__ = true;
+
+    try {
+      const { createComponentScope: createComponentScopeWithDevOverride } = await import(
+        `../src/component/scope.ts?dev-override=${Date.now()}`
+      );
+      const scope = createComponentScopeWithDevOverride();
+      scope.addDisposer(() => {
+        throw new Error('dispose failed');
+      });
+
+      scope.dispose();
+      expect(errorSpy).toHaveBeenCalledWith(
+        'bQuery component: Error disposing scoped resource',
+        expect.any(Error)
+      );
+    } finally {
+      if (originalProcessDescriptor) {
+        Object.defineProperty(globalThis, 'process', originalProcessDescriptor);
+      } else {
+        delete (globalThis as { process?: unknown }).process;
+      }
+      if (originalDevOverride === undefined) {
+        delete (globalThis as { __BQUERY_DEV__?: boolean }).__BQUERY_DEV__;
+      } else {
+        (globalThis as { __BQUERY_DEV__?: boolean }).__BQUERY_DEV__ = originalDevOverride;
       }
       errorSpy.mockRestore();
     }

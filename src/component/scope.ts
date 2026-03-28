@@ -8,10 +8,10 @@
  */
 
 import { Computed, computed } from '../reactive/computed';
+import { detectDevEnvironment } from '../core/env';
 import { Signal, signal } from '../reactive/core';
 import { effect } from '../reactive/effect';
 import type { CleanupFn } from '../reactive/index';
-import { detectDevEnvironment } from '../store/utils';
 
 const shouldLogScopeDisposalErrors = detectDevEnvironment();
 

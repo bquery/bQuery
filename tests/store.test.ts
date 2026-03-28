@@ -1768,3 +1768,32 @@ describe('Store', () => {
     });
   });
 });
+
+describe('store/isDev', () => {
+  it('enables dev mode when the global dev override is set without process', async () => {
+    const originalProcessDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'process');
+    const originalDevOverride = (globalThis as { __BQUERY_DEV__?: boolean }).__BQUERY_DEV__;
+
+    Object.defineProperty(globalThis, 'process', {
+      value: undefined,
+      configurable: true,
+    });
+    (globalThis as { __BQUERY_DEV__?: boolean }).__BQUERY_DEV__ = true;
+
+    try {
+      const { isDev } = await import(`../src/store/utils.ts?dev-override=${Date.now()}`);
+      expect(isDev).toBe(true);
+    } finally {
+      if (originalProcessDescriptor) {
+        Object.defineProperty(globalThis, 'process', originalProcessDescriptor);
+      } else {
+        delete (globalThis as { process?: unknown }).process;
+      }
+      if (originalDevOverride === undefined) {
+        delete (globalThis as { __BQUERY_DEV__?: boolean }).__BQUERY_DEV__;
+      } else {
+        (globalThis as { __BQUERY_DEV__?: boolean }).__BQUERY_DEV__ = originalDevOverride;
+      }
+    }
+  });
+});

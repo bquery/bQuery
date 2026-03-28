@@ -576,6 +576,7 @@ describe('Plugin System', () => {
 
     it('should not warn for unknown directives when the environment cannot be detected', async () => {
       const originalProcessDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'process');
+      const originalDevOverride = (globalThis as { __BQUERY_DEV__?: boolean }).__BQUERY_DEV__;
       const warnSpy = spyOn(console, 'warn').mockImplementation(() => {});
 
       Object.defineProperty(globalThis, 'process', {
@@ -598,6 +599,49 @@ describe('Plugin System', () => {
           Object.defineProperty(globalThis, 'process', originalProcessDescriptor);
         } else {
           delete (globalThis as { process?: unknown }).process;
+        }
+        if (originalDevOverride === undefined) {
+          delete (globalThis as { __BQUERY_DEV__?: boolean }).__BQUERY_DEV__;
+        } else {
+          (globalThis as { __BQUERY_DEV__?: boolean }).__BQUERY_DEV__ = originalDevOverride;
+        }
+        warnSpy.mockRestore();
+      }
+    });
+
+    it('should warn for unknown directives when the dev override is enabled without process', async () => {
+      const originalProcessDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'process');
+      const originalDevOverride = (globalThis as { __BQUERY_DEV__?: boolean }).__BQUERY_DEV__;
+      const warnSpy = spyOn(console, 'warn').mockImplementation(() => {});
+
+      Object.defineProperty(globalThis, 'process', {
+        value: undefined,
+        configurable: true,
+      });
+      (globalThis as { __BQUERY_DEV__?: boolean }).__BQUERY_DEV__ = true;
+
+      try {
+        const { processElement: processElementWithDevOverride } = await import(
+          `../src/view/process.ts?dev-override=${Date.now()}`
+        );
+        const el = document.createElement('div');
+        el.setAttribute('bq-unknown', 'test');
+
+        processElementWithDevOverride(el, {}, 'bq', [], createDirectiveHandlers());
+
+        expect(warnSpy).toHaveBeenCalledWith(
+          '[bQuery][view] Unknown directive "bq-unknown" (parsed as "unknown") on <div>. This may be a typo or a missing custom directive registration.'
+        );
+      } finally {
+        if (originalProcessDescriptor) {
+          Object.defineProperty(globalThis, 'process', originalProcessDescriptor);
+        } else {
+          delete (globalThis as { process?: unknown }).process;
+        }
+        if (originalDevOverride === undefined) {
+          delete (globalThis as { __BQUERY_DEV__?: boolean }).__BQUERY_DEV__;
+        } else {
+          (globalThis as { __BQUERY_DEV__?: boolean }).__BQUERY_DEV__ = originalDevOverride;
         }
         warnSpy.mockRestore();
       }
