@@ -33,6 +33,14 @@ type PendingComponentRegistration = {
 
 registerCustomDirectiveResolver((name) => customDirectives.get(name));
 
+/**
+ * Restore the directive registry to a previously captured snapshot.
+ *
+ * Used to roll back partial plugin installation when `install()` or staged
+ * `customElements.define()` calls fail after directives were already registered.
+ *
+ * @internal
+ */
 const restoreDirectiveSnapshot = (
   directivesSnapshot: ReadonlyMap<string, CustomDirectiveHandler>
 ): void => {

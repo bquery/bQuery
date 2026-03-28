@@ -46,6 +46,9 @@ const makePlugin = (
   install: installFn ?? (() => {}),
 });
 
+let customElementTestId = 0;
+const nextCustomElementTag = (suffix: string): string => `bq-${suffix}-${++customElementTestId}`;
+
 const createDirectiveHandlers = () => ({
   text: handleText,
   html: handleHtml(true),
@@ -155,7 +158,7 @@ describe('Plugin System', () => {
     });
 
     it('should not define staged custom elements when install throws', () => {
-      const tagName = `bq-rollback-widget-${Date.now()}`;
+      const tagName = nextCustomElementTag('rollback-widget');
       class RollbackWidget extends HTMLElement {}
 
       expect(() => {
@@ -476,7 +479,7 @@ describe('Plugin System', () => {
 
     it('should roll back directives when customElements.define throws', () => {
       const originalDefine = customElements.define.bind(customElements);
-      const tagName = `bq-define-rollback-${Date.now()}`;
+      const tagName = nextCustomElementTag('define-rollback');
       const directiveHandler: CustomDirectiveHandler = () => {};
       class DefineRollbackElement extends HTMLElement {}
 
