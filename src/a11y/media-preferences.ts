@@ -202,29 +202,32 @@ export const prefersContrast = (): MediaPreferenceSignal<ContrastPreference> => 
   };
 
   if (typeof window !== 'undefined' && typeof window.matchMedia === 'function') {
+    let mql: MediaQueryList | undefined;
+    let mqlLess: MediaQueryList | undefined;
+    let mqlCustom: MediaQueryList | undefined;
+
     const update = (): void => {
-      try {
-        if (window.matchMedia('(prefers-contrast: more)').matches) {
-          s.value = 'more';
-        } else if (window.matchMedia('(prefers-contrast: less)').matches) {
-          s.value = 'less';
-        } else if (window.matchMedia('(prefers-contrast: custom)').matches) {
-          s.value = 'custom';
-        } else {
-          s.value = 'no-preference';
-        }
-      } catch {
-        // matchMedia may throw in non-browser environments
+      if (!mql || !mqlLess || !mqlCustom) {
+        return;
+      }
+
+      if (mql.matches) {
+        s.value = 'more';
+      } else if (mqlLess.matches) {
+        s.value = 'less';
+      } else if (mqlCustom.matches) {
+        s.value = 'custom';
+      } else {
+        s.value = 'no-preference';
       }
     };
 
-    update();
-
     // Listen for changes on the contrast preference variants
     try {
-      const mql = window.matchMedia('(prefers-contrast: more)');
-      const mqlLess = window.matchMedia('(prefers-contrast: less)');
-      const mqlCustom = window.matchMedia('(prefers-contrast: custom)');
+      mql = window.matchMedia('(prefers-contrast: more)');
+      mqlLess = window.matchMedia('(prefers-contrast: less)');
+      mqlCustom = window.matchMedia('(prefers-contrast: custom)');
+      update();
       const cleanupFns = [mql, mqlLess, mqlCustom]
         .map((entry) =>
           bindMediaQueryListener(entry, () => {

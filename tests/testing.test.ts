@@ -657,6 +657,14 @@ describe('testing module exports', () => {
     expect(typeof main.waitFor).toBe('function');
   });
 
+  it('re-exports Route from the main index type surface', () => {
+    type MainRoute = import('../src/index').Route;
+    type TestingRoute = import('../src/testing/index').Route;
+
+    const expectTypeEquality = <T extends TestingRoute>(_value: T): void => {};
+    expectTypeEquality<MainRoute>({ path: '/' });
+  });
+
   it('is exported from full bundle', async () => {
     const full = await import('../src/full');
     expect(typeof full.renderComponent).toBe('function');

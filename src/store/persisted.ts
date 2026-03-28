@@ -4,6 +4,7 @@
 
 import { isPrototypePollutionKey } from '../core/utils/object';
 import { createStore } from './create-store';
+import { isDev } from './utils';
 import type { PersistedStoreOptions, Store, StoreDefinition } from './types';
 
 /** @internal Version key suffix */
@@ -121,7 +122,7 @@ export const createPersistedStore = <
       storage.setItem(versionKey, String(version));
       return true;
     } catch (error) {
-      if (warningMessage) {
+      if (warningMessage && isDev) {
         console.warn(warningMessage, error);
       }
       return false;
@@ -172,10 +173,12 @@ export const createPersistedStore = <
               canRetryPendingVersionAfterCreate = true;
             } catch (e) {
               // Migration will re-run on next load, but state is still usable
-              console.warn(
-                `[bQuery store "${definition.id}"] Failed to persist migrated state:`,
-                e
-              );
+              if (isDev) {
+                console.warn(
+                  `[bQuery store "${definition.id}"] Failed to persist migrated state:`,
+                  e
+                );
+              }
             }
 
             if (

@@ -991,6 +991,51 @@ describe('a11y/prefersContrast', () => {
     }
   });
 
+  it('should reuse existing media-query list instances when updating contrast preference', () => {
+    const registeredHandlers = new Map<string, (event: MediaQueryListEvent) => void>();
+    const states = new Map<string, boolean>([
+      ['(prefers-contrast: more)', false],
+      ['(prefers-contrast: less)', false],
+      ['(prefers-contrast: custom)', false],
+    ]);
+    const originalMatchMedia = window.matchMedia;
+    let matchMediaCalls = 0;
+
+    window.matchMedia = ((query: string) => {
+      matchMediaCalls++;
+      return {
+        get matches() {
+          return states.get(query) ?? false;
+        },
+        media: query,
+        onchange: null,
+        addEventListener: (_type: string, handler: (event: MediaQueryListEvent) => void) => {
+          registeredHandlers.set(query, handler);
+        },
+        removeEventListener: () => {},
+        addListener: () => {},
+        removeListener: () => {},
+        dispatchEvent: () => true,
+      } as MediaQueryList;
+    }) as typeof window.matchMedia;
+
+    try {
+      const sig = prefersContrast();
+      expect(matchMediaCalls).toBe(3);
+
+      states.set('(prefers-contrast: more)', true);
+      registeredHandlers.get('(prefers-contrast: more)')?.(
+        new Event('change') as MediaQueryListEvent
+      );
+
+      expect(sig.value).toBe('more');
+      expect(matchMediaCalls).toBe(3);
+      sig.destroy();
+    } finally {
+      window.matchMedia = originalMatchMedia;
+    }
+  });
+
   it('should fall back to legacy listeners for contrast preference changes', () => {
     const registeredHandlers = new Map<
       string,
