@@ -2,7 +2,7 @@
  * Store persistence helpers.
  */
 
-import { isPlainObject, isPrototypePollutionKey } from '../core/utils/object';
+import { isPrototypePollutionKey } from '../core/utils/object';
 import { createStore } from './create-store';
 import type { PersistedStoreOptions, Store, StoreDefinition } from './types';
 
@@ -17,7 +17,7 @@ const defaultSerializer = {
 
 /** @internal Check whether a value can be merged into store state. */
 const isPersistedStateObject = (value: unknown): value is Record<string, unknown> => {
-  if (!isPlainObject(value)) return false;
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return false;
 
   const prototype = Object.getPrototypeOf(value);
   return prototype === null || Object.getPrototypeOf(prototype) === null;

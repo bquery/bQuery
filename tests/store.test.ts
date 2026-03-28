@@ -1646,6 +1646,27 @@ describe('Store', () => {
       destroyStore('instance-shape');
     });
 
+    it('should accept null-prototype persisted objects from custom serializers', () => {
+      const mem = createMemoryStorage();
+      mem.store.set('bquery-store-null-prototype-shape', '{"ignored":true}');
+      const persisted = Object.create(null) as Record<string, unknown>;
+      persisted.val = 'persisted';
+
+      const store = createPersistedStore(
+        { id: 'null-prototype-shape', state: () => ({ val: 'fallback' }) },
+        {
+          storage: mem,
+          serializer: {
+            serialize: (state: unknown) => JSON.stringify(state),
+            deserialize: () => persisted,
+          },
+        }
+      );
+
+      expect(store.val).toBe('persisted');
+      destroyStore('null-prototype-shape');
+    });
+
     it('should fall back to defaults when migration returns an invalid persisted shape', () => {
       const invalidMigratedValues: unknown[] = [null, [], 'invalid'];
 
