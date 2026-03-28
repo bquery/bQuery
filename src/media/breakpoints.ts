@@ -87,12 +87,16 @@ export const breakpoints = <T extends BreakpointMap>(
 
     const ro = readonly(s) as MediaSignalHandle<boolean>;
     let destroyed = false;
-    ro.destroy = (): void => {
-      if (destroyed) return;
-      destroyed = true;
-      cleanup?.();
-      s.dispose();
-    };
+    Object.defineProperty(ro, 'destroy', {
+      enumerable: false,
+      configurable: true,
+      value(): void {
+        if (destroyed) return;
+        destroyed = true;
+        cleanup?.();
+        s.dispose();
+      },
+    });
     destroyers.push(ro.destroy);
     signals[key] = ro;
   }

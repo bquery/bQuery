@@ -188,6 +188,13 @@ describe('media/breakpoints', () => {
     }
   });
 
+  it('defines per-breakpoint destroy handles as non-enumerable', () => {
+    const bp = breakpoints({ sm: 640 });
+
+    expect(Object.keys(bp.sm)).not.toContain('destroy');
+    expect(Object.getOwnPropertyDescriptor(bp.sm, 'destroy')?.enumerable ?? true).toBe(false);
+  });
+
   it('falls back to legacy addListener/removeListener for breakpoint signals', () => {
     const handlers = new Map<string, (event: MediaQueryListEvent | MediaQueryList) => void>();
     const removed = new Set<string>();
@@ -536,6 +543,13 @@ describe('media/useBattery', () => {
       });
     }
   });
+
+  it('defines destroy as a non-enumerable handle method', () => {
+    const battery = useBattery();
+
+    expect(Object.keys(battery)).not.toContain('destroy');
+    expect(Object.getOwnPropertyDescriptor(battery, 'destroy')?.enumerable ?? true).toBe(false);
+  });
 });
 
 // ─── useGeolocation ──────────────────────────────────────────────────────────
@@ -685,6 +699,13 @@ describe('media/useDeviceMotion', () => {
       removeSpy.mockRestore();
     }
   });
+
+  it('defines destroy as a non-enumerable handle method', () => {
+    const motion = useDeviceMotion();
+
+    expect(Object.keys(motion)).not.toContain('destroy');
+    expect(Object.getOwnPropertyDescriptor(motion, 'destroy')?.enumerable ?? true).toBe(false);
+  });
 });
 
 // ─── useDeviceOrientation ────────────────────────────────────────────────────
@@ -732,6 +753,15 @@ describe('media/useDeviceOrientation', () => {
       addSpy.mockRestore();
       removeSpy.mockRestore();
     }
+  });
+
+  it('defines destroy as a non-enumerable handle method', () => {
+    const orientation = useDeviceOrientation();
+
+    expect(Object.keys(orientation)).not.toContain('destroy');
+    expect(Object.getOwnPropertyDescriptor(orientation, 'destroy')?.enumerable ?? true).toBe(
+      false
+    );
   });
 });
 

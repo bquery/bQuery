@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'bun:test';
+import { describe, expect, it, spyOn } from 'bun:test';
 import type {
   ComponentDefinition,
   ComponentRenderContext,
@@ -17,6 +17,7 @@ import {
 } from '../src/component/index';
 import { computed, signal } from '../src/reactive/index';
 import { sanitizeHtml, trusted } from '../src/security/sanitize';
+import { createComponentScope } from '../src/component/scope';
 
 const expectType = <T>(_value: T): void => {};
 
@@ -2591,5 +2592,26 @@ describe('component/useEffect', () => {
     // Second disconnect
     el.remove();
     expect(cleanups).toEqual(['disconnected', 'disconnected']);
+  });
+});
+
+describe('component/createComponentScope', () => {
+  it('does not log disposer errors in production mode', () => {
+    const scope = createComponentScope();
+    const errorSpy = spyOn(console, 'error').mockImplementation(() => {});
+    const originalNodeEnv = process.env.NODE_ENV;
+
+    process.env.NODE_ENV = 'production';
+    scope.addDisposer(() => {
+      throw new Error('dispose failed');
+    });
+
+    try {
+      scope.dispose();
+      expect(errorSpy).not.toHaveBeenCalled();
+    } finally {
+      process.env.NODE_ENV = originalNodeEnv;
+      errorSpy.mockRestore();
+    }
   });
 });

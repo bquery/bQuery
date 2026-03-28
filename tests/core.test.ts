@@ -819,6 +819,33 @@ describe('core/BQueryElement - new methods', () => {
     form.remove();
   });
 
+  it('serialize supports form controls from another realm constructor', () => {
+    const form = document.createElement('form');
+    const input = document.createElement('input');
+    input.name = 'email';
+    input.value = 'iframe@example.com';
+    form.appendChild(input);
+
+    class ForeignElement {}
+    const originalGlobalElement = globalThis.Element;
+
+    Object.defineProperty(globalThis, 'Element', {
+      configurable: true,
+      value: ForeignElement,
+    });
+
+    try {
+      const data = new BQueryElement(form).serialize();
+      expect(data.email).toBe('iframe@example.com');
+    } finally {
+      Object.defineProperty(globalThis, 'Element', {
+        configurable: true,
+        value: originalGlobalElement,
+      });
+      form.remove();
+    }
+  });
+
   it('serialize ignores prototype-pollution field names', () => {
     const form = document.createElement('form');
     const safeInput = document.createElement('input');

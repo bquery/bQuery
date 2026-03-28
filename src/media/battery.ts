@@ -101,12 +101,16 @@ export const useBattery = (): BatterySignal => {
   }
 
   const ro = readonly(s) as BatterySignal;
-  ro.destroy = (): void => {
-    if (destroyed) return;
-    destroyed = true;
-    cleanup?.();
-    s.dispose();
-  };
+  Object.defineProperty(ro, 'destroy', {
+    enumerable: false,
+    configurable: true,
+    value(): void {
+      if (destroyed) return;
+      destroyed = true;
+      cleanup?.();
+      s.dispose();
+    },
+  });
 
   return ro;
 };

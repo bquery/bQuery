@@ -56,11 +56,11 @@ export type UseRouteReturn = {
  */
 export const useRoute = (): UseRouteReturn => {
   const route = computed(() => routeSignal.value);
-  const path = computed(() => routeSignal.value.path);
-  const params = computed(() => routeSignal.value.params);
-  const query = computed(() => routeSignal.value.query);
-  const hash = computed(() => routeSignal.value.hash);
-  const matched = computed(() => routeSignal.value.matched);
+  const path = computed(() => route.value.path);
+  const params = computed(() => route.value.params);
+  const query = computed(() => route.value.query);
+  const hash = computed(() => route.value.hash);
+  const matched = computed(() => route.value.matched);
 
   return { route, path, params, query, hash, matched };
 };

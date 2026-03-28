@@ -36,9 +36,10 @@ const isSerializableFormControl = (element: Element): element is SerializableFor
 
 const collectFormEntries = (form: HTMLFormElement): Array<[string, string]> => {
   const entries: Array<[string, string]> = [];
+  const elementCtor = form.ownerDocument.defaultView?.Element ?? Element;
 
   for (const control of Array.from(form.elements)) {
-    if (!(control instanceof Element) || !isSerializableFormControl(control)) {
+    if (!(control instanceof elementCtor) || !isSerializableFormControl(control)) {
       continue;
     }
 
