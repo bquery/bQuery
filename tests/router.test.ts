@@ -2345,6 +2345,27 @@ describe('Router', () => {
       await router.push('/b');
       expect(path.value).toBe('/b');
     });
+
+    it('should reuse the same reactive route signals across calls', async () => {
+      const { useRoute } = await import('../src/router/index');
+
+      router = createRouter({
+        routes: [
+          { path: '/', component: () => null },
+          { path: '/a', component: () => null },
+        ],
+      });
+
+      const first = useRoute();
+      const second = useRoute();
+
+      expect(first.route).toBe(second.route);
+      expect(first.path).toBe(second.path);
+      expect(first.params).toBe(second.params);
+      expect(first.query).toBe(second.query);
+      expect(first.hash).toBe(second.hash);
+      expect(first.matched).toBe(second.matched);
+    });
   });
 
   // ============================================================================

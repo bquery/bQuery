@@ -71,6 +71,7 @@ export const useViewport = (): ViewportSignal => {
   let destroyed = false;
   Object.defineProperty(ro, 'destroy', {
     enumerable: false,
+    configurable: true,
     value: (): void => {
       if (destroyed) return;
       destroyed = true;

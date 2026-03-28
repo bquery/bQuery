@@ -36,6 +36,18 @@ export const morphElement = (
   const fromEl = from as HTMLElement;
   const toEl = to as HTMLElement;
 
+  if (
+    typeof window === 'undefined' ||
+    typeof document === 'undefined' ||
+    typeof fromEl.getBoundingClientRect !== 'function' ||
+    typeof toEl.getBoundingClientRect !== 'function' ||
+    typeof fromEl.style === 'undefined' ||
+    typeof toEl.style === 'undefined'
+  ) {
+    onComplete?.();
+    return Promise.resolve();
+  }
+
   // Capture FIRST position of source element
   const firstRect = from.getBoundingClientRect();
 

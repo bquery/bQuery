@@ -883,6 +883,20 @@ describe('motion/morphElement', () => {
     expect(completed).toBe(true);
   });
 
+  it('returns a no-op when geometry APIs are unavailable', async () => {
+    let completed = false;
+
+    await expect(
+      morphElement(
+        { style: {} } as unknown as Element,
+        { style: {} } as unknown as Element,
+        { onComplete: () => (completed = true) }
+      )
+    ).resolves.toBeUndefined();
+
+    expect(completed).toBe(true);
+  });
+
   it('falls back when animate API is unavailable', async () => {
     const from = createPositionedElement({ top: 0, left: 0 });
     const to = createPositionedElement({ top: 50, left: 50 });

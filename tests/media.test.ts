@@ -297,6 +297,7 @@ describe('media/useViewport', () => {
 
     expect(Object.keys(vp)).not.toContain('destroy');
     expect(Object.getOwnPropertyDescriptor(vp, 'destroy')?.enumerable ?? true).toBe(false);
+    expect(Object.getOwnPropertyDescriptor(vp, 'destroy')?.configurable ?? false).toBe(true);
   });
 });
 

@@ -30,6 +30,15 @@ export type UseRouteReturn = {
   matched: ReadonlySignal<RouteDefinition | null>;
 };
 
+const route = computed(() => routeSignal.value);
+const path = computed(() => route.value.path);
+const params = computed(() => route.value.params);
+const query = computed(() => route.value.query);
+const hash = computed(() => route.value.hash);
+const matched = computed(() => route.value.matched);
+
+const routeHandle: UseRouteReturn = { route, path, params, query, hash, matched };
+
 /**
  * Returns reactive access to the current route, params, query, and hash.
  *
@@ -55,12 +64,5 @@ export type UseRouteReturn = {
  * ```
  */
 export const useRoute = (): UseRouteReturn => {
-  const route = computed(() => routeSignal.value);
-  const path = computed(() => route.value.path);
-  const params = computed(() => route.value.params);
-  const query = computed(() => route.value.query);
-  const hash = computed(() => route.value.hash);
-  const matched = computed(() => route.value.matched);
-
-  return { route, path, params, query, hash, matched };
+  return routeHandle;
 };
