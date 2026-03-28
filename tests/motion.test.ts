@@ -1242,6 +1242,21 @@ describe('motion/typewriter', () => {
     expect(el.querySelector('span[aria-hidden="true"]')).toBeNull();
   });
 
+  it('reuses a single text node while typing with a cursor', async () => {
+    const el = document.createElement('div');
+    const tw = typewriter(el, 'Hello', { speed: 10, cursor: true });
+
+    await new Promise((r) => setTimeout(r, 25));
+
+    const textNodes = Array.from(el.childNodes).filter((node) => node.nodeType === Node.TEXT_NODE);
+    expect(textNodes).toHaveLength(1);
+    expect(el.querySelectorAll('span[aria-hidden="true"]')).toHaveLength(1);
+    expect(el.childNodes.length).toBe(2);
+
+    tw.stop();
+    await tw.done;
+  });
+
   it('returns resolved controls when document is unavailable', async () => {
     const el = document.createElement('div');
     const originalDocumentDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'document');

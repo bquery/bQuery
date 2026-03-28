@@ -4,7 +4,7 @@
  */
 
 import { computed, signal } from '../reactive/index';
-import { clone, isPrototypePollutionKey } from '../core/utils/object';
+import { isPrototypePollutionKey } from '../core/utils/object';
 import { formatDate, formatNumber } from './formatting';
 import { deepMerge, translate } from './translate';
 import type {
@@ -62,13 +62,16 @@ import type {
 export const createI18n = (config: I18nConfig): I18nInstance => {
   const { locale: initialLocale, messages: initialMessages, fallbackLocale } = config;
 
+  const sanitizeLocaleMessages = (localeMessages: LocaleMessages): LocaleMessages =>
+    deepMerge(Object.create(null) as LocaleMessages, localeMessages);
+
   // Deep-clone initial messages to prevent external mutation
   const messages = Object.create(null) as Messages;
   for (const [loc, msgs] of Object.entries(initialMessages)) {
     if (isPrototypePollutionKey(loc)) {
       continue;
     }
-    messages[loc] = clone(msgs);
+    messages[loc] = sanitizeLocaleMessages(msgs);
   }
 
   // Reactive locale signal
@@ -115,7 +118,7 @@ export const createI18n = (config: I18nConfig): I18nInstance => {
     const loaded = await loader();
     // Handle both default exports and direct objects
     const msgs = (loaded as { default?: LocaleMessages }).default ?? (loaded as LocaleMessages);
-    messages[loc] = clone(msgs);
+    messages[loc] = sanitizeLocaleMessages(msgs);
     loadedLocales.add(loc);
   };
 
@@ -171,7 +174,7 @@ export const createI18n = (config: I18nConfig): I18nInstance => {
       messages[loc] = Object.create(null) as LocaleMessages;
       loadedLocales.add(loc);
     }
-    messages[loc] = deepMerge(messages[loc], newMessages);
+    messages[loc] = deepMerge(messages[loc], sanitizeLocaleMessages(newMessages));
   };
 
   /**

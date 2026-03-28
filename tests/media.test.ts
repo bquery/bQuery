@@ -784,7 +784,9 @@ describe('media/clipboard', () => {
         value: undefined,
         configurable: true,
       });
-      await expect(clipboard.read()).rejects.toThrow('Clipboard API is not available');
+      await expect(clipboard.read()).rejects.toThrow(
+        'bQuery media: Clipboard API is unavailable'
+      );
     } finally {
       Object.defineProperty(navigator, 'clipboard', {
         value: originalClipboard,
@@ -801,7 +803,9 @@ describe('media/clipboard', () => {
         value: undefined,
         configurable: true,
       });
-      await expect(clipboard.write('test')).rejects.toThrow('Clipboard API is not available');
+      await expect(clipboard.write('test')).rejects.toThrow(
+        'bQuery media: Clipboard API is unavailable'
+      );
     } finally {
       Object.defineProperty(navigator, 'clipboard', {
         value: originalClipboard,
@@ -853,6 +857,25 @@ describe('media/clipboard', () => {
 
       const text = await clipboard.read();
       expect(text).toBe('clipboard content');
+    } finally {
+      Object.defineProperty(navigator, 'clipboard', {
+        value: originalClipboard,
+        configurable: true,
+      });
+    }
+  });
+
+  it('clipboard availability errors mention secure-context requirements', async () => {
+    const originalClipboard = navigator.clipboard;
+
+    try {
+      Object.defineProperty(navigator, 'clipboard', {
+        value: undefined,
+        configurable: true,
+      });
+
+      await expect(clipboard.read()).rejects.toThrow('secure context');
+      await expect(clipboard.write('test')).rejects.toThrow('user-activation');
     } finally {
       Object.defineProperty(navigator, 'clipboard', {
         value: originalClipboard,

@@ -9,6 +9,9 @@
 
 import type { ClipboardAPI } from './types';
 
+const CLIPBOARD_UNAVAILABLE_ERROR =
+  'bQuery media: Clipboard API is unavailable. Use a secure context (HTTPS or localhost) and ensure clipboard permissions or user-activation requirements are met.';
+
 /**
  * Clipboard API wrapper providing simple async read/write access.
  *
@@ -47,7 +50,7 @@ export const clipboard: ClipboardAPI = {
       !navigator.clipboard ||
       typeof navigator.clipboard.readText !== 'function'
     ) {
-      throw new Error('Clipboard API is not available');
+      throw new Error(CLIPBOARD_UNAVAILABLE_ERROR);
     }
     return navigator.clipboard.readText();
   },
@@ -70,7 +73,7 @@ export const clipboard: ClipboardAPI = {
       !navigator.clipboard ||
       typeof navigator.clipboard.writeText !== 'function'
     ) {
-      throw new Error('Clipboard API is not available');
+      throw new Error(CLIPBOARD_UNAVAILABLE_ERROR);
     }
     return navigator.clipboard.writeText(text);
   },

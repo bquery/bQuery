@@ -301,6 +301,24 @@ describe('i18n/createI18n', () => {
       expect(i18n.t('greeting')).toBe('Bonjour');
     });
 
+    it('should sanitize prototype-pollution keys from loaded locale payloads', async () => {
+      const i18n = createTestI18n();
+      i18n.loadLocale('fr', async () => {
+        const payload = Object.create(null) as Record<string, unknown>;
+        payload.safe = 'Bonjour';
+        Object.defineProperty(payload, '__proto__', {
+          value: { polluted: 'yes' },
+          enumerable: true,
+        });
+        return payload as typeof frMessages;
+      });
+
+      await i18n.ensureLocale('fr');
+      expect(i18n.getMessages('fr')?.safe).toBe('Bonjour');
+      expect(({} as Record<string, unknown>).polluted).toBeUndefined();
+      expect(Object.getPrototypeOf(i18n.getMessages('fr'))).toBeNull();
+    });
+
     it('should not re-load already loaded locale', async () => {
       let loadCount = 0;
       const i18n = createTestI18n();
@@ -383,6 +401,41 @@ describe('i18n/createI18n', () => {
       expect(i18n.availableLocales()).toEqual(['en']);
       expect(i18n.getMessages('__proto__')).toBeUndefined();
       expect(({} as Record<string, unknown>).greeting).toBeUndefined();
+    });
+
+    it('should sanitize prototype-pollution keys from initial locale payloads', () => {
+      const pollutedMessages = Object.create(null) as Record<string, unknown>;
+      pollutedMessages.safe = 'ok';
+      Object.defineProperty(pollutedMessages, '__proto__', {
+        value: { polluted: 'yes' },
+        enumerable: true,
+      });
+
+      const i18n = createI18n({
+        locale: 'en',
+        fallbackLocale: 'en',
+        messages: { en: pollutedMessages as typeof enMessages },
+      });
+
+      expect(i18n.t('safe')).toBe('ok');
+      expect(({} as Record<string, unknown>).polluted).toBeUndefined();
+      expect(Object.getPrototypeOf(i18n.getMessages('en'))).toBeNull();
+    });
+
+    it('should sanitize prototype-pollution keys from merged locale payloads', () => {
+      const i18n = createTestI18n();
+      const pollutedMessages = Object.create(null) as Record<string, unknown>;
+      pollutedMessages.safe = 'ok';
+      Object.defineProperty(pollutedMessages, '__proto__', {
+        value: { polluted: 'yes' },
+        enumerable: true,
+      });
+
+      i18n.mergeMessages('en', pollutedMessages as typeof enMessages);
+
+      expect(i18n.t('safe')).toBe('ok');
+      expect(({} as Record<string, unknown>).polluted).toBeUndefined();
+      expect(Object.getPrototypeOf(i18n.getMessages('en'))).toBeNull();
     });
   });
 

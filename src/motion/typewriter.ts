@@ -118,18 +118,20 @@ export const typewriter = (
       let charIndex = 0;
       el.textContent = '';
       setupCursor();
+      const textNode = document.createTextNode('');
+
+      if (cursorEl) {
+        el.insertBefore(textNode, cursorEl);
+      } else {
+        el.appendChild(textNode);
+      }
 
       const typeNextChar = () => {
         if (stopped) {
           return;
         }
         if (charIndex < text.length) {
-          // Insert text before cursor
-          if (cursorEl) {
-            el.insertBefore(document.createTextNode(text[charIndex]), cursorEl);
-          } else {
-            el.textContent = text.slice(0, charIndex + 1);
-          }
+          textNode.data = text.slice(0, charIndex + 1);
           charIndex++;
           timer = setTimeout(typeNextChar, speed);
         } else {
