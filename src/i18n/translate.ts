@@ -145,11 +145,11 @@ export const translate = (
 };
 
 /**
- * Deep merges source into target, mutating target.
+ * Deep merges source into target and returns a sanitized, prototype-safe copy.
  *
  * @param target - Target messages object
  * @param source - Source messages to merge
- * @returns The merged target
+ * @returns A new merged, sanitized messages object
  *
  * @internal
  */

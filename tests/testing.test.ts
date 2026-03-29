@@ -659,7 +659,7 @@ describe('testing module exports', () => {
 
   it('re-exports TestRoute from the main index type surface', () => {
     type MainTestRoute = import('../src/index').TestRoute;
-    type TestingRoute = import('../src/testing/index').Route;
+    type TestingRoute = import('../src/testing/index').TestRoute;
 
     const expectTypeEquality = <T extends TestingRoute>(_value: T): void => {};
     expectTypeEquality<MainTestRoute>({

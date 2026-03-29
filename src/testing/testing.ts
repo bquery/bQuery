@@ -18,7 +18,7 @@ import type {
   MockSignal,
   RenderComponentOptions,
   RenderResult,
-  Route,
+  TestRoute,
   WaitForOptions,
 } from './types';
 
@@ -461,13 +461,13 @@ export function mockRouter(options: MockRouterOptions = {}): MockRouter {
   const base = options.base ?? '';
   const initialPath = options.initialPath ?? '/';
 
-  const resolveRoute = (fullPath: string): Route => {
+  const resolveRoute = (fullPath: string): TestRoute => {
     const { path, query, hash } = parsePath(fullPath, base);
     const { matched, params } = matchRoute(path, routes);
     return { path, params, query, matched, hash };
   };
 
-  const routeSignal = signal<Route>(resolveRoute(initialPath));
+  const routeSignal = signal<TestRoute>(resolveRoute(initialPath));
 
   return {
     push(path: string): void {
@@ -476,7 +476,7 @@ export function mockRouter(options: MockRouterOptions = {}): MockRouter {
     replace(path: string): void {
       routeSignal.value = resolveRoute(path);
     },
-    get currentRoute(): Signal<Route> {
+    get currentRoute(): Signal<TestRoute> {
       return routeSignal;
     },
     get routes(): MockRouteDefinition[] {

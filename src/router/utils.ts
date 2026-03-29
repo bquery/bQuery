@@ -94,7 +94,7 @@ export const resolve = (name: string, params: Record<string, string> = {}): stri
       }
       if (constraint && !getRouteConstraintRegex(constraint).test(value)) {
         throw new Error(
-          `bQuery router: Param "${key}" with value "${value}" does not satisfy the route constraint for route "${name}".`
+          `bQuery router: Param "${key}" with value "${value}" does not satisfy the route constraint "${constraint}" for route "${name}".`
         );
       }
 

@@ -21,6 +21,8 @@ const droppableListeners = new Set<DroppableListener>();
 let queuedPointerMove: PointerEvent | null = null;
 let pointerMoveFrame: number | null = null;
 
+const getDroppableListenersSnapshot = (): DroppableListener[] => Array.from(droppableListeners);
+
 const hasDroppableEnvironment = (): boolean => {
   return (
     typeof document !== 'undefined' &&
@@ -32,7 +34,7 @@ const hasDroppableEnvironment = (): boolean => {
 };
 
 const dispatchPointerMove = (event: PointerEvent): void => {
-  for (const listener of droppableListeners) {
+  for (const listener of getDroppableListenersSnapshot()) {
     listener.handlePointerMove(event);
   }
 };
@@ -59,7 +61,7 @@ const handleDocumentPointerUp = (event: PointerEvent): void => {
     queuedPointerMove = null;
   }
 
-  for (const listener of droppableListeners) {
+  for (const listener of getDroppableListenersSnapshot()) {
     listener.handlePointerUp(event);
   }
 };

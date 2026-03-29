@@ -1016,7 +1016,7 @@ describe('Router', () => {
       });
 
       expect(() => resolve('user', { id: 'abc' })).toThrow(
-        'Param "id" with value "abc" does not satisfy the route constraint for route "user"'
+        'Param "id" with value "abc" does not satisfy the route constraint "\\d+" for route "user"'
       );
     });
 

@@ -454,9 +454,9 @@ export type {
   MockSignal,
   RenderComponentOptions,
   RenderResult,
+  TestRoute,
   WaitForOptions,
 } from './testing/index';
-export type { Route as TestRoute } from './testing/types';
 
 // ---------------------------------------------------------------------------
 // SSR module

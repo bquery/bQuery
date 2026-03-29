@@ -5,7 +5,7 @@
 import { isPrototypePollutionKey } from '../core/utils/object';
 import { createStore } from './create-store';
 import { isDev } from './utils';
-import type { PersistedStoreOptions, Store, StoreDefinition } from './types';
+import type { PersistedStoreOptions, StorageBackend, Store, StoreDefinition } from './types';
 
 /** @internal Version key suffix */
 const VERSION_SUFFIX = '__version';
@@ -44,7 +44,7 @@ const mergePersistedState = <S extends Record<string, unknown>>(
 };
 
 /** @internal Resolve the default storage backend safely. */
-const getDefaultStorage = (): Storage | undefined => {
+const getDefaultStorage = (): StorageBackend | undefined => {
   try {
     return globalThis.localStorage;
   } catch {

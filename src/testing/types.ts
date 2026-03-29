@@ -119,7 +119,7 @@ export interface MockRouter {
   /** Replace the current path. */
   replace(path: string): void;
   /** The current route (reactive signal). */
-  readonly currentRoute: Signal<Route>;
+  readonly currentRoute: Signal<TestRoute>;
   /** Registered routes. */
   readonly routes: MockRouteDefinition[];
   /** Destroy and clean up. */
@@ -129,7 +129,7 @@ export interface MockRouter {
 /**
  * Minimal route shape for the mock router.
  */
-export interface Route {
+export interface TestRoute {
   path: string;
   params: Record<string, string>;
   query: Record<string, string | string[]>;

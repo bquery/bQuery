@@ -503,6 +503,41 @@ describe('dnd/droppable', () => {
     }
   });
 
+  it('should dispatch pointermove listeners from a stable snapshot when a zone destroys itself', async () => {
+    const box = createBox('drag-box');
+    const secondZone = createBox('second-zone');
+    container.appendChild(box);
+    container.appendChild(secondZone);
+    setZoneRect(zone, { left: 0, top: 0, right: 100, bottom: 100 });
+    setZoneRect(secondZone, { left: 0, top: 0, right: 100, bottom: 100 });
+
+    const dragHandle = draggable(box);
+    const dispatchOrder: string[] = [];
+
+    let firstHandle: ReturnType<typeof droppable> | undefined;
+    firstHandle = droppable(zone, {
+      onDragEnter: () => {
+        dispatchOrder.push('first');
+        firstHandle?.destroy();
+      },
+    });
+
+    const secondHandle = droppable(secondZone, {
+      onDragEnter: () => {
+        dispatchOrder.push('second');
+      },
+    });
+
+    firePointerEvent(box, 'pointerdown', { clientX: 10, clientY: 10 });
+    firePointerEvent(document, 'pointermove', { clientX: 50, clientY: 50 });
+    await flushPointerTracking();
+
+    expect(dispatchOrder).toEqual(['first', 'second']);
+
+    secondHandle.destroy();
+    dragHandle.destroy();
+  });
+
   it('should accept with custom accept function', () => {
     const box = createBox('test-box');
     box.classList.add('bq-dragging');

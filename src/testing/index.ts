@@ -37,6 +37,6 @@ export type {
   MockSignal,
   RenderComponentOptions,
   RenderResult,
-  Route,
+  TestRoute,
   WaitForOptions,
 } from './types';
