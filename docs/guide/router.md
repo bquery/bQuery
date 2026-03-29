@@ -63,6 +63,17 @@ const router = createRouter({
 console.log(currentRoute.value.params); // { id: '42' }
 ```
 
+Regex constraints let you validate params directly in the route pattern:
+
+```ts
+const router = createRouter({
+  routes: [
+    { path: '/user/:id(\\d+)', component: () => import('./User') },
+    { path: '/docs/:slug([a-z0-9-]+)', component: () => import('./DocPage') },
+  ],
+});
+```
+
 ## Query Params
 
 Query strings are automatically parsed:
@@ -114,6 +125,35 @@ const removeGuard = router.beforeEach((to, from) => {
 removeGuard();
 ```
 
+### beforeEnter
+
+Individual routes can enforce route-local guards before global `beforeEach` logic finishes navigation.
+
+```ts
+const router = createRouter({
+  routes: [
+    {
+      path: '/admin',
+      beforeEnter: () => isAuthenticated() || false,
+      component: () => import('./Admin'),
+    },
+  ],
+});
+```
+
+## Redirect routes
+
+Use `redirectTo` when a route exists only to forward users elsewhere.
+
+```ts
+const router = createRouter({
+  routes: [
+    { path: '/docs', redirectTo: '/guide/getting-started' },
+    { path: '/guide/getting-started', component: () => import('./DocsHome') },
+  ],
+});
+```
+
 ## Named Routes
 
 Define route names for easier programmatic navigation:
@@ -153,6 +193,20 @@ effect(() => {
 isActive('/dashboard', true); // Only matches exactly '/dashboard'
 ```
 
+## `useRoute()` composable
+
+`useRoute()` exposes focused readonly signals for the current route, path, params, query, hash, and matched definition.
+
+```ts
+import { useRoute } from '@bquery/bquery/router';
+
+const { path, params, query, hash, matched } = useRoute();
+
+effect(() => {
+  console.log(path.value, params.value, query.value, hash.value, matched.value);
+});
+```
+
 ## Link Helpers
 
 ### Manual Link Handler
@@ -178,6 +232,24 @@ const cleanup = interceptLinks(document.body);
 // Links with target, download, or external URLs are ignored
 ```
 
+### Declarative `<bq-link>`
+
+Register the custom element once, then use it directly in templates or static HTML.
+
+```ts
+import { registerBqLink } from '@bquery/bquery/router';
+
+registerBqLink();
+```
+
+```html
+<bq-link to="/" exact>Home</bq-link>
+<bq-link to="/docs" active-class="selected current">Docs</bq-link>
+<bq-link to="/settings" replace>Settings</bq-link>
+```
+
+`<bq-link>` applies `aria-current="page"` when active and respects modifier-key clicks so users can still open destinations in a new tab when appropriate.
+
 ## Hash Mode
 
 Use hash-based routing for static hosting:
@@ -197,6 +269,17 @@ Prefix all routes with a base path:
 const router = createRouter({
   routes: [...],
   base: '/app', // Routes are relative to /app
+});
+```
+
+## Scroll restoration
+
+Restore the user's previous scroll position on back/forward navigation by enabling `scrollRestoration`.
+
+```ts
+const router = createRouter({
+  routes: [...],
+  scrollRestoration: true,
 });
 ```
 
@@ -273,6 +356,7 @@ type RouterOptions = {
   routes: RouteDefinition[];
   base?: string;
   hash?: boolean;
+  scrollRestoration?: boolean;
 };
 
 type NavigationGuard = (to: Route, from: Route) => boolean | void | Promise<boolean | void>;

@@ -27,6 +27,15 @@ const entries = {
   store: resolve(__dirname, 'src/store/index.ts'),
   view: resolve(__dirname, 'src/view/index.ts'),
   storybook: resolve(__dirname, 'src/storybook/index.ts'),
+  forms: resolve(__dirname, 'src/forms/index.ts'),
+  i18n: resolve(__dirname, 'src/i18n/index.ts'),
+  a11y: resolve(__dirname, 'src/a11y/index.ts'),
+  dnd: resolve(__dirname, 'src/dnd/index.ts'),
+  media: resolve(__dirname, 'src/media/index.ts'),
+  plugin: resolve(__dirname, 'src/plugin/index.ts'),
+  devtools: resolve(__dirname, 'src/devtools/index.ts'),
+  testing: resolve(__dirname, 'src/testing/index.ts'),
+  ssr: resolve(__dirname, 'src/ssr/index.ts'),
 };
 
 /**
@@ -73,6 +82,15 @@ export default defineConfig({
       'bquery/store': resolve(__dirname, 'src/store/index.ts'),
       'bquery/view': resolve(__dirname, 'src/view/index.ts'),
       'bquery/storybook': resolve(__dirname, 'src/storybook/index.ts'),
+      'bquery/forms': resolve(__dirname, 'src/forms/index.ts'),
+      'bquery/i18n': resolve(__dirname, 'src/i18n/index.ts'),
+      'bquery/a11y': resolve(__dirname, 'src/a11y/index.ts'),
+      'bquery/dnd': resolve(__dirname, 'src/dnd/index.ts'),
+      'bquery/media': resolve(__dirname, 'src/media/index.ts'),
+      'bquery/plugin': resolve(__dirname, 'src/plugin/index.ts'),
+      'bquery/devtools': resolve(__dirname, 'src/devtools/index.ts'),
+      'bquery/testing': resolve(__dirname, 'src/testing/index.ts'),
+      'bquery/ssr': resolve(__dirname, 'src/ssr/index.ts'),
     },
   },
 });

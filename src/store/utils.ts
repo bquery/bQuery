@@ -3,6 +3,8 @@
  * @internal
  */
 
+import { detectDevEnvironment } from '../core/env';
+
 /**
  * Check if a value is a plain object (not array, null, Date, etc.).
  * @internal
@@ -129,13 +131,5 @@ export const detectNestedMutations = <S extends Record<string, unknown>>(
   return mutatedKeys;
 };
 
-/** @internal Flag to enable/disable development warnings */
-export const isDev = (() => {
-  try {
-    const globalProcess = (globalThis as { process?: { env?: { NODE_ENV?: string } } }).process;
-    // Default to dev mode unless explicitly set to production
-    return !(typeof globalProcess !== 'undefined' && globalProcess.env?.NODE_ENV === 'production');
-  } catch {
-    return true;
-  }
-})();
+/** @internal Returns whether development warnings should be enabled */
+export const isDev = (): boolean => detectDevEnvironment();

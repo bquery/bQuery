@@ -22,6 +22,7 @@ You are working on bQuery.js (`@bquery/bquery`), a TypeScript-first, zero-build 
 - Add tests to `tests/<module>.test.ts`.
 - Re-export new public symbols from `src/<module>/index.ts`.
 - If adding a new entry point → update `vite.config.ts` and `package.json` exports.
+- If a public module surface changes → update `README.md`, `AGENT.md`, `llms.txt`, and the relevant `docs/guide/*.md` pages (plus the VitePress sidebar if needed).
 - Run `bun test` and `bun run lint` before finishing.
 
 ## Quick Reference

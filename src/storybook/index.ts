@@ -25,7 +25,8 @@ const isWhitespace = (value: string): boolean => {
 /**
  * Detects interpolation boundaries embedded into joined template string fragments.
  */
-const isInterpolationBoundaryMarker = (value: string): boolean => value === INTERPOLATION_BOUNDARY_MARKER;
+const isInterpolationBoundaryMarker = (value: string): boolean =>
+  value === INTERPOLATION_BOUNDARY_MARKER;
 
 const isAttributeSeparator = (value: string): boolean => {
   return isWhitespace(value) || isInterpolationBoundaryMarker(value);

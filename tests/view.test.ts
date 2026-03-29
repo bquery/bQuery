@@ -4,8 +4,9 @@
 
 import { afterEach, beforeEach, describe, expect, it, spyOn, type Mock } from 'bun:test';
 import { computed, signal } from '../src/reactive/index';
-import { clearExpressionCache, createTemplate, mount, type View } from '../src/view/index';
 import { parseObjectExpression } from '../src/view/evaluate';
+import { clearExpressionCache, createTemplate, mount, type View } from '../src/view/index';
+import { getCustomDirective, registerCustomDirectiveResolver } from '../src/view/custom-directives';
 
 describe('View', () => {
   let container: HTMLElement;
@@ -22,7 +23,20 @@ describe('View', () => {
       view.destroy();
       view = null;
     }
+    registerCustomDirectiveResolver(null);
     container.remove();
+  });
+
+  describe('custom directive resolver', () => {
+    it('can unregister the custom directive resolver', () => {
+      registerCustomDirectiveResolver((name) => (name === 'tooltip' ? (() => {}) : undefined));
+
+      expect(getCustomDirective('tooltip')).toBeDefined();
+
+      registerCustomDirectiveResolver(null);
+
+      expect(getCustomDirective('tooltip')).toBeUndefined();
+    });
   });
 
   describe('mount', () => {
@@ -1151,5 +1165,17 @@ describe('parseObjectExpression', () => {
     const result = parseObjectExpression('{ msg: "hello, world", other: true }');
     expect(result['msg']).toBe('"hello, world"');
     expect(result['other']).toBe('true');
+  });
+
+  it('ignores prototype-pollution keys', () => {
+    const result = parseObjectExpression(
+      '{ safe: enabled, __proto__: hacked, constructor: no, prototype: never }'
+    );
+
+    expect(result['safe']).toBe('enabled');
+    expect(Object.prototype.hasOwnProperty.call(result, '__proto__')).toBe(false);
+    expect(Object.prototype.hasOwnProperty.call(result, 'constructor')).toBe(false);
+    expect(Object.prototype.hasOwnProperty.call(result, 'prototype')).toBe(false);
+    expect(Object.keys(result)).toEqual(['safe']);
   });
 });

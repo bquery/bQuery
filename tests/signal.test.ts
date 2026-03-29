@@ -145,6 +145,85 @@ describe('computed', () => {
     expect(doubled.peek()).toBe(6);
     expect(computeCount).toBe(2);
   });
+
+  it('dispose unsubscribes the computed from upstream dependencies', () => {
+    let computeCount = 0;
+    const count = signal(1);
+    const doubled = computed(() => {
+      computeCount++;
+      return count.value * 2;
+    });
+
+    expect(doubled.value).toBe(2);
+    expect(computeCount).toBe(1);
+
+    doubled.dispose();
+    count.value = 2;
+
+    expect(computeCount).toBe(1);
+  });
+
+  it('does not re-subscribe or recompute when read after dispose', () => {
+    let computeCount = 0;
+    const count = signal(1);
+    const doubled = computed(() => {
+      computeCount++;
+      return count.value * 2;
+    });
+
+    expect(doubled.value).toBe(2);
+    expect(computeCount).toBe(1);
+
+    doubled.dispose();
+
+    expect(doubled.value).toBe(2);
+    count.value = 3;
+
+    expect(doubled.value).toBe(2);
+    expect(computeCount).toBe(1);
+  });
+
+  it('does not track caller dependencies when first read after dispose', () => {
+    const source = signal(1);
+    const derived = computed(() => source.value * 2);
+    let effectRuns = 0;
+
+    derived.dispose();
+
+    effect(() => {
+      effectRuns++;
+      void derived.value;
+    });
+
+    expect(effectRuns).toBe(1);
+
+    source.value = 2;
+
+    expect(effectRuns).toBe(1);
+    expect(derived.value).toBe(2);
+  });
+
+  it('recomputes once after dispose when a dirty cached value would otherwise be stale', () => {
+    let computeCount = 0;
+    const count = signal(1);
+    const doubled = computed(() => {
+      computeCount++;
+      return count.value * 2;
+    });
+
+    expect(doubled.value).toBe(2);
+    expect(computeCount).toBe(1);
+
+    count.value = 3;
+    doubled.dispose();
+
+    expect(doubled.value).toBe(6);
+    expect(computeCount).toBe(2);
+
+    count.value = 4;
+    expect(doubled.value).toBe(6);
+    expect(computeCount).toBe(2);
+  });
 });
 
 describe('effect', () => {
@@ -1251,10 +1330,12 @@ describe('createUseFetch', () => {
       baseUrl: 'https://example.com',
       immediate: false,
       transform: (value) => value.name,
-      fetcher: asMockFetch(async () =>
-        new Response(JSON.stringify({ id: 1, name: 'Ada' }), {
-          status: 200,
-        })),
+      fetcher: asMockFetch(
+        async () =>
+          new Response(JSON.stringify({ id: 1, name: 'Ada' }), {
+            status: 200,
+          })
+      ),
     });
 
     const state = useApiFetch('/users');

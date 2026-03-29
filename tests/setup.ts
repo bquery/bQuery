@@ -76,11 +76,80 @@ if (typeof globalThis.crypto === 'undefined') {
 (globalThis as unknown as { MouseEvent: typeof MouseEvent }).MouseEvent =
   window.MouseEvent as unknown as typeof MouseEvent;
 
+// Register KeyboardEvent for a11y tests
+if (
+  typeof (globalThis as { KeyboardEvent?: typeof KeyboardEvent }).KeyboardEvent === 'undefined' &&
+  typeof (window as unknown as { KeyboardEvent?: typeof KeyboardEvent }).KeyboardEvent !==
+    'undefined'
+) {
+  (globalThis as unknown as { KeyboardEvent: typeof KeyboardEvent }).KeyboardEvent = (
+    window as unknown as { KeyboardEvent: typeof KeyboardEvent }
+  ).KeyboardEvent;
+}
+
+// Register HTMLAnchorElement for a11y tests
+if (
+  typeof (globalThis as { HTMLAnchorElement?: typeof HTMLAnchorElement }).HTMLAnchorElement ===
+    'undefined' &&
+  typeof (window as unknown as { HTMLAnchorElement?: typeof HTMLAnchorElement })
+    .HTMLAnchorElement !== 'undefined'
+) {
+  (globalThis as unknown as { HTMLAnchorElement: typeof HTMLAnchorElement }).HTMLAnchorElement = (
+    window as unknown as { HTMLAnchorElement: typeof HTMLAnchorElement }
+  ).HTMLAnchorElement;
+}
+
+// Register PointerEvent for dnd tests
+if (typeof globalThis.PointerEvent === 'undefined') {
+  class PointerEventPolyfill extends MouseEvent {
+    readonly pointerId: number;
+    readonly width: number;
+    readonly height: number;
+    readonly pressure: number;
+    readonly tangentialPressure: number;
+    readonly tiltX: number;
+    readonly tiltY: number;
+    readonly twist: number;
+    readonly pointerType: string;
+    readonly isPrimary: boolean;
+
+    constructor(type: string, params: PointerEventInit = {}) {
+      super(type, params);
+      this.pointerId = params.pointerId ?? 1;
+      this.width = params.width ?? 1;
+      this.height = params.height ?? 1;
+      this.pressure = params.pressure ?? 0;
+      this.tangentialPressure = params.tangentialPressure ?? 0;
+      this.tiltX = params.tiltX ?? 0;
+      this.tiltY = params.tiltY ?? 0;
+      this.twist = params.twist ?? 0;
+      this.pointerType = params.pointerType ?? 'mouse';
+      this.isPrimary = params.isPrimary ?? true;
+    }
+
+    getCoalescedEvents(): PointerEvent[] {
+      return [];
+    }
+
+    getPredictedEvents(): PointerEvent[] {
+      return [];
+    }
+  }
+
+  (globalThis as unknown as { PointerEvent: typeof PointerEvent }).PointerEvent =
+    PointerEventPolyfill as unknown as typeof PointerEvent;
+  (window as unknown as { PointerEvent: typeof PointerEvent }).PointerEvent =
+    PointerEventPolyfill as unknown as typeof PointerEvent;
+}
+
 // Register getComputedStyle for CSS getter tests
-const boundGetComputedStyle = window.getComputedStyle.bind(window) as unknown as typeof getComputedStyle;
-(globalThis as unknown as { getComputedStyle: typeof getComputedStyle }).getComputedStyle =
-  (element: Element, pseudoElt?: string | null): CSSStyleDeclaration =>
-    boundGetComputedStyle(element, pseudoElt);
+const boundGetComputedStyle = window.getComputedStyle.bind(
+  window
+) as unknown as typeof getComputedStyle;
+(globalThis as unknown as { getComputedStyle: typeof getComputedStyle }).getComputedStyle = (
+  element: Element,
+  pseudoElt?: string | null
+): CSSStyleDeclaration => boundGetComputedStyle(element, pseudoElt);
 
 // Mock localStorage for store persistence tests
 if (typeof globalThis.localStorage === 'undefined') {

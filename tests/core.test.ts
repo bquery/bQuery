@@ -681,6 +681,105 @@ describe('core/BQueryElement - new methods', () => {
     container.remove();
   });
 
+  it('detach removes element but keeps wrapper and listeners reusable', () => {
+    const container = document.createElement('div');
+    const child = document.createElement('button');
+    container.appendChild(child);
+    document.body.appendChild(container);
+
+    const wrapped = new BQueryElement(child);
+    let clicks = 0;
+    wrapped.on('click', () => clicks++);
+
+    const result = wrapped.detach();
+    expect(result).toBe(wrapped);
+    expect(container.contains(child)).toBe(false);
+
+    child.dispatchEvent(new Event('click'));
+    expect(clicks).toBe(1);
+
+    container.appendChild(child);
+    child.dispatchEvent(new Event('click'));
+    expect(clicks).toBe(2);
+
+    container.remove();
+  });
+
+  it('index returns zero-based sibling position and -1 when detached', () => {
+    const container = document.createElement('div');
+    const first = document.createElement('span');
+    const second = document.createElement('span');
+    const third = document.createElement('span');
+    container.appendChild(first);
+    container.appendChild(second);
+    container.appendChild(third);
+
+    expect(new BQueryElement(second).index()).toBe(1);
+    expect(new BQueryElement(document.createElement('div')).index()).toBe(-1);
+  });
+
+  it('contents includes text nodes and elements', () => {
+    const div = document.createElement('div');
+    div.append('hello');
+    const span = document.createElement('span');
+    span.textContent = 'world';
+    div.appendChild(span);
+
+    const contents = new BQueryElement(div).contents();
+
+    expect(contents).toHaveLength(2);
+    expect(contents[0]?.nodeType).toBe(Node.TEXT_NODE);
+    expect(contents[1]).toBe(span);
+  });
+
+  it('offsetParent and position use element layout properties', () => {
+    const parent = document.createElement('section');
+    const child = document.createElement('div');
+    parent.appendChild(child);
+
+    Object.defineProperty(child, 'offsetParent', { configurable: true, get: () => parent });
+    Object.defineProperty(child, 'offsetTop', { configurable: true, get: () => 24 });
+    Object.defineProperty(child, 'offsetLeft', { configurable: true, get: () => 12 });
+
+    const wrapped = new BQueryElement(child);
+
+    expect(wrapped.offsetParent()).toBe(parent);
+    expect(wrapped.position()).toEqual({ top: 24, left: 12 });
+  });
+
+  it('outerWidth and outerHeight optionally include margins', () => {
+    const div = document.createElement('div') as HTMLElement;
+    div.style.marginLeft = '5px';
+    div.style.marginRight = '7px';
+    div.style.marginTop = '3px';
+    div.style.marginBottom = '11px';
+    document.body.appendChild(div);
+
+    Object.defineProperty(div, 'offsetWidth', { configurable: true, get: () => 100 });
+    Object.defineProperty(div, 'offsetHeight', { configurable: true, get: () => 40 });
+
+    const wrapped = new BQueryElement(div);
+
+    expect(wrapped.outerWidth()).toBe(100);
+    expect(wrapped.outerWidth(true)).toBe(112);
+    expect(wrapped.outerHeight()).toBe(40);
+    expect(wrapped.outerHeight(true)).toBe(54);
+
+    div.remove();
+  });
+
+  it('layout parity helpers return safe defaults for non-HTML elements', () => {
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    const wrapped = new BQueryElement(svg);
+
+    expect(wrapped.offsetParent()).toBeNull();
+    expect(wrapped.position()).toEqual({ top: 0, left: 0 });
+    expect(wrapped.outerWidth()).toBe(0);
+    expect(wrapped.outerHeight(true)).toBe(0);
+
+    svg.remove();
+  });
+
   it('scrollTo calls scrollIntoView', () => {
     const div = document.createElement('div');
     let scrollCalled = false;
@@ -720,6 +819,127 @@ describe('core/BQueryElement - new methods', () => {
     form.remove();
   });
 
+  it('serialize supports form controls from another realm constructor', () => {
+    const form = document.createElement('form');
+    const input = document.createElement('input');
+    input.name = 'email';
+    input.value = 'iframe@example.com';
+    form.appendChild(input);
+
+    class ForeignElement {}
+    const originalGlobalElement = globalThis.Element;
+
+    Object.defineProperty(globalThis, 'Element', {
+      configurable: true,
+      value: ForeignElement,
+    });
+
+    try {
+      const data = new BQueryElement(form).serialize();
+      expect(data.email).toBe('iframe@example.com');
+    } finally {
+      Object.defineProperty(globalThis, 'Element', {
+        configurable: true,
+        value: originalGlobalElement,
+      });
+      form.remove();
+    }
+  });
+
+  it('serialize ignores prototype-pollution field names', () => {
+    const form = document.createElement('form');
+    const safeInput = document.createElement('input');
+    safeInput.name = 'email';
+    safeInput.value = 'test@example.com';
+    const dangerousInput = document.createElement('input');
+    dangerousInput.name = '__proto__';
+    dangerousInput.value = 'polluted';
+    form.appendChild(safeInput);
+    form.appendChild(dangerousInput);
+    document.body.appendChild(form);
+
+    const data = new BQueryElement(form).serialize();
+
+    expect(Object.getPrototypeOf(data)).toBeNull();
+    expect(data.email).toBe('test@example.com');
+    expect(Object.prototype.hasOwnProperty.call(data, '__proto__')).toBe(false);
+    expect(Object.keys(data)).not.toContain('__proto__');
+
+    form.remove();
+  });
+
+  it('serialize uses FormData entries when available and filters unsafe values', () => {
+    const form = document.createElement('form');
+    const originalFormData = globalThis.FormData;
+    let receivedExpectedForm = false;
+
+    class TestFormData {
+      constructor(target: HTMLFormElement) {
+        receivedExpectedForm = target === form;
+      }
+
+      *entries(): IterableIterator<[string, FormDataEntryValue]> {
+        yield ['email', 'formdata@example.com'];
+        yield ['__proto__', 'polluted'];
+        yield ['constructor', 'polluted'];
+        yield ['prototype', 'polluted'];
+        yield ['avatar', { name: 'avatar.png' } as unknown as FormDataEntryValue];
+      }
+    }
+
+    Object.defineProperty(globalThis, 'FormData', {
+      configurable: true,
+      value: TestFormData,
+    });
+
+    try {
+      const data = new BQueryElement(form).serialize();
+
+      expect(receivedExpectedForm).toBe(true);
+      expect(Object.getPrototypeOf(data)).toBeNull();
+      expect(data.email).toBe('formdata@example.com');
+      expect(Object.prototype.hasOwnProperty.call(data, '__proto__')).toBe(false);
+      expect(Object.prototype.hasOwnProperty.call(data, 'constructor')).toBe(false);
+      expect(Object.prototype.hasOwnProperty.call(data, 'prototype')).toBe(false);
+      expect(Object.prototype.hasOwnProperty.call(data, 'avatar')).toBe(false);
+    } finally {
+      Object.defineProperty(globalThis, 'FormData', {
+        configurable: true,
+        value: originalFormData,
+      });
+    }
+  });
+
+  it('serialize falls back to manual form iteration when FormData throws', () => {
+    const form = document.createElement('form');
+    const input = document.createElement('input');
+    input.name = 'email';
+    input.value = 'fallback@example.com';
+    form.appendChild(input);
+
+    const originalFormData = globalThis.FormData;
+
+    Object.defineProperty(globalThis, 'FormData', {
+      configurable: true,
+      value: class TestThrowingFormData {
+        constructor() {
+          throw new Error('FormData unavailable');
+        }
+      },
+    });
+
+    try {
+      const data = new BQueryElement(form).serialize();
+      expect(data.email).toBe('fallback@example.com');
+    } finally {
+      Object.defineProperty(globalThis, 'FormData', {
+        configurable: true,
+        value: originalFormData,
+      });
+      form.remove();
+    }
+  });
+
   it('serializeString returns URL-encoded string', () => {
     const form = document.createElement('form');
     const input = document.createElement('input');
@@ -739,6 +959,44 @@ describe('core/BQueryElement - new methods', () => {
     }
 
     form.remove();
+  });
+
+  it('serializeString uses FormData entries when available and filters unsafe values', () => {
+    const form = document.createElement('form');
+    const originalFormData = globalThis.FormData;
+    let receivedExpectedForm = false;
+
+    class TestFormData {
+      constructor(target: HTMLFormElement) {
+        receivedExpectedForm = target === form;
+      }
+
+      *entries(): IterableIterator<[string, FormDataEntryValue]> {
+        yield ['q', 'hello world'];
+        yield ['__proto__', 'polluted'];
+        yield ['constructor', 'polluted'];
+        yield ['prototype', 'polluted'];
+        yield ['file', { name: 'ignored.txt' } as unknown as FormDataEntryValue];
+      }
+    }
+
+    Object.defineProperty(globalThis, 'FormData', {
+      configurable: true,
+      value: TestFormData,
+    });
+
+    try {
+      const str = new BQueryElement(form).serializeString();
+      expect(receivedExpectedForm).toBe(true);
+      expect(str).toBe('q=hello+world');
+      expect(str).not.toContain('file=');
+    } finally {
+      Object.defineProperty(globalThis, 'FormData', {
+        configurable: true,
+        value: originalFormData,
+      });
+      form.remove();
+    }
   });
 
   it('serialize returns empty object for non-form elements', () => {
@@ -844,6 +1102,89 @@ describe('core/BQueryCollection - delegate/undelegate', () => {
 
     container1.remove();
     container2.remove();
+  });
+});
+
+describe('core/BQueryCollection parity getters', () => {
+  it('detach removes all elements but keeps wrappers reusable', () => {
+    const parent = document.createElement('div');
+    const child1 = document.createElement('button');
+    const child2 = document.createElement('button');
+    parent.appendChild(child1);
+    parent.appendChild(child2);
+
+    const collection = new BQueryCollection([child1, child2]);
+    let count = 0;
+    collection.on('click', () => count++);
+
+    const result = collection.detach();
+    expect(result).toBe(collection);
+    expect(parent.children).toHaveLength(0);
+
+    child1.dispatchEvent(new Event('click'));
+    child2.dispatchEvent(new Event('click'));
+    expect(count).toBe(2);
+  });
+
+  it('index, contents, offsetParent, position, and outer size use the first element', () => {
+    const parent = document.createElement('div');
+    const first = document.createElement('div') as HTMLElement;
+    const second = document.createElement('div') as HTMLElement;
+    first.append('hello');
+    const span = document.createElement('span');
+    first.appendChild(span);
+    first.style.marginLeft = '4px';
+    first.style.marginRight = '6px';
+    first.style.marginTop = '2px';
+    first.style.marginBottom = '8px';
+    parent.appendChild(document.createElement('i'));
+    parent.appendChild(first);
+    parent.appendChild(second);
+    document.body.appendChild(parent);
+
+    Object.defineProperty(first, 'offsetParent', { configurable: true, get: () => parent });
+    Object.defineProperty(first, 'offsetTop', { configurable: true, get: () => 18 });
+    Object.defineProperty(first, 'offsetLeft', { configurable: true, get: () => 9 });
+    Object.defineProperty(first, 'offsetWidth', { configurable: true, get: () => 80 });
+    Object.defineProperty(first, 'offsetHeight', { configurable: true, get: () => 30 });
+
+    const collection = new BQueryCollection([first, second]);
+
+    expect(collection.index()).toBe(1);
+    expect(collection.contents()).toHaveLength(2);
+    expect(collection.offsetParent()).toBe(parent);
+    expect(collection.position()).toEqual({ top: 18, left: 9 });
+    expect(collection.outerWidth()).toBe(80);
+    expect(collection.outerWidth(true)).toBe(90);
+    expect(collection.outerHeight()).toBe(30);
+    expect(collection.outerHeight(true)).toBe(40);
+
+    parent.remove();
+  });
+
+  it('empty collection parity getters return safe defaults', () => {
+    const collection = new BQueryCollection([]);
+
+    expect(collection.index()).toBe(-1);
+    expect(collection.contents()).toEqual([]);
+    expect(collection.offsetParent()).toBeNull();
+    expect(collection.position()).toEqual({ top: 0, left: 0 });
+    expect(collection.outerWidth()).toBe(0);
+    expect(collection.outerHeight(true)).toBe(0);
+  });
+
+  it('non-HTMLElement first elements use the same safe defaults', () => {
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    const div = document.createElement('div');
+    const collection = new BQueryCollection([svg, div]);
+
+    expect(collection.offsetParent()).toBeNull();
+    expect(collection.position()).toEqual({ top: 0, left: 0 });
+    expect(collection.outerWidth()).toBe(0);
+    expect(collection.outerHeight(true)).toBe(0);
+
+    svg.remove();
+    div.remove();
   });
 });
 

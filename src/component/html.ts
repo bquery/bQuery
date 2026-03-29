@@ -117,7 +117,10 @@ export const bool = (name: string, enabled: unknown): BooleanAttribute => {
  * ```
  */
 export const html = (strings: TemplateStringsArray, ...values: unknown[]): string => {
-  return strings.reduce((acc, part, index) => `${acc}${part}${stringifyTemplateValue(values[index])}`, '');
+  return strings.reduce(
+    (acc, part, index) => `${acc}${part}${stringifyTemplateValue(values[index])}`,
+    ''
+  );
 };
 
 /**
@@ -135,10 +138,7 @@ export const html = (strings: TemplateStringsArray, ...values: unknown[]): strin
  * // Result: '<div>&lt;script&gt;alert(&quot;xss&quot;)&lt;/script&gt;</div>'
  * ```
  */
-export const safeHtml = (
-  strings: TemplateStringsArray,
-  ...values: unknown[]
-): SanitizedHtml => {
+export const safeHtml = (strings: TemplateStringsArray, ...values: unknown[]): SanitizedHtml => {
   const escape = (value: unknown): string => {
     if (isTrustedHtml(value)) return unwrapTrustedHtml(value);
     return escapeTemplateValue(value);

@@ -1,4 +1,6 @@
 import { createElementFromHtml, insertContent, setHtml } from './dom';
+import { getOuterSize, isHTMLElement } from './shared';
+import { isPrototypePollutionKey } from './utils/object';
 
 /**
  * Wrapper for a single DOM element.
@@ -24,6 +26,95 @@ import { createElementFromHtml, insertContent, setHtml } from './dom';
  */
 /** Handler signature for delegated events */
 type DelegatedHandler = (event: Event, target: Element) => void;
+
+type SerializableFormControl = HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
+
+const isSerializableFormControl = (element: Element): element is SerializableFormControl => {
+  const tagName = element.tagName.toLowerCase();
+  return tagName === 'input' || tagName === 'textarea' || tagName === 'select';
+};
+
+const collectFormEntries = (form: HTMLFormElement): Array<[string, string]> => {
+  const entries: Array<[string, string]> = [];
+  const elementCtor = form.ownerDocument.defaultView?.Element ?? Element;
+
+  for (const control of Array.from(form.elements)) {
+    if (!(control instanceof elementCtor) || !isSerializableFormControl(control)) {
+      continue;
+    }
+
+    const name = control.name;
+    if (!name || control.disabled || isPrototypePollutionKey(name)) {
+      continue;
+    }
+
+    if (control.tagName.toLowerCase() === 'input') {
+      const input = control as HTMLInputElement;
+      const type = input.type.toLowerCase();
+
+      if (type === 'checkbox' || type === 'radio') {
+        if (input.checked) {
+          entries.push([name, input.value]);
+        }
+        continue;
+      }
+
+      if (
+        type === 'file' ||
+        type === 'submit' ||
+        type === 'button' ||
+        type === 'reset' ||
+        type === 'image'
+      ) {
+        continue;
+      }
+
+      entries.push([name, input.value]);
+      continue;
+    }
+
+    if (control.tagName.toLowerCase() === 'select') {
+      const select = control as HTMLSelectElement;
+
+      if (select.multiple) {
+        for (const option of Array.from(select.selectedOptions)) {
+          entries.push([name, option.value]);
+        }
+      } else {
+        entries.push([name, select.value]);
+      }
+      continue;
+    }
+
+    entries.push([name, (control as HTMLTextAreaElement).value]);
+  }
+
+  return entries;
+};
+
+const getFormEntries = (form: HTMLFormElement): Array<[string, string]> => {
+  if (typeof FormData === 'function') {
+    try {
+      const entries: Array<[string, string]> = [];
+
+      for (const [key, value] of new FormData(form).entries()) {
+        if (isPrototypePollutionKey(key) || typeof value !== 'string') {
+          continue;
+        }
+        entries.push([key, value]);
+      }
+
+      // Some environments expose FormData(form) but fail to populate entries for
+      // successful controls. Fall back to manual collection only in that zero-entry case.
+      return entries.length > 0 ? entries : collectFormEntries(form);
+    } catch {
+      // Fall back to manual collection when FormData is unavailable for this form
+      // or the environment does not fully support constructing it.
+    }
+  }
+
+  return collectFormEntries(form);
+};
 
 export class BQueryElement {
   /**
@@ -305,6 +396,122 @@ export class BQueryElement {
     const newEl = typeof content === 'string' ? createElementFromHtml(content) : content;
     this.element.replaceWith(newEl);
     return new BQueryElement(newEl);
+  }
+
+  /**
+   * Removes the element from the DOM while keeping the wrapped node available
+   * for later reuse.
+   *
+   * @returns The instance for method chaining
+   *
+   * @example
+   * ```ts
+   * const item = $('#item').detach();
+   * document.body.appendChild(item.raw);
+   * ```
+   */
+  detach(): this {
+    return this.remove();
+  }
+
+  /**
+   * Gets the zero-based index of the element among its element siblings.
+   *
+   * @returns Index within the parent element, or -1 when detached
+   *
+   * @example
+   * ```ts
+   * const index = $('#item').index();
+   * ```
+   */
+  index(): number {
+    const parent = this.element.parentElement;
+    if (!parent) {
+      return -1;
+    }
+    return Array.from(parent.children).indexOf(this.element);
+  }
+
+  /**
+   * Returns all child nodes, including text nodes and comments.
+   *
+   * @returns Array of child nodes
+   *
+   * @example
+   * ```ts
+   * const nodes = $('#content').contents();
+   * ```
+   */
+  contents(): ChildNode[] {
+    return Array.from(this.element.childNodes);
+  }
+
+  /**
+   * Gets the nearest positioned ancestor used for offset calculations.
+   *
+   * @returns The offset parent element, or null when unavailable
+   *
+   * @example
+   * ```ts
+   * const parent = $('#item').offsetParent();
+   * ```
+   */
+  offsetParent(): Element | null {
+    return isHTMLElement(this.element) ? this.element.offsetParent : null;
+  }
+
+  /**
+   * Gets the current position relative to the offset parent.
+   *
+   * @returns Position object with top and left coordinates
+   *
+   * @example
+   * ```ts
+   * const { top, left } = $('#item').position();
+   * ```
+   */
+  position(): { top: number; left: number } {
+    if (!isHTMLElement(this.element)) {
+      return { top: 0, left: 0 };
+    }
+
+    const el = this.element;
+    return {
+      top: el.offsetTop,
+      left: el.offsetLeft,
+    };
+  }
+
+  /**
+   * Gets the outer width of the element, optionally including margins.
+   *
+   * @param includeMargin - When true, include horizontal margins
+   * @returns Outer width in pixels
+   *
+   * @example
+   * ```ts
+   * const width = $('#panel').outerWidth();
+   * const widthWithMargin = $('#panel').outerWidth(true);
+   * ```
+   */
+  outerWidth(includeMargin: boolean = false): number {
+    return getOuterSize(this.element, 'width', includeMargin);
+  }
+
+  /**
+   * Gets the outer height of the element, optionally including margins.
+   *
+   * @param includeMargin - When true, include vertical margins
+   * @returns Outer height in pixels
+   *
+   * @example
+   * ```ts
+   * const height = $('#panel').outerHeight();
+   * const heightWithMargin = $('#panel').outerHeight(true);
+   * ```
+   */
+  outerHeight(includeMargin: boolean = false): number {
+    return getOuterSize(this.element, 'height', includeMargin);
   }
 
   /**
@@ -674,6 +881,11 @@ export class BQueryElement {
    * Serializes form data to a plain object.
    * Only works on form elements; returns empty object for non-forms.
    *
+   * For security hardening, the returned object uses a null prototype,
+   * so inherited members like `hasOwnProperty` are not available directly.
+   * Prefer `Object.keys()` or `Object.prototype.hasOwnProperty.call(...)`
+   * when checking for fields on the serialized result.
+   *
    * @returns Object with form field names as keys and values
    *
    * @example
@@ -681,6 +893,7 @@ export class BQueryElement {
    * // For a form with <input name="email" value="test@example.com">
    * const data = $('#myForm').serialize();
    * // { email: 'test@example.com' }
+   * Object.prototype.hasOwnProperty.call(data, 'email'); // true
    * ```
    */
   serialize(): Record<string, string | string[]> {
@@ -689,13 +902,10 @@ export class BQueryElement {
       return {};
     }
 
-    const result: Record<string, string | string[]> = {};
-    const formData = new FormData(form);
+    const result = Object.create(null) as Record<string, string | string[]>;
 
-    for (const [key, value] of formData.entries()) {
-      if (typeof value !== 'string') continue; // Skip File objects
-
-      if (key in result) {
+    for (const [key, value] of getFormEntries(form)) {
+      if (Object.prototype.hasOwnProperty.call(result, key)) {
         // Handle multiple values (e.g., checkboxes)
         const existing = result[key];
         if (Array.isArray(existing)) {
@@ -728,13 +938,10 @@ export class BQueryElement {
       return '';
     }
 
-    const formData = new FormData(form);
     const params = new URLSearchParams();
 
-    for (const [key, value] of formData.entries()) {
-      if (typeof value === 'string') {
-        params.append(key, value);
-      }
+    for (const [key, value] of getFormEntries(form)) {
+      params.append(key, value);
     }
 
     return params.toString();

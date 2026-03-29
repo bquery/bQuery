@@ -267,6 +267,30 @@ Access the store identifier:
 console.log(counterStore.$id); // 'counter'
 ```
 
+### $onAction
+
+Use `$onAction()` to observe action lifecycles without wrapping every action manually.
+
+```ts
+const stop = counterStore.$onAction(({ name, args, after, onError }) => {
+  console.log('Before action:', name, args);
+
+  after((result) => {
+    console.log('Resolved action:', name, result);
+  });
+
+  onError((error) => {
+    console.error('Failed action:', name, error);
+  });
+});
+
+stop();
+```
+
+Register `after()` and `onError()` hooks synchronously before the callback
+returns. Promise-returning listeners can still report their own failures, but
+hooks registered after an `await` do not affect the current action call.
+
 ## Store Registry
 
 ### getStore
@@ -329,6 +353,36 @@ const store = createPersistedStore(
   'custom-storage-key'
 );
 ```
+
+### Advanced persistence options
+
+The new object-based signature supports custom storage backends, serializers, and migrations.
+
+```ts
+const settingsStore = createPersistedStore(
+  {
+    id: 'settings',
+    state: () => ({ theme: 'dark', density: 'comfortable' }),
+  },
+  {
+    key: 'app-settings',
+    storage: sessionStorage,
+    version: 2,
+    serializer: {
+      serialize: JSON.stringify,
+      deserialize: JSON.parse,
+    },
+    migrate: (persisted, oldVersion) => {
+      if (oldVersion < 2) {
+        return { ...persisted, density: 'comfortable' };
+      }
+      return persisted;
+    },
+  }
+);
+```
+
+The legacy `createPersistedStore(definition, 'custom-key')` form still works when you only need a custom storage key.
 
 ## Plugins
 

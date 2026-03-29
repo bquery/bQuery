@@ -1,4 +1,6 @@
 import type { CleanupFn } from '../reactive/index';
+import { detectDevEnvironment } from '../core/env';
+import { getCustomDirective } from './custom-directives';
 import type { BindingContext, DirectiveHandler } from './types';
 
 export type DirectiveHandlers = {
@@ -29,11 +31,11 @@ export const processElement = (
   const attributes = Array.from(el.attributes);
 
   for (const attr of attributes) {
-    const { name, value } = attr;
+    const { name: attributeName, value } = attr;
 
-    if (!name.startsWith(`${prefix}-`)) continue;
+    if (!attributeName.startsWith(`${prefix}-`)) continue;
 
-    const directive = name.slice(prefix.length + 1); // Remove prefix and dash
+    const directive = attributeName.slice(prefix.length + 1); // Remove prefix and dash
 
     // Handle bq-for specially (creates new scope)
     if (directive === 'for') {
@@ -64,6 +66,20 @@ export const processElement = (
     } else if (directive.startsWith('on:')) {
       const eventName = directive.slice(3);
       handlers.on(eventName)(el, value, context, cleanups);
+    } else {
+      // Check for custom directives registered via plugins
+      const customHandler = getCustomDirective(directive);
+      if (customHandler) {
+        customHandler(el, value, context, cleanups);
+      } else if (
+        detectDevEnvironment() &&
+        typeof console !== 'undefined' &&
+        typeof console.warn === 'function'
+      ) {
+        console.warn(
+          `[bQuery][view] Unknown directive "${attributeName}" (parsed as "${directive}") on <${el.tagName.toLowerCase()}>. This may be a typo or a missing custom directive registration.`
+        );
+      }
     }
   }
 };

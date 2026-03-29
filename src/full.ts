@@ -39,6 +39,7 @@
 // Core Module: Selectors, DOM operations, events, utilities
 // ============================================================================
 export { $, $$, BQueryCollection, BQueryElement, utils } from './core/index';
+export type { BQueryUtils } from './core/index';
 
 // ============================================================================
 // Reactive Module: Signals, computed values, effects, batching
@@ -77,7 +78,17 @@ export type {
 // ============================================================================
 // Component Module: Web Components helper with Shadow DOM
 // ============================================================================
-export { bool, component, html, registerDefaultComponents, safeHtml } from './component/index';
+export {
+  bool,
+  component,
+  defineComponent,
+  html,
+  registerDefaultComponents,
+  safeHtml,
+  useComputed,
+  useEffect,
+  useSignal,
+} from './component/index';
 export type {
   AttributeChange,
   ComponentDefinition,
@@ -88,6 +99,7 @@ export type {
   DefaultComponentLibraryOptions,
   PropDefinition,
   RegisteredDefaultComponents,
+  ShadowMode,
 } from './component/index';
 
 // ============================================================================
@@ -110,14 +122,18 @@ export {
   flipList,
   keyframePresets,
   linear,
+  morphElement,
+  parallax,
   prefersReducedMotion,
   scrollAnimate,
   sequence,
+  setReducedMotion,
   spring,
   springPresets,
   stagger,
   timeline,
   transition,
+  typewriter,
 } from './motion/index';
 export type {
   AnimateOptions,
@@ -125,6 +141,9 @@ export type {
   ElementBounds,
   FlipGroupOptions,
   FlipOptions,
+  MorphOptions,
+  ParallaxCleanup,
+  ParallaxOptions,
   ScrollAnimateCleanup,
   ScrollAnimateOptions,
   SequenceOptions,
@@ -137,6 +156,8 @@ export type {
   TimelineControls,
   TimelineStep,
   TransitionOptions,
+  TypewriterControls,
+  TypewriterOptions,
 } from './motion/index';
 
 // ============================================================================
@@ -189,6 +210,7 @@ export type {
 // ============================================================================
 export {
   back,
+  BqLinkElement,
   createRouter,
   currentRoute,
   forward,
@@ -197,7 +219,9 @@ export {
   isActiveSignal,
   link,
   navigate,
+  registerBqLink,
   resolve,
+  useRoute,
 } from './router/index';
 export type {
   NavigationGuard,
@@ -205,6 +229,7 @@ export type {
   RouteDefinition,
   Router,
   RouterOptions,
+  UseRouteReturn,
 } from './router/index';
 
 // ============================================================================
@@ -220,10 +245,236 @@ export {
   mapState,
   registerPlugin,
 } from './store/index';
-export type { StateFactory, Store, StoreDefinition, StorePlugin } from './store/index';
+export type {
+  ActionContext,
+  OnActionCallback,
+  PersistedStoreOptions,
+  StateFactory,
+  StorageBackend,
+  Store,
+  StoreDefinition,
+  StorePlugin,
+  StoreSerializer,
+} from './store/index';
 
 // ============================================================================
 // View Module: Declarative DOM bindings without compiler
 // ============================================================================
 export { createTemplate, mount } from './view/index';
 export type { BindingContext, MountOptions, View } from './view/index';
+
+// ============================================================================
+// Forms Module: Reactive form handling and validation
+// ============================================================================
+export {
+  createForm,
+  custom,
+  customAsync,
+  email,
+  max,
+  maxLength,
+  min,
+  minLength,
+  pattern,
+  required,
+  url,
+} from './forms/index';
+export type {
+  AsyncValidator,
+  CrossFieldValidator,
+  FieldConfig,
+  Form,
+  FormConfig,
+  FormErrors,
+  FormField,
+  FormFields,
+  SubmitHandler,
+  SyncValidator,
+  ValidationResult,
+  Validator,
+} from './forms/index';
+
+// ============================================================================
+// i18n Module: Internationalization, translations, formatting
+// ============================================================================
+export { createI18n, formatDate, formatNumber } from './i18n/index';
+export type {
+  DateFormatOptions,
+  I18nConfig,
+  I18nInstance,
+  LocaleLoader,
+  LocaleMessages,
+  Messages,
+  NumberFormatOptions,
+  TranslateParams,
+} from './i18n/index';
+
+// ============================================================================
+// a11y Module: Accessibility utilities
+// ============================================================================
+// Note: prefersReducedMotion is not re-exported here to avoid naming conflict
+// with the motion module's prefersReducedMotion(). Use @bquery/bquery/a11y for
+// the reactive signal version.
+export {
+  announceToScreenReader,
+  auditA11y,
+  clearAnnouncements,
+  getFocusableElements,
+  prefersColorScheme,
+  prefersContrast,
+  releaseFocus,
+  rovingTabIndex,
+  skipLink,
+  trapFocus,
+} from './a11y/index';
+export type {
+  AnnouncePriority,
+  AuditFinding,
+  AuditResult,
+  AuditSeverity,
+  ColorScheme,
+  ContrastPreference,
+  FocusTrapHandle,
+  RovingTabIndexHandle,
+  RovingTabIndexOptions,
+  SkipLinkHandle,
+  SkipLinkOptions,
+  TrapFocusOptions,
+} from './a11y/index';
+
+// ============================================================================
+// DnD Module: Drag-and-drop, drop zones, sortable lists
+// ============================================================================
+export { draggable } from './dnd/index';
+export { droppable } from './dnd/index';
+export { sortable } from './dnd/index';
+export type {
+  BoundsRect,
+  DragAxis,
+  DragBounds,
+  DragEventData,
+  DragPosition,
+  DraggableHandle,
+  DraggableOptions,
+  DropEventData,
+  DroppableHandle,
+  DroppableOptions,
+  SortEventData,
+  SortableHandle,
+  SortableOptions,
+} from './dnd/index';
+
+// ============================================================================
+// Media Module: Reactive browser and device API signals
+// ============================================================================
+export { mediaQuery } from './media/index';
+export { breakpoints } from './media/index';
+export { useViewport } from './media/index';
+export { useNetworkStatus } from './media/index';
+export { useBattery } from './media/index';
+export { useGeolocation } from './media/index';
+export { useDeviceMotion, useDeviceOrientation } from './media/index';
+export { clipboard } from './media/index';
+export type {
+  BatteryState,
+  BreakpointMap,
+  ClipboardAPI,
+  DeviceMotionState,
+  DeviceOrientationState,
+  GeolocationOptions,
+  GeolocationState,
+  NetworkState,
+  ViewportState,
+} from './media/index';
+
+// ---------------------------------------------------------------------------
+// Plugin module
+// ---------------------------------------------------------------------------
+export {
+  use,
+  isInstalled,
+  getInstalledPlugins,
+  getCustomDirective,
+  getCustomDirectives,
+  resetPlugins,
+} from './plugin/index';
+export type {
+  BQueryPlugin,
+  CustomDirective,
+  CustomDirectiveHandler,
+  PluginInstallContext,
+} from './plugin/index';
+
+// ---------------------------------------------------------------------------
+// DevTools module
+// ---------------------------------------------------------------------------
+export {
+  enableDevtools,
+  isDevtoolsEnabled,
+  trackSignal,
+  untrackSignal,
+  generateSignalLabel,
+  inspectSignals,
+  inspectStores,
+  inspectComponents,
+  recordEvent,
+  getTimeline,
+  clearTimeline,
+  getDevtoolsState,
+  logSignals,
+  logStores,
+  logComponents,
+  logTimeline,
+} from './devtools/index';
+export type {
+  ComponentSnapshot,
+  DevtoolsOptions,
+  DevtoolsState,
+  SignalSnapshot,
+  StoreSnapshot,
+  TimelineEntry,
+  TimelineEventType,
+} from './devtools/index';
+
+// ---------------------------------------------------------------------------
+// Testing module
+// ---------------------------------------------------------------------------
+export {
+  renderComponent,
+  flushEffects,
+  mockSignal,
+  mockRouter,
+  fireEvent,
+  waitFor,
+} from './testing/index';
+export type {
+  FireEventOptions,
+  MockRouter,
+  MockRouterOptions,
+  MockSignal,
+  RenderComponentOptions,
+  RenderResult,
+  TestRoute,
+  WaitForOptions,
+} from './testing/index';
+
+// ---------------------------------------------------------------------------
+// SSR module
+// ---------------------------------------------------------------------------
+export {
+  renderToString,
+  hydrateMount,
+  serializeStoreState,
+  deserializeStoreState,
+  hydrateStore,
+  hydrateStores,
+} from './ssr/index';
+export type {
+  DeserializedStoreState,
+  HydrateMountOptions,
+  HydrationOptions,
+  RenderOptions,
+  SSRResult,
+  SerializeOptions,
+  SerializeResult,
+} from './ssr/index';

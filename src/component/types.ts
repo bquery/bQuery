@@ -51,54 +51,48 @@ export type PropDefinition<T = unknown> = {
  * When no explicit state generic is provided, component state falls back to
  * an untyped string-keyed record for backwards compatibility.
  */
-export type ComponentStateShape<
-  TState extends Record<string, unknown> | undefined = undefined,
-> = TState extends Record<string, unknown> ? TState : Record<string, unknown>;
+export type ComponentStateShape<TState extends Record<string, unknown> | undefined = undefined> =
+  TState extends Record<string, unknown> ? TState : Record<string, unknown>;
 
 /**
  * Component state keys are string-based because runtime state access is backed
  * by plain object properties.
  */
-export type ComponentStateKey<
-  TState extends Record<string, unknown> | undefined = undefined,
-> =
+export type ComponentStateKey<TState extends Record<string, unknown> | undefined = undefined> =
   keyof ComponentStateShape<TState> & string;
 
 /**
  * Public component element instance shape exposed by lifecycle hooks and
  * `defineComponent()` return values.
  */
-export type ComponentElement<
-  TState extends Record<string, unknown> | undefined = undefined,
-> = HTMLElement & {
-  /**
-   * Updates a state property and triggers a re-render.
-   *
-   * @param key - The state property key
-   * @param value - The new value
-   */
-  setState<TKey extends ComponentStateKey<TState>>(
-    key: TKey,
-    value: ComponentStateShape<TState>[TKey]
-  ): void;
-  /**
-   * Gets a state property value.
-   *
-   * @param key - The state property key
-   * @returns The current value
-   */
-  getState<TKey extends ComponentStateKey<TState>>(
-    key: TKey
-  ): ComponentStateShape<TState>[TKey];
-  /**
-   * Gets a state property value with an explicit cast for backwards
-   * compatibility with the pre-typed-state API.
-   *
-   * @param key - The state property key
-   * @returns The current value cast to `TResult`
-   */
-  getState<TResult = unknown>(key: string): TResult;
-};
+export type ComponentElement<TState extends Record<string, unknown> | undefined = undefined> =
+  HTMLElement & {
+    /**
+     * Updates a state property and triggers a re-render.
+     *
+     * @param key - The state property key
+     * @param value - The new value
+     */
+    setState<TKey extends ComponentStateKey<TState>>(
+      key: TKey,
+      value: ComponentStateShape<TState>[TKey]
+    ): void;
+    /**
+     * Gets a state property value.
+     *
+     * @param key - The state property key
+     * @returns The current value
+     */
+    getState<TKey extends ComponentStateKey<TState>>(key: TKey): ComponentStateShape<TState>[TKey];
+    /**
+     * Gets a state property value with an explicit cast for backwards
+     * compatibility with the pre-typed-state API.
+     *
+     * @param key - The state property key
+     * @returns The current value cast to `TResult`
+     */
+    getState<TResult = unknown>(key: string): TResult;
+  };
 
 /**
  * Constructor returned by `defineComponent()`.
@@ -185,8 +179,8 @@ type ComponentHookWithProps<
   TState extends Record<string, unknown> | undefined = undefined,
   TResult = void,
 > = {
-   (this: ComponentElement<TState>, newProps: TProps, oldProps: TProps): TResult;
-   (newProps: TProps, oldProps: TProps): TResult;
+  (this: ComponentElement<TState>, newProps: TProps, oldProps: TProps): TResult;
+  (newProps: TProps, oldProps: TProps): TResult;
 };
 type ComponentUpdatedHook<
   TState extends Record<string, unknown> | undefined = undefined,
@@ -199,6 +193,17 @@ type ComponentErrorHook<TState extends Record<string, unknown> | undefined = und
   (this: ComponentElement<TState>, error: Error): void;
   (error: Error): void;
 };
+
+type ComponentAttributeChangedHook<TState extends Record<string, unknown> | undefined = undefined> =
+  {
+    (
+      this: ComponentElement<TState>,
+      name: string,
+      oldValue: string | null,
+      newValue: string | null
+    ): void;
+    (name: string, oldValue: string | null, newValue: string | null): void;
+  };
 
 type ComponentStateDefinition<TState extends Record<string, unknown> | undefined = undefined> =
   TState extends Record<string, unknown>
@@ -222,6 +227,15 @@ type ComponentSignalsDefinition<TSignals extends ComponentSignals = Record<strin
         signals: TSignals;
       };
 
+/**
+ * Controls Shadow DOM mode for the component.
+ *
+ * - `true` or `'open'` — attach an open shadow root (default)
+ * - `'closed'` — attach a closed shadow root
+ * - `false` — no shadow root; render directly into the host element
+ */
+export type ShadowMode = boolean | 'open' | 'closed';
+
 export type ComponentDefinition<
   TProps extends Record<string, unknown> = Record<string, unknown>,
   TState extends Record<string, unknown> | undefined = undefined,
@@ -230,8 +244,25 @@ export type ComponentDefinition<
   ComponentSignalsDefinition<TSignals> & {
     /** Prop definitions with types and defaults */
     props?: Record<keyof TProps, PropDefinition>;
-    /** CSS styles scoped to the component's shadow DOM */
+    /**
+     * CSS styles injected for the component.
+     *
+     * When `shadow` uses a shadow root (`true`, `'open'`, or `'closed'`), these
+     * styles are scoped to that shadow tree. When `shadow` is `false`, the
+     * generated `<style>` element is rendered into the host's light DOM and may
+     * therefore affect surrounding markup according to normal CSS cascade rules.
+     */
     styles?: string;
+    /**
+     * Controls Shadow DOM mode.
+     *
+     * - `true` or `'open'` — open shadow root (default)
+     * - `'closed'` — closed shadow root
+     * - `false` — no shadow root; render into the host element
+     *
+     * @default true
+     */
+    shadow?: ShadowMode;
     /**
      * Extra sanitizer options merged with the framework base allowlist during render.
      * Only opt in attributes/tags whose values you control or validate. Sensitive
@@ -239,12 +270,35 @@ export type ComponentDefinition<
      * or UI-redressing risks if used with untrusted input.
      */
     sanitize?: ComponentSanitizeOptions;
+    /**
+     * Additional attributes to observe beyond those declared in `props`.
+     *
+     * Useful when you want `onAttributeChanged` to fire for attributes
+     * that are not part of the typed props system.
+     */
+    observeAttributes?: string[];
     /** Lifecycle hook called before the component mounts (before first render) */
     beforeMount?: ComponentHook<TState>;
     /** Lifecycle hook called when component is added to DOM */
     connected?: ComponentHook<TState>;
     /** Lifecycle hook called when component is removed from DOM */
     disconnected?: ComponentHook<TState>;
+    /**
+     * Lifecycle hook called when the component is moved to a new document
+     * (e.g. via `document.adoptNode`).
+     */
+    onAdopted?: ComponentHook<TState>;
+    /**
+     * Lifecycle hook called when any observed attribute changes.
+     *
+     * Observed attributes are automatically derived from `props` keys
+     * plus any additional names in `observeAttributes`.
+     *
+     * @param name - The attribute name that changed
+     * @param oldValue - The previous attribute value (null if added)
+     * @param newValue - The new attribute value (null if removed)
+     */
+    onAttributeChanged?: ComponentAttributeChangedHook<TState>;
     /** Lifecycle hook called before an update render; return false to prevent */
     beforeUpdate?: ComponentHookWithProps<TProps, TState, boolean | void>;
     /** Lifecycle hook called after update renders; receives attribute change info when applicable */
