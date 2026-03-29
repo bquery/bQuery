@@ -31,11 +31,11 @@ export const processElement = (
   const attributes = Array.from(el.attributes);
 
   for (const attr of attributes) {
-    const { name, value } = attr;
+    const { name: attributeName, value } = attr;
 
-    if (!name.startsWith(`${prefix}-`)) continue;
+    if (!attributeName.startsWith(`${prefix}-`)) continue;
 
-    const directive = name.slice(prefix.length + 1); // Remove prefix and dash
+    const directive = attributeName.slice(prefix.length + 1); // Remove prefix and dash
 
     // Handle bq-for specially (creates new scope)
     if (directive === 'for') {
@@ -77,7 +77,7 @@ export const processElement = (
         typeof console.warn === 'function'
       ) {
         console.warn(
-          `[bQuery][view] Unknown directive "${name}" (parsed as "${directive}") on <${el.tagName.toLowerCase()}>. This may be a typo or a missing custom directive registration.`
+          `[bQuery][view] Unknown directive "${attributeName}" (parsed as "${directive}") on <${el.tagName.toLowerCase()}>. This may be a typo or a missing custom directive registration.`
         );
       }
     }

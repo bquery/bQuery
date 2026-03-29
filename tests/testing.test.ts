@@ -657,12 +657,12 @@ describe('testing module exports', () => {
     expect(typeof main.waitFor).toBe('function');
   });
 
-  it('re-exports Route from the main index type surface', () => {
-    type MainRoute = import('../src/index').Route;
+  it('re-exports TestRoute from the main index type surface', () => {
+    type MainTestRoute = import('../src/index').TestRoute;
     type TestingRoute = import('../src/testing/index').Route;
 
     const expectTypeEquality = <T extends TestingRoute>(_value: T): void => {};
-    expectTypeEquality<MainRoute>({
+    expectTypeEquality<MainTestRoute>({
       path: '/',
       params: {},
       query: {},

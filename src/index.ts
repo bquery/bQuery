@@ -100,7 +100,7 @@ export type {
   MockSignal,
   RenderComponentOptions,
   RenderResult,
-  Route,
+  Route as TestRoute,
   WaitForOptions,
 } from './testing/index';
 

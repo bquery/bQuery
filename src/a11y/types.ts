@@ -1,10 +1,10 @@
-import type { ReadonlySignal } from '../reactive/index';
-
 /**
  * Type definitions for the bQuery accessibility (a11y) module.
  *
  * @module bquery/a11y
  */
+
+import type { ReadonlySignal } from '../reactive/index';
 
 // ─── Focus Trap ──────────────────────────────────────────────────────────────
 
