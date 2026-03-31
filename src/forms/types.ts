@@ -68,6 +68,43 @@ export type FormField<T = unknown> = {
 };
 
 /**
+ * Controls when {@link useFormField} runs validation automatically.
+ */
+export type FormFieldValidationMode = 'manual' | 'change' | 'blur' | 'both';
+
+/**
+ * Configuration for {@link useFormField}.
+ *
+ * @template T - The type of the field value
+ */
+export type UseFormFieldOptions<T = unknown> = {
+  /** Validation rules applied in order; stops at first failure */
+  validators?: Validator<T>[];
+  /** When validation should run automatically. Defaults to `'manual'`. */
+  validateOn?: FormFieldValidationMode;
+  /** Delay automatic validation by the given milliseconds. Defaults to `0`. */
+  debounceMs?: number;
+  /** Initial error message for the field. Defaults to an empty string. */
+  initialError?: string;
+};
+
+/**
+ * Return value of {@link useFormField}.
+ *
+ * Extends the standard field state with validation helpers for standalone field usage.
+ *
+ * @template T - The type of the field value
+ */
+export type UseFormFieldReturn<T = unknown> = FormField<T> & {
+  /** Whether the current field has no validation error */
+  isValid: Computed<boolean>;
+  /** Reactive signal: `true` while async validation is still running */
+  isValidating: Signal<boolean>;
+  /** Validate the current field value immediately */
+  validate: () => Promise<boolean>;
+};
+
+/**
  * Map of field names to their reactive field state.
  */
 export type FormFields<T extends Record<string, unknown>> = {

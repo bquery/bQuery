@@ -281,6 +281,7 @@ export {
   minLength,
   pattern,
   required,
+  useFormField,
   url,
 } from './forms/index';
 export type {
@@ -291,9 +292,12 @@ export type {
   FormConfig,
   FormErrors,
   FormField,
+  FormFieldValidationMode,
   FormFields,
   SubmitHandler,
   SyncValidator,
+  UseFormFieldOptions,
+  UseFormFieldReturn,
   ValidationResult,
   Validator,
 } from './forms/index';

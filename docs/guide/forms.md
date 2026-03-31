@@ -6,6 +6,31 @@ The forms module provides reactive form state, sync/async validation, cross-fiel
 import { createForm, required, email, minLength } from '@bquery/bquery/forms';
 ```
 
+## Standalone fields with `useFormField()`
+
+Use `useFormField()` when you want the same reactive field primitives as `createForm()`,
+but without creating a whole form object.
+
+```ts
+import { useFormField, required } from '@bquery/bquery/forms';
+
+const emailField = useFormField('', {
+  validators: [required()],
+  validateOn: 'blur',
+});
+
+emailField.value.value = 'ada@example.com';
+emailField.touch(); // runs blur-triggered validation
+console.log(emailField.isValid.value);
+```
+
+`useFormField()` supports:
+
+- `validateOn: 'manual' | 'change' | 'blur' | 'both'`
+- `debounceMs` for automatic validation
+- external writable signals when you want to reuse existing reactive state
+- `validate()` for immediate validation
+
 ## Basic usage
 
 ```ts
@@ -43,6 +68,9 @@ Available helpers:
 - `isTouched`
 - `isDirty`
 - `isPristine`
+- `isValid`
+- `isValidating`
+- `validate()` (when using `useFormField()`)
 
 ## Form state
 

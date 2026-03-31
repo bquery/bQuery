@@ -1,0 +1,185 @@
+/**
+ * Standalone reactive field composable.
+ *
+ * @module bquery/forms
+ */
+
+import { debounce } from '../core/utils/function';
+import { isPromise } from '../core/utils/type-guards';
+import { computed, effect, signal, type Signal } from '../reactive/index';
+import type {
+  UseFormFieldOptions,
+  UseFormFieldReturn,
+  ValidationResult,
+  Validator,
+} from './types';
+
+/**
+ * Determines whether a validator returned a valid result.
+ * @internal
+ */
+const isValidationSuccess = (result: ValidationResult): boolean =>
+  result === true || result === undefined;
+
+/**
+ * Runs a single validator, normalising sync and async results.
+ * @internal
+ */
+const runValidator = async <T>(validator: Validator<T>, value: T): Promise<string | undefined> => {
+  const result = validator(value);
+  const resolved = isPromise(result) ? await result : result;
+  return isValidationSuccess(resolved) ? undefined : (resolved as string);
+};
+
+/**
+ * Creates a standalone reactive form field with optional automatic validation.
+ *
+ * This helper is useful when you want field-level state without creating a full form,
+ * or when you want to bind an existing signal to the forms validation model.
+ *
+ * @template T - The type of the field value
+ * @param initialValue - Plain initial value or an existing writable signal to reuse
+ * @param options - Validation mode, validators, debounce, and initial error configuration
+ * @returns A reactive field handle with validation helpers
+ *
+ * @example
+ * ```ts
+ * import { useFormField, required } from '@bquery/bquery/forms';
+ *
+ * const email = useFormField('', {
+ *   validators: [required()],
+ *   validateOn: 'blur',
+ * });
+ *
+ * email.value.value = 'ada@example.com';
+ * email.touch();
+ * ```
+ */
+export const useFormField = <T>(
+  initialValue: T | Signal<T>,
+  options: UseFormFieldOptions<T> = {}
+): UseFormFieldReturn<T> => {
+  const value = isSignal(initialValue) ? initialValue : signal(initialValue);
+  const initial = value.peek();
+  const error = signal(options.initialError ?? '');
+  const isTouched = signal(false);
+  const isValidating = signal(false);
+  const isDirty = computed(() => !Object.is(value.value, initial));
+  const isPristine = computed(() => !isDirty.value);
+  const isValid = computed(() => error.value === '');
+  const validateOn = options.validateOn ?? 'manual';
+  const debounceMs = Math.max(0, options.debounceMs ?? 0);
+
+  let validationId = 0;
+  let changeInitialized = false;
+  let suppressNextChangeValidation = false;
+
+  const runValidation = async (): Promise<boolean> => {
+    const currentValidationId = ++validationId;
+    const validators = options.validators;
+
+    if (!validators || validators.length === 0) {
+      error.value = '';
+      isValidating.value = false;
+      return true;
+    }
+
+    isValidating.value = true;
+
+    try {
+      const currentValue = value.peek();
+
+      for (const validator of validators) {
+        const nextError = await runValidator(validator, currentValue);
+
+        if (currentValidationId !== validationId) {
+          return error.peek() === '';
+        }
+
+        if (nextError) {
+          error.value = nextError;
+          return false;
+        }
+      }
+
+      if (currentValidationId === validationId) {
+        error.value = '';
+      }
+      return true;
+    } finally {
+      if (currentValidationId === validationId) {
+        isValidating.value = false;
+      }
+    }
+  };
+
+  const debouncedValidate = debounce(() => {
+    void runValidation();
+  }, debounceMs);
+
+  const scheduleValidation = (): void => {
+    if (debounceMs > 0) {
+      debouncedValidate();
+      return;
+    }
+
+    void runValidation();
+  };
+
+  if (validateOn === 'change' || validateOn === 'both') {
+    effect(() => {
+      void value.value;
+
+      if (!changeInitialized) {
+        changeInitialized = true;
+        return;
+      }
+
+      if (suppressNextChangeValidation) {
+        suppressNextChangeValidation = false;
+        return;
+      }
+
+      scheduleValidation();
+    });
+  }
+
+  return {
+    value,
+    error,
+    isDirty,
+    isTouched,
+    isPristine,
+    isValid,
+    isValidating,
+    touch: () => {
+      isTouched.value = true;
+      if (validateOn === 'blur' || validateOn === 'both') {
+        scheduleValidation();
+      }
+    },
+    reset: () => {
+      validationId += 1;
+      debouncedValidate.cancel();
+      if (!Object.is(value.peek(), initial)) {
+        suppressNextChangeValidation = true;
+      }
+      value.value = initial;
+      error.value = options.initialError ?? '';
+      isTouched.value = false;
+      isValidating.value = false;
+    },
+    validate: async () => {
+      debouncedValidate.cancel();
+      return runValidation();
+    },
+  };
+};
+
+/**
+ * Determines whether a value looks like a writable signal.
+ * @internal
+ */
+const isSignal = <T>(value: T | Signal<T>): value is Signal<T> => {
+  return typeof value === 'object' && value !== null && 'value' in value && 'peek' in value;
+};

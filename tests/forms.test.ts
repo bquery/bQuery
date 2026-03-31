@@ -11,6 +11,7 @@ import {
   minLength,
   pattern,
   required,
+  useFormField,
   url,
 } from '../src/forms/index';
 import { effect, signal } from '../src/reactive/index';
@@ -1008,6 +1009,162 @@ describe('forms/createForm', () => {
       form.setErrors({});
       expect(form.fields.name.error.value).toBe('Error'); // unchanged
     });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// useFormField
+// ---------------------------------------------------------------------------
+
+describe('forms/useFormField', () => {
+  it('creates standalone reactive field state from a plain value', () => {
+    const field = useFormField('Ada');
+
+    expect(field.value.value).toBe('Ada');
+    expect(field.error.value).toBe('');
+    expect(field.isDirty.value).toBe(false);
+    expect(field.isPristine.value).toBe(true);
+    expect(field.isTouched.value).toBe(false);
+    expect(field.isValid.value).toBe(true);
+    expect(field.isValidating.value).toBe(false);
+  });
+
+  it('reuses an external signal when provided', () => {
+    const value = signal('Ada');
+    const field = useFormField(value);
+
+    expect(field.value).toBe(value);
+
+    field.value.value = 'Grace';
+    expect(value.value).toBe('Grace');
+    expect(field.isDirty.value).toBe(true);
+  });
+
+  it('validates manually by default', async () => {
+    const field = useFormField('', {
+      validators: [required('Required')],
+    });
+
+    field.value.value = '';
+    expect(field.error.value).toBe('');
+
+    await field.validate();
+    expect(field.error.value).toBe('Required');
+    expect(field.isValid.value).toBe(false);
+  });
+
+  it('validates on change when configured', async () => {
+    const field = useFormField('Ada', {
+      validators: [required('Required')],
+      validateOn: 'change',
+    });
+
+    field.value.value = '';
+    await new Promise<void>((resolve) => queueMicrotask(resolve));
+    expect(field.error.value).toBe('Required');
+
+    field.value.value = 'Ada';
+    await new Promise<void>((resolve) => queueMicrotask(resolve));
+    expect(field.error.value).toBe('');
+  });
+
+  it('validates on blur when configured', async () => {
+    const field = useFormField('', {
+      validators: [required('Required')],
+      validateOn: 'blur',
+    });
+
+    field.value.value = '';
+    await new Promise<void>((resolve) => queueMicrotask(resolve));
+    expect(field.error.value).toBe('');
+
+    field.touch();
+    await new Promise<void>((resolve) => queueMicrotask(resolve));
+    expect(field.isTouched.value).toBe(true);
+    expect(field.error.value).toBe('Required');
+  });
+
+  it('validates on both change and blur when configured', async () => {
+    const field = useFormField('Ada', {
+      validators: [required('Required')],
+      validateOn: 'both',
+    });
+
+    field.value.value = '';
+    await new Promise<void>((resolve) => queueMicrotask(resolve));
+    expect(field.error.value).toBe('Required');
+
+    field.value.value = 'Ada';
+    await new Promise<void>((resolve) => queueMicrotask(resolve));
+    expect(field.error.value).toBe('');
+
+    field.value.value = '';
+    field.touch();
+    await new Promise<void>((resolve) => queueMicrotask(resolve));
+    expect(field.error.value).toBe('Required');
+  });
+
+  it('supports debounced automatic validation', async () => {
+    const field = useFormField('Ada', {
+      validators: [required('Required')],
+      validateOn: 'change',
+      debounceMs: 20,
+    });
+
+    field.value.value = '';
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    expect(field.error.value).toBe('');
+
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    expect(field.error.value).toBe('Required');
+  });
+
+  it('resets pending debounce, touched state, and errors', async () => {
+    const field = useFormField('', {
+      validators: [required('Required')],
+      validateOn: 'change',
+      debounceMs: 20,
+      initialError: 'Initial',
+    });
+
+    field.value.value = 'Ada';
+    field.touch();
+    field.reset();
+
+    await new Promise((resolve) => setTimeout(resolve, 30));
+
+    expect(field.value.value).toBe('');
+    expect(field.isTouched.value).toBe(false);
+    expect(field.error.value).toBe('Initial');
+    expect(field.isValidating.value).toBe(false);
+  });
+
+  it('ignores stale async validation results', async () => {
+    const field = useFormField('', {
+      validators: [
+        customAsync(async (value: string) => {
+          if (value === 'slow') {
+            await new Promise((resolve) => setTimeout(resolve, 20));
+            return 'Taken';
+          }
+
+          await new Promise((resolve) => setTimeout(resolve, 0));
+          return true;
+        }),
+      ],
+      validateOn: 'change',
+    });
+
+    field.value.value = 'slow';
+    await new Promise<void>((resolve) => queueMicrotask(resolve));
+    expect(field.isValidating.value).toBe(true);
+
+    field.value.value = 'fast';
+    await new Promise((resolve) => setTimeout(resolve, 30));
+
+    expect(field.error.value).toBe('');
+    expect(field.isValid.value).toBe(true);
+    expect(field.isValidating.value).toBe(false);
   });
 });
 
