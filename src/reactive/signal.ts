@@ -9,19 +9,19 @@ export { createUseFetch, useAsyncData, useFetch } from './async-data';
 export { Computed, computed } from './computed';
 export { Signal, signal } from './core';
 export { effect } from './effect';
-export { createHttp, http, HttpError } from './http';
+export { createHttp, createRequestQueue, http, HttpError } from './http';
 export { linkedSignal } from './linked';
 export { useInfiniteFetch, usePaginatedFetch } from './pagination';
 export { persistedSignal } from './persisted';
 export { usePolling } from './polling';
 export { readonly } from './readonly';
-export { createRestClient, useResource, useSubmit } from './rest';
+export { createRestClient, deduplicateRequest, useResource, useResourceList, useSubmit } from './rest';
 export { effectScope, getCurrentScope, onScopeDispose } from './scope';
 export { isComputed, isSignal } from './type-guards';
 export { toValue } from './to-value';
 export { untrack } from './untrack';
 export { watch } from './watch';
-export { useEventSource, useWebSocket } from './websocket';
+export { useEventSource, useWebSocket, useWebSocketChannel } from './websocket';
 
 export type { CleanupFn, Observer } from './internals';
 export type {
@@ -40,6 +40,8 @@ export type {
   HttpResponse,
   Interceptor,
   InterceptorManager,
+  RequestQueue,
+  RequestQueueOptions,
   RetryConfig,
 } from './http';
 export type {
@@ -50,7 +52,11 @@ export type {
 } from './pagination';
 export type { PollingState, UsePollingOptions } from './polling';
 export type {
+  IdExtractor,
+  ResourceListActions,
   RestClient,
+  UseResourceListOptions,
+  UseResourceListReturn,
   UseResourceOptions,
   UseResourceReturn,
   UseSubmitOptions,
@@ -61,8 +67,12 @@ export type { LinkedSignal } from './linked';
 export type { MaybeSignal } from './to-value';
 export type { ReadonlySignal, ReadonlySignalHandle } from './readonly';
 export type {
+  ChannelMessage,
+  ChannelSubscription,
   UseEventSourceOptions,
   UseEventSourceReturn,
+  UseWebSocketChannelOptions,
+  UseWebSocketChannelReturn,
   UseWebSocketOptions,
   UseWebSocketReturn,
   WebSocketHeartbeatConfig,

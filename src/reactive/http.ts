@@ -20,6 +20,8 @@ export interface RetryConfig {
   delay?: number | ((attempt: number) => number);
   /** Predicate deciding whether to retry a given error. Defaults to network / 5xx errors. */
   retryOn?: (error: HttpError, attempt: number) => boolean;
+  /** Called before each retry attempt with the error and attempt index. */
+  onRetry?: (error: HttpError, attempt: number) => void;
 }
 
 /** Progress information emitted during upload or download. */
@@ -618,6 +620,7 @@ export function createHttp(defaults: HttpRequestConfig = {}): HttpClient {
         }
 
         const retryDelay = retryConfig ? resolveRetryDelay(retryConfig.delay, attempt) : 0;
+        retryConfig?.onRetry?.(httpError, attempt + 1);
         await sleep(retryDelay, resolvedConfig.signal);
       }
     }
@@ -666,3 +669,99 @@ export function createHttp(defaults: HttpRequestConfig = {}): HttpClient {
  * ```
  */
 export const http: HttpClient = createHttp();
+
+// ---------------------------------------------------------------------------
+// Request Queue
+// ---------------------------------------------------------------------------
+
+/** Options for `createRequestQueue()`. */
+export interface RequestQueueOptions {
+  /** Maximum number of concurrent in-flight requests (default: 6). */
+  concurrency?: number;
+}
+
+/** A queued request entry. */
+interface QueueEntry<T = unknown> {
+  execute: () => Promise<HttpResponse<T>>;
+  resolve: (value: HttpResponse<T>) => void;
+  reject: (reason: unknown) => void;
+}
+
+/** Return value of `createRequestQueue()`. */
+export interface RequestQueue {
+  /** Enqueue a request. Returns a promise that resolves when the request completes. */
+  add: <T = unknown>(execute: () => Promise<HttpResponse<T>>) => Promise<HttpResponse<T>>;
+  /** Number of requests currently being processed. */
+  readonly pending: number;
+  /** Number of requests waiting in the queue. */
+  readonly size: number;
+  /** Remove all pending (not yet started) requests from the queue. Their promises will reject. */
+  clear: () => void;
+}
+
+/**
+ * Create a request queue with a concurrency limit.
+ *
+ * Useful for rate-limiting parallel HTTP requests (e.g. browser connection limits,
+ * API throttling) while maintaining a simple promise-based interface.
+ *
+ * @param options - Queue configuration
+ * @returns A `RequestQueue` with `.add()`, `.clear()`, `.pending`, and `.size`
+ *
+ * @example
+ * ```ts
+ * import { createRequestQueue, createHttp } from '@bquery/bquery/reactive';
+ *
+ * const api = createHttp({ baseUrl: 'https://api.example.com' });
+ * const queue = createRequestQueue({ concurrency: 3 });
+ *
+ * // These will run at most 3 at a time
+ * const results = await Promise.all(
+ *   ids.map(id => queue.add(() => api.get(`/items/${id}`)))
+ * );
+ * ```
+ */
+export function createRequestQueue(options: RequestQueueOptions = {}): RequestQueue {
+  const { concurrency = 6 } = options;
+  const queue: Array<QueueEntry> = [];
+  let running = 0;
+
+  const drain = (): void => {
+    while (running < concurrency && queue.length > 0) {
+      const entry = queue.shift()!;
+      running++;
+      entry
+        .execute()
+        .then(entry.resolve, entry.reject)
+        .finally(() => {
+          running--;
+          drain();
+        });
+    }
+  };
+
+  return {
+    add<T = unknown>(execute: () => Promise<HttpResponse<T>>): Promise<HttpResponse<T>> {
+      return new Promise<HttpResponse<T>>((resolve, reject) => {
+        queue.push({
+          execute: execute as () => Promise<HttpResponse>,
+          resolve: resolve as (value: HttpResponse) => void,
+          reject,
+        });
+        drain();
+      });
+    },
+    get pending() {
+      return running;
+    },
+    get size() {
+      return queue.length;
+    },
+    clear() {
+      const cleared = queue.splice(0);
+      for (const entry of cleared) {
+        entry.reject(new Error('Request queue cleared'));
+      }
+    },
+  };
+}

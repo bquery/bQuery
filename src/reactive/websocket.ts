@@ -70,6 +70,8 @@ export interface UseWebSocketOptions<TSend = unknown, TReceive = unknown>
   onClose?: (event: CloseEvent) => void;
   /** Called when a connection error occurs. */
   onError?: (event: Event) => void;
+  /** Called after a successful reconnection. Receives the reconnection attempt count. */
+  onReconnect?: (attempts: number) => void;
 }
 
 /** Return value of `useWebSocket()`. */
@@ -86,6 +88,10 @@ export interface UseWebSocketReturn<TSend = unknown, TReceive = unknown> {
   isConnected: { readonly value: boolean; peek(): boolean };
   /** Number of reconnection attempts since last successful open. */
   reconnectAttempts: Signal<number>;
+  /** Round-trip latency in ms measured via heartbeat pings (requires `heartbeat` option). */
+  latency: Signal<number>;
+  /** Timestamp of the last unexpected disconnection, or 0 if never disconnected. */
+  lastDisconnectedAt: Signal<number>;
   /** Send a message. Queues while the connection is not yet open when `immediate` is true. */
   send: (data: TSend) => void;
   /** Send raw data without serialization. */
@@ -177,6 +183,7 @@ export const useWebSocket = <TSend = string, TReceive = string>(
     onMessage,
     onClose,
     onError,
+    onReconnect,
   } = options;
 
   const serialize = options.serialize ?? ((d: TSend) => JSON.stringify(d));
@@ -199,6 +206,8 @@ export const useWebSocket = <TSend = string, TReceive = string>(
   const error = signal<Event | null>(null);
   const history = signal<TReceive[]>([]);
   const reconnectAttempts = signal(0);
+  const latency = signal(0);
+  const lastDisconnectedAt = signal(0);
   const isConnected = computed(() => status.value === 'OPEN');
 
   // --- Internal state ---
@@ -210,6 +219,7 @@ export const useWebSocket = <TSend = string, TReceive = string>(
   let pongTimer: ReturnType<typeof setTimeout> | undefined;
   let internalReconnectCount = 0;
   let isAutoReconnecting = false;
+  let pingSentAt = 0;
   const sendQueue: Array<string | ArrayBufferLike | Blob | ArrayBufferView> = [];
 
   const reconnectConfig = resolveReconnect(options.autoReconnect);
@@ -225,6 +235,7 @@ export const useWebSocket = <TSend = string, TReceive = string>(
 
     heartbeatTimer = setInterval(() => {
       if (ws?.readyState === WebSocket.OPEN) {
+        pingSentAt = Date.now();
         ws.send(pingMsg as string | ArrayBufferLike);
         pongTimer = setTimeout(() => {
           // No pong received — force close to trigger reconnect
@@ -249,6 +260,10 @@ export const useWebSocket = <TSend = string, TReceive = string>(
     if (pongTimer !== undefined) {
       clearTimeout(pongTimer);
       pongTimer = undefined;
+    }
+    if (pingSentAt > 0) {
+      latency.value = Date.now() - pingSentAt;
+      pingSentAt = 0;
     }
   };
 
@@ -324,6 +339,7 @@ export const useWebSocket = <TSend = string, TReceive = string>(
 
     ws.onopen = (event: Event): void => {
       status.value = 'OPEN';
+      const wasReconnecting = isAutoReconnecting;
       if (!isAutoReconnecting) {
         internalReconnectCount = 0;
         reconnectAttempts.value = 0;
@@ -332,6 +348,9 @@ export const useWebSocket = <TSend = string, TReceive = string>(
       flushQueue();
       startHeartbeat();
       onOpen?.(event);
+      if (wasReconnecting) {
+        onReconnect?.(internalReconnectCount);
+      }
     };
 
     ws.onmessage = (event: MessageEvent): void => {
@@ -358,6 +377,10 @@ export const useWebSocket = <TSend = string, TReceive = string>(
     ws.onclose = (event: CloseEvent): void => {
       status.value = 'CLOSED';
       stopHeartbeat();
+
+      if (!explicitClose) {
+        lastDisconnectedAt.value = Date.now();
+      }
 
       onClose?.(event);
 
@@ -418,12 +441,136 @@ export const useWebSocket = <TSend = string, TReceive = string>(
     history,
     isConnected,
     reconnectAttempts,
+    latency,
+    lastDisconnectedAt,
     send,
     sendRaw,
     open,
     close,
     dispose,
   };
+};
+
+// ---------------------------------------------------------------------------
+// useWebSocketChannel — topic-based multiplexer
+// ---------------------------------------------------------------------------
+
+/** Default channel message format used by `useWebSocketChannel()`. */
+export interface ChannelMessage<T = unknown> {
+  /** Channel / topic name. */
+  channel: string;
+  /** Message payload. */
+  data: T;
+}
+
+/** Configuration for `useWebSocketChannel()`. */
+export interface UseWebSocketChannelOptions<TSend = unknown, TReceive = unknown> {
+  /**
+   * Extract the channel name from an incoming deserialized message.
+   * Default: reads `(msg as ChannelMessage).channel`.
+   */
+  getChannel?: (msg: TReceive) => string | undefined;
+  /**
+   * Wrap a payload + channel into the wire format before sending.
+   * Default: `{ channel, data }`.
+   */
+  wrap?: (channel: string, data: TSend) => TReceive;
+}
+
+/** A single channel subscription returned by `subscribe()`. */
+export interface ChannelSubscription<TReceive = unknown> {
+  /** Reactive last message received on this channel. */
+  data: Signal<TReceive | undefined>;
+  /** Unsubscribe from this channel. */
+  unsubscribe: () => void;
+}
+
+/** Return value of `useWebSocketChannel()`. */
+export interface UseWebSocketChannelReturn<TSend = unknown, TReceive = unknown> {
+  /** Subscribe to a topic. Multiple subscriptions to the same channel share a signal. */
+  subscribe: (channel: string) => ChannelSubscription<TReceive>;
+  /** Publish a message to a channel. */
+  publish: (channel: string, data: TSend) => void;
+  /** The underlying `useWebSocket` return for direct access. */
+  ws: UseWebSocketReturn<TReceive, TReceive>;
+}
+
+/**
+ * Topic-based channel multiplexer over a single WebSocket connection.
+ *
+ * Builds on `useWebSocket()` and routes incoming messages to per-channel
+ * reactive signals based on a configurable channel extractor.
+ *
+ * @template TSend - Type of outgoing message payloads
+ * @template TReceive - Type of incoming deserialized messages
+ * @param url - WebSocket URL
+ * @param wsOptions - All `useWebSocket` options
+ * @param channelOptions - Channel routing configuration
+ * @returns Channel multiplexer with `subscribe()`, `publish()`, and the underlying `ws`
+ *
+ * @example
+ * ```ts
+ * import { useWebSocketChannel } from '@bquery/bquery/reactive';
+ *
+ * const chat = useWebSocketChannel('wss://chat.example.com/ws');
+ *
+ * const general = chat.subscribe('general');
+ * const updates = chat.subscribe('updates');
+ *
+ * effect(() => console.log('General:', general.data.value));
+ *
+ * chat.publish('general', { text: 'Hello!' });
+ * ```
+ */
+export const useWebSocketChannel = <TSend = unknown, TReceive = unknown>(
+  url: string | URL | (() => string | URL),
+  wsOptions: UseWebSocketOptions<TReceive, TReceive> = {},
+  channelOptions: UseWebSocketChannelOptions<TSend, TReceive> = {}
+): UseWebSocketChannelReturn<TSend, TReceive> => {
+  const getChannel =
+    channelOptions.getChannel ??
+    ((msg: TReceive) => (msg as ChannelMessage).channel);
+
+  const wrap =
+    channelOptions.wrap ??
+    ((ch: string, data: TSend) => ({ channel: ch, data }) as unknown as TReceive);
+
+  const channels = new Map<string, Signal<TReceive | undefined>>();
+
+  const ws = useWebSocket<TReceive, TReceive>(url, {
+    ...wsOptions,
+    onMessage: (msg, event) => {
+      const ch = getChannel(msg);
+      if (ch !== undefined) {
+        const sig = channels.get(ch);
+        if (sig) {
+          sig.value = msg;
+        }
+      }
+      wsOptions.onMessage?.(msg, event);
+    },
+  });
+
+  const subscribe = (channel: string): ChannelSubscription<TReceive> => {
+    let sig = channels.get(channel);
+    if (!sig) {
+      sig = signal<TReceive | undefined>(undefined);
+      channels.set(channel, sig);
+    }
+
+    return {
+      data: sig,
+      unsubscribe: () => {
+        channels.delete(channel);
+      },
+    };
+  };
+
+  const publish = (channel: string, data: TSend): void => {
+    ws.send(wrap(channel, data));
+  };
+
+  return { subscribe, publish, ws };
 };
 
 // ---------------------------------------------------------------------------

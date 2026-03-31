@@ -455,3 +455,374 @@ export const createRestClient = <T = unknown>(
     http: httpClient,
   };
 };
+
+// ---------------------------------------------------------------------------
+// useResourceList — reactive collection CRUD
+// ---------------------------------------------------------------------------
+
+/** Extract a unique identifier from an item. */
+export type IdExtractor<T> = (item: T) => string | number;
+
+/** Options for `useResourceList()`. */
+export interface UseResourceListOptions<T = unknown>
+  extends Omit<UseFetchOptions<T[]>, 'method' | 'body'> {
+  /** Extract the unique ID from each item (default: `item.id`). */
+  getId?: IdExtractor<T>;
+  /** Enable optimistic list mutations (default: false). */
+  optimistic?: boolean;
+  /** Called after a successful list mutation. */
+  onMutationSuccess?: (action: string) => void;
+  /** Called after a failed list mutation. */
+  onMutationError?: (error: Error, action: string) => void;
+}
+
+/** CRUD actions for a list resource. */
+export interface ResourceListActions<T> {
+  /** Refresh the list (GET). */
+  fetch: () => Promise<T[] | undefined>;
+  /** Add a new item to the list (POST). */
+  add: (body: Partial<T> | Record<string, unknown>) => Promise<T | undefined>;
+  /** Update an existing item (PUT) by ID. */
+  update: (
+    id: string | number,
+    body: Partial<T> | Record<string, unknown>
+  ) => Promise<T | undefined>;
+  /** Partially update an existing item (PATCH) by ID. */
+  patch: (
+    id: string | number,
+    body: Partial<T> | Record<string, unknown>
+  ) => Promise<T | undefined>;
+  /** Remove an item from the list (DELETE) by ID. */
+  remove: (id: string | number) => Promise<void>;
+}
+
+/** Return value of `useResourceList()`. */
+export interface UseResourceListReturn<T> {
+  /** Reactive list data. */
+  data: Signal<T[] | undefined>;
+  /** Last error. */
+  error: Signal<Error | null>;
+  /** Lifecycle status. */
+  status: Signal<AsyncDataStatus>;
+  /** Whether the list fetch is pending. */
+  pending: { readonly value: boolean; peek(): boolean };
+  /** Whether any mutation is in progress. */
+  isMutating: { readonly value: boolean; peek(): boolean };
+  /** CRUD actions. */
+  actions: ResourceListActions<T>;
+  /** Refresh the list. */
+  refresh: () => Promise<T[] | undefined>;
+  /** Clear data, error, and status. */
+  clear: () => void;
+  /** Dispose all reactive state. */
+  dispose: () => void;
+}
+
+/**
+ * Reactive list/collection CRUD composable with optimistic add, remove, and update.
+ *
+ * Fetches a list of items and provides typed CRUD helpers that update the
+ * reactive array optimistically or after server confirmation.
+ *
+ * @template T - Item type
+ * @param url - List endpoint URL or getter
+ * @param options - Fetch and list options
+ * @returns Reactive list state with CRUD actions
+ *
+ * @example
+ * ```ts
+ * import { useResourceList } from '@bquery/bquery/reactive';
+ *
+ * interface Todo { id: number; title: string; done: boolean }
+ *
+ * const todos = useResourceList<Todo>('/api/todos', {
+ *   baseUrl: 'https://api.example.com',
+ *   optimistic: true,
+ *   getId: (t) => t.id,
+ * });
+ *
+ * await todos.actions.add({ title: 'Buy milk', done: false });
+ * await todos.actions.patch(1, { done: true });
+ * await todos.actions.remove(1);
+ * ```
+ */
+export const useResourceList = <T = unknown>(
+  url: string | URL | (() => string | URL),
+  options: UseResourceListOptions<T> = {}
+): UseResourceListReturn<T> => {
+  const {
+    getId = (item: T) => (item as Record<string, unknown>).id as string | number,
+    optimistic = false,
+    onMutationSuccess,
+    onMutationError,
+    ...fetchOptions
+  } = options;
+
+  const fetchState = useFetch<T[]>(url, { ...fetchOptions });
+
+  const mutating = signal(false);
+  const isMutating = computed(() => mutating.value);
+
+  let disposed = false;
+
+  const resolveUrl = (): string => {
+    const resolved = typeof url === 'function' ? url() : url;
+    return resolved instanceof URL ? resolved.toString() : resolved;
+  };
+
+  const baseUrl = (): string => {
+    let base = resolveUrl();
+    while (base.endsWith('/')) base = base.slice(0, -1);
+    return base;
+  };
+
+  const runMutation = async <TResult>(
+    action: string,
+    method: string,
+    urlSuffix: string,
+    body: Record<string, unknown> | Partial<T> | undefined,
+    applyOptimistic: (() => void) | undefined,
+    rollback: (() => void) | undefined
+  ): Promise<TResult | undefined> => {
+    if (disposed) return undefined;
+
+    if (optimistic && applyOptimistic) applyOptimistic();
+
+    mutating.value = true;
+    fetchState.error.value = null;
+
+    try {
+      const mutationUrl = `${baseUrl()}${urlSuffix}`;
+      // Only forward transport-level options, not list-typed defaults
+      const { defaultValue: _, transform: _t, ...transportOpts } = fetchOptions;
+      const mutationState = useFetch<TResult>(mutationUrl, {
+        ...(transportOpts as Omit<UseFetchOptions<TResult>, 'method' | 'body'>),
+        method,
+        body: body ?? undefined,
+        immediate: false,
+        watch: undefined,
+      });
+
+      const result = await mutationState.execute();
+      const mutationError = mutationState.error.peek();
+      mutationState.dispose();
+
+      if (disposed) return undefined;
+
+      if (mutationError) {
+        if (optimistic && rollback) rollback();
+        fetchState.error.value = mutationError;
+        fetchState.status.value = 'error';
+        mutating.value = false;
+        onMutationError?.(mutationError, action);
+        return undefined;
+      }
+
+      mutating.value = false;
+      fetchState.status.value = 'success';
+      onMutationSuccess?.(action);
+      return result as TResult | undefined;
+    } catch (caught) {
+      if (disposed) return undefined;
+      if (optimistic && rollback) rollback();
+      const normalizedError = caught instanceof Error ? caught : new Error(String(caught));
+      fetchState.error.value = normalizedError;
+      fetchState.status.value = 'error';
+      mutating.value = false;
+      onMutationError?.(normalizedError, action);
+      return undefined;
+    }
+  };
+
+  const actions: ResourceListActions<T> = {
+    fetch: () => fetchState.execute(),
+
+    add: async (body) => {
+      const previousList = fetchState.data.peek();
+      const optimisticItem = body as T;
+
+      const result = await runMutation<T>(
+        'add',
+        'POST',
+        '',
+        body as Record<string, unknown>,
+        optimistic
+          ? () => {
+              fetchState.data.value = [...(previousList ?? []), optimisticItem];
+            }
+          : undefined,
+        optimistic
+          ? () => {
+              fetchState.data.value = previousList;
+            }
+          : undefined
+      );
+
+      // If not optimistic, add the server-returned item to the list
+      if (!optimistic && result !== undefined && !disposed) {
+        const current = fetchState.data.peek() ?? [];
+        fetchState.data.value = [...current, result];
+      }
+
+      return result;
+    },
+
+    update: async (id, body) => {
+      const previousList = fetchState.data.peek();
+
+      const result = await runMutation<T>(
+        'update',
+        'PUT',
+        `/${encodeURIComponent(String(id))}`,
+        body as Record<string, unknown>,
+        optimistic && previousList
+          ? () => {
+              fetchState.data.value = previousList.map((item) =>
+                getId(item) === id ? ({ ...item, ...body } as T) : item
+              );
+            }
+          : undefined,
+        optimistic
+          ? () => {
+              fetchState.data.value = previousList;
+            }
+          : undefined
+      );
+
+      // If not optimistic, replace the item in the list with server response
+      if (!optimistic && result !== undefined && !disposed) {
+        const current = fetchState.data.peek() ?? [];
+        fetchState.data.value = current.map((item) =>
+          getId(item) === id ? result : item
+        );
+      }
+
+      return result;
+    },
+
+    patch: async (id, body) => {
+      const previousList = fetchState.data.peek();
+
+      const result = await runMutation<T>(
+        'patch',
+        'PATCH',
+        `/${encodeURIComponent(String(id))}`,
+        body as Record<string, unknown>,
+        optimistic && previousList
+          ? () => {
+              fetchState.data.value = previousList.map((item) =>
+                getId(item) === id ? ({ ...item, ...body } as T) : item
+              );
+            }
+          : undefined,
+        optimistic
+          ? () => {
+              fetchState.data.value = previousList;
+            }
+          : undefined
+      );
+
+      if (!optimistic && result !== undefined && !disposed) {
+        const current = fetchState.data.peek() ?? [];
+        fetchState.data.value = current.map((item) =>
+          getId(item) === id ? result : item
+        );
+      }
+
+      return result;
+    },
+
+    remove: async (id) => {
+      const previousList = fetchState.data.peek();
+
+      await runMutation<void>(
+        'remove',
+        'DELETE',
+        `/${encodeURIComponent(String(id))}`,
+        undefined,
+        optimistic && previousList
+          ? () => {
+              fetchState.data.value = previousList.filter(
+                (item) => getId(item) !== id
+              );
+            }
+          : undefined,
+        optimistic
+          ? () => {
+              fetchState.data.value = previousList;
+            }
+          : undefined
+      );
+
+      // If not optimistic, remove from the list after server confirms
+      if (!optimistic && !disposed) {
+        const current = fetchState.data.peek() ?? [];
+        fetchState.data.value = current.filter((item) => getId(item) !== id);
+      }
+    },
+  };
+
+  const originalDispose = fetchState.dispose;
+  const dispose = (): void => {
+    if (disposed) return;
+    disposed = true;
+    originalDispose();
+  };
+
+  return {
+    data: fetchState.data as Signal<T[] | undefined>,
+    error: fetchState.error,
+    status: fetchState.status,
+    pending: fetchState.pending,
+    isMutating,
+    actions,
+    refresh: fetchState.execute,
+    clear: fetchState.clear,
+    dispose,
+  };
+};
+
+// ---------------------------------------------------------------------------
+// Request deduplication
+// ---------------------------------------------------------------------------
+
+/** @internal In-flight GET request cache for deduplication. */
+const inflightRequests = new Map<string, Promise<unknown>>();
+
+/**
+ * Deduplicate identical in-flight GET requests.
+ *
+ * If a request to the same URL + query is already in flight, reuse its promise
+ * instead of starting a new one. Once the request completes, the entry is removed.
+ *
+ * @param key - Cache key (typically URL + serialized query)
+ * @param execute - The request function to run if no duplicate is in flight
+ * @returns The response promise (shared with any concurrent callers using the same key)
+ *
+ * @example
+ * ```ts
+ * import { deduplicateRequest, createHttp } from '@bquery/bquery/reactive';
+ *
+ * const api = createHttp({ baseUrl: 'https://api.example.com' });
+ *
+ * // Both calls share the same in-flight request
+ * const [a, b] = await Promise.all([
+ *   deduplicateRequest('/users', () => api.get('/users')),
+ *   deduplicateRequest('/users', () => api.get('/users')),
+ * ]);
+ * ```
+ */
+export function deduplicateRequest<T>(
+  key: string,
+  execute: () => Promise<T>
+): Promise<T> {
+  const existing = inflightRequests.get(key);
+  if (existing) return existing as Promise<T>;
+
+  const promise = execute().finally(() => {
+    inflightRequests.delete(key);
+  });
+
+  inflightRequests.set(key, promise);
+  return promise;
+}
