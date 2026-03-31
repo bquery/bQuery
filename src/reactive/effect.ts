@@ -3,7 +3,7 @@
  */
 
 import { CleanupFn, Observer, track, clearDependencies } from './internals';
-import { getActiveScope } from './scope';
+import { getActiveScope, hasScopeDisposer } from './scope';
 
 /**
  * Creates a side effect that automatically re-runs when dependencies change.
@@ -58,7 +58,7 @@ export const effect = (fn: () => void | CleanupFn): CleanupFn => {
 
   // Auto-register with the current scope so scope.stop() disposes this effect
   const scope = getActiveScope();
-  if (scope) {
+  if (hasScopeDisposer(scope)) {
     scope._addDisposer(dispose);
   }
 

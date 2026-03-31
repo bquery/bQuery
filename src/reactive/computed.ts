@@ -4,6 +4,7 @@
 
 import {
   clearDependencies,
+  type CleanupFn,
   getCurrentObserver,
   registerDependency,
   scheduleObserver,
@@ -11,7 +12,7 @@ import {
   withoutCurrentObserver,
   type ReactiveSource,
 } from './internals';
-import { getActiveScope } from './scope';
+import { getActiveScope, hasScopeDisposer } from './scope';
 
 /**
  * A computed value that derives from other reactive sources.
@@ -136,8 +137,8 @@ export const computed = <T>(fn: () => T): Computed<T> => {
 
   // Auto-register with the current scope so scope.stop() disposes this computed
   const scope = getActiveScope();
-  if (scope) {
-    scope._addDisposer(() => c.dispose());
+  if (hasScopeDisposer(scope)) {
+    scope._addDisposer((() => c.dispose()) as CleanupFn);
   }
 
   return c;

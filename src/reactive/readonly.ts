@@ -29,7 +29,7 @@ export interface ReadonlySignal<T> {
  *
  * @internal
  */
-export const isReadonlySignal = <T>(value: unknown): value is ReadonlySignalWrapper<T> => {
+export const isReadonlySignal = <T>(value: unknown): value is ReturnType<typeof readonly<T>> => {
   return (
     typeof value === 'object' &&
     value !== null &&

@@ -1468,8 +1468,8 @@ describe('toValue', () => {
     // @ts-expect-error MaybeSignal only accepts readonly() wrappers, not arbitrary structural values
     readMaybeSignal(structuralReadonly);
 
-    expect(toValue(structuralReadonly)).toBe(structuralReadonly);
-    expect(toValue(structuralReadonly).value).toBe(1);
+    expect(toValue<typeof structuralReadonly>(structuralReadonly)).toBe(structuralReadonly);
+    expect(toValue<typeof structuralReadonly>(structuralReadonly).value).toBe(1);
   });
 });
 

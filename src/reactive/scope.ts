@@ -70,6 +70,12 @@ interface ScopeInternal extends EffectScope {
 
 const scopeStack: ScopeInternal[] = [];
 
+/** @internal */
+export const hasScopeDisposer = (
+  scope: EffectScope | undefined
+): scope is EffectScope & { _addDisposer(fn: CleanupFn): void } =>
+  typeof scope === 'object' && scope !== null && '_addDisposer' in scope;
+
 const isPromiseLike = (value: unknown): value is PromiseLike<unknown> =>
   (typeof value === 'object' || typeof value === 'function') &&
   value !== null &&
@@ -99,8 +105,7 @@ const isAsyncFunction = (value: unknown): value is (...args: never[]) => Promise
  * Returns the currently active scope, or `undefined` if none.
  * @internal
  */
-export const getActiveScope = (): ScopeInternal | undefined =>
-  scopeStack[scopeStack.length - 1];
+export const getActiveScope = (): EffectScope | undefined => scopeStack[scopeStack.length - 1];
 
 // ---------------------------------------------------------------------------
 // EffectScope implementation
@@ -203,7 +208,7 @@ export const effectScope = (): EffectScope => {
 
   // If created inside another scope, auto-collect as a nested scope
   const parent = getActiveScope();
-  if (parent) {
+  if (hasScopeDisposer(parent)) {
     parent._addDisposer(() => scope.stop());
   }
 
@@ -258,7 +263,7 @@ export const getCurrentScope = (): EffectScope | undefined => getActiveScope();
  */
 export const onScopeDispose = (fn: CleanupFn): void => {
   const scope = getActiveScope();
-  if (!scope || !scope.active) {
+  if (!scope || !scope.active || !hasScopeDisposer(scope)) {
     throw new Error(
       'bQuery reactive: onScopeDispose() must be called inside an active effectScope'
     );
