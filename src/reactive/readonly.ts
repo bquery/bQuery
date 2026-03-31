@@ -4,6 +4,13 @@
 
 import type { Signal } from './core';
 
+const READONLY_SIGNAL_BRAND: unique symbol = Symbol('bquery.readonlySignal');
+
+/** @internal */
+type ReadonlySignalWrapper<T> = ReadonlySignal<T> & {
+  readonly [READONLY_SIGNAL_BRAND]: true;
+};
+
 /**
  * A readonly wrapper around a signal that prevents writes.
  * Provides read-only access to a signal's value while maintaining reactivity.
@@ -18,6 +25,19 @@ export interface ReadonlySignal<T> {
 }
 
 /**
+ * Determines whether a value is a bQuery readonly signal wrapper.
+ *
+ * @internal
+ */
+export const isReadonlySignal = <T>(value: unknown): value is ReturnType<typeof readonly<T>> => {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    Object.prototype.hasOwnProperty.call(value, READONLY_SIGNAL_BRAND)
+  );
+};
+
+/**
  * Creates a read-only view of a signal.
  * Useful for exposing reactive state without allowing modifications.
  *
@@ -25,11 +45,35 @@ export interface ReadonlySignal<T> {
  * @param sig - The signal to wrap
  * @returns A readonly signal wrapper
  */
-export const readonly = <T>(sig: Signal<T>): ReadonlySignal<T> => ({
-  get value(): T {
-    return sig.value;
-  },
-  peek(): T {
-    return sig.peek();
-  },
-});
+export const readonly = <T>(sig: Signal<T>): ReadonlySignalWrapper<T> =>
+  Object.defineProperties(
+    {},
+    {
+      value: {
+        get(): T {
+          return sig.value;
+        },
+        enumerable: true,
+      },
+      peek: {
+        value(): T {
+          return sig.peek();
+        },
+        enumerable: true,
+      },
+      [READONLY_SIGNAL_BRAND]: {
+        value: true,
+        enumerable: false,
+        configurable: false,
+        writable: false,
+      },
+    }
+  ) as ReadonlySignalWrapper<T>;
+
+/**
+ * Branded readonly wrapper type produced by {@link readonly}.
+ *
+ * Useful for APIs that compose additional behavior on top of a readonly signal
+ * without widening to arbitrary structural `{ value, peek }` objects.
+ */
+export type ReadonlySignalHandle<T> = ReturnType<typeof readonly<T>>;

@@ -6,6 +6,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, spyOn } from 'bun:test';
+import { effect } from '../src/reactive/index';
 import { clearRouteConstraintCache, getRouteConstraintRegex } from '../src/router/constraints';
 import {
   back,
@@ -16,6 +17,7 @@ import {
   interceptLinks,
   isActive,
   isActiveSignal,
+  isNavigating,
   link,
   navigate,
   registerBqLink,
@@ -25,6 +27,7 @@ import {
   type Router,
 } from '../src/router/index';
 import { matchRoute } from '../src/router/match';
+import { beginNavigation, endNavigation, resetNavigationState } from '../src/router/state';
 
 // ============================================================================
 // Test Setup - Mock History API and Location
@@ -35,6 +38,7 @@ const expectType = <T>(_value: T): void => {};
 
 afterEach(() => {
   clearRouteConstraintCache();
+  resetNavigationState();
 });
 
 /**
@@ -235,10 +239,21 @@ describe('Router', () => {
       expect(typeof mod.interceptLinks).toBe('function');
     });
 
-    it('should export currentRoute signal', async () => {
+    it('should export currentRoute and isNavigating signals', async () => {
       const mod = await import('../src/router/index');
       expect(mod.currentRoute).toBeDefined();
       expect(typeof mod.currentRoute.value).toBe('object');
+      expect(mod.isNavigating).toBeDefined();
+      expect(typeof mod.isNavigating.value).toBe('boolean');
+    });
+
+    it('should re-export isNavigating from root and full bundles', async () => {
+      const root = await import('../src/index');
+      const full = await import('../src/full');
+      expect(root.isNavigating).toBeDefined();
+      expect(full.isNavigating).toBeDefined();
+      expect(typeof root.isNavigating.value).toBe('boolean');
+      expect(typeof full.isNavigating.value).toBe('boolean');
     });
   });
 
@@ -745,6 +760,139 @@ describe('Router', () => {
       await router.push('/async');
       expect(currentRoute.value.path).toBe('/async');
     });
+    it('should expose pending navigation state during async push navigation', async () => {
+      router = createRouter({
+        routes: [
+          { path: '/', component: () => null },
+          { path: '/async', component: () => null },
+        ],
+      });
+
+      let resolveGuard: (() => void) | undefined;
+      router.beforeEach(
+        () =>
+          new Promise<void>((resolve) => {
+            resolveGuard = resolve;
+          })
+      );
+
+      const navigation = router.push('/async');
+      await Promise.resolve();
+
+      expect(isNavigating.value).toBe(true);
+
+      resolveGuard?.();
+      await navigation;
+
+      expect(isNavigating.value).toBe(false);
+      expect(currentRoute.value.path).toBe('/async');
+    });
+
+    it('should reset pending navigation state when a guard cancels navigation', async () => {
+      router = createRouter({
+        routes: [
+          { path: '/', component: () => null },
+          { path: '/blocked', component: () => null },
+        ],
+      });
+
+      let resolveGuard: ((value: boolean) => void) | undefined;
+      router.beforeEach(
+        () =>
+          new Promise<boolean>((resolve) => {
+            resolveGuard = resolve;
+          })
+      );
+
+      const navigation = router.push('/blocked');
+      await Promise.resolve();
+
+      expect(isNavigating.value).toBe(true);
+
+      resolveGuard?.(false);
+      await navigation;
+
+      expect(isNavigating.value).toBe(false);
+      expect(currentRoute.value.path).toBe('/');
+    });
+
+    it('should keep isNavigating true across redirect resolution', async () => {
+      router = createRouter({
+        routes: [
+          { path: '/', component: () => null },
+          { path: '/legacy', redirectTo: '/target' },
+          { path: '/target', component: () => null },
+        ],
+      });
+
+      let resolveGuard: (() => void) | undefined;
+      router.beforeEach(
+        () =>
+          new Promise<void>((resolve) => {
+            resolveGuard = resolve;
+          })
+      );
+
+      const navigation = router.push('/legacy');
+      await Promise.resolve();
+
+      expect(isNavigating.value).toBe(true);
+
+      resolveGuard?.();
+      await navigation;
+
+      expect(isNavigating.value).toBe(false);
+      expect(currentRoute.value.path).toBe('/target');
+    });
+
+    it('should not retrigger isNavigating observers while nested navigation stays in flight', () => {
+      const observedValues: boolean[] = [];
+      const stop = effect(() => {
+        observedValues.push(isNavigating.value);
+      });
+
+      beginNavigation();
+      beginNavigation();
+      endNavigation();
+      endNavigation();
+
+      stop();
+
+      expect(observedValues).toEqual([false, true, false]);
+    });
+
+    it('should expose pending navigation state during async popstate navigation', async () => {
+      router = createRouter({
+        routes: [
+          { path: '/', component: () => null },
+          { path: '/first', component: () => null },
+          { path: '/second', component: () => null },
+        ],
+      });
+
+      await router.push('/first');
+      await router.push('/second');
+
+      let resolveGuard: (() => void) | undefined;
+      router.beforeEach(
+        () =>
+          new Promise<void>((resolve) => {
+            resolveGuard = resolve;
+          })
+      );
+
+      history.back();
+      await Promise.resolve();
+
+      expect(isNavigating.value).toBe(true);
+
+      resolveGuard?.();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(isNavigating.value).toBe(false);
+      expect(currentRoute.value.path).toBe('/first');
+    });
+
 
     it('should call afterEach hook after navigation', async () => {
       router = createRouter({

@@ -10,6 +10,9 @@ import {
   batch,
   watch,
   readonly,
+  effectScope,
+  getCurrentScope,
+  onScopeDispose,
   useAsyncData,
   useFetch,
   createUseFetch,
@@ -270,4 +273,126 @@ isSignal(count); // true
 isSignal(doubled); // false
 isComputed(doubled); // true
 isComputed(count); // false
+```
+
+## Effect Scope
+
+`effectScope()` creates a scope that collects all effects, computed values, and watches created inside it. When the scope is stopped, all collected resources are disposed at once.
+
+This is essential for managing cleanup in non-component code such as store plugins, router guards, feature modules, and test setup.
+
+`scope.run()` is synchronous-only. Do not pass an async callback — resources
+created after an `await` cannot be collected reliably.
+
+```ts
+import { effectScope, signal, effect, computed, onScopeDispose } from '@bquery/bquery/reactive';
+
+const scope = effectScope();
+
+scope.run(() => {
+  const count = signal(0);
+  const doubled = computed(() => count.value * 2);
+
+  effect(() => {
+    console.log('Count:', count.value, 'Doubled:', doubled.value);
+  });
+
+  onScopeDispose(() => {
+    console.log('Custom cleanup');
+  });
+});
+
+scope.stop(); // All effects, computed values, and custom cleanup run
+```
+
+### Nested scopes
+
+Scopes nest automatically — a child scope created inside a parent's `run()` is collected by the parent:
+
+```ts
+const parent = effectScope();
+
+parent.run(() => {
+  const child = effectScope();
+  child.run(() => {
+    effect(() => console.log('inner effect'));
+  });
+});
+
+parent.stop(); // Stops the child scope and its effects too
+```
+
+### getCurrentScope
+
+Check whether code is running inside a scope:
+
+```ts
+import { effectScope, getCurrentScope } from '@bquery/bquery/reactive';
+
+const scope = effectScope();
+scope.run(() => {
+  console.log(getCurrentScope() !== undefined); // true
+});
+
+console.log(getCurrentScope()); // undefined
+```
+
+### onScopeDispose
+
+Register arbitrary cleanup callbacks on the current scope:
+
+```ts
+import { effectScope, onScopeDispose } from '@bquery/bquery/reactive';
+
+const scope = effectScope();
+
+scope.run(() => {
+  const controller = new AbortController();
+  fetch('/api/data', { signal: controller.signal });
+
+  onScopeDispose(() => controller.abort());
+});
+
+scope.stop(); // abort() is called
+```
+
+### EffectScope API
+
+- `active` (readonly) — `true` until `stop()` is called
+- `run(fn)` — Execute `fn` inside the scope, collecting reactive resources
+- `stop()` — Dispose all collected resources; safe to call multiple times
+
+## toValue
+
+`toValue()` extracts the underlying value from a `Signal`, a `readonly()` wrapper, a `Computed`, or returns a plain value as-is. This eliminates repetitive `isSignal(x) ? x.value : x` patterns.
+
+`MaybeSignal<T>` includes readonly wrappers returned by `readonly()`. This matches runtime behavior: `toValue()` intentionally unwraps only bQuery readonly wrappers created by `readonly()`, not arbitrary structural `{ value, peek }` objects.
+
+```ts
+import { signal, readonly, computed, toValue } from '@bquery/bquery/reactive';
+
+const count = signal(5);
+const publicCount = readonly(count);
+const doubled = computed(() => count.value * 2);
+
+toValue(42);      // 42 (plain value returned as-is)
+toValue(count);   // 5  (reads signal.value)
+toValue(publicCount); // 5  (reads readonly signal.value)
+toValue(doubled); // 10 (reads computed.value)
+```
+
+### MaybeSignal Type
+
+The `MaybeSignal<T>` type represents a value that may be plain, a `Signal<T>`, a readonly wrapper returned by `readonly()`, or a `Computed<T>`. Use it for APIs that accept both reactive and non-reactive inputs:
+
+```ts
+import { computed, signal, type MaybeSignal, toValue } from '@bquery/bquery/reactive';
+
+function useTitle(title: MaybeSignal<string>) {
+  document.title = toValue(title);
+}
+
+useTitle('Hello');               // plain string
+useTitle(signal('Hello'));       // reactive signal
+useTitle(computed(() => 'Hi')); // computed value
 ```

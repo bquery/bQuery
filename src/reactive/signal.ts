@@ -12,7 +12,9 @@ export { effect } from './effect';
 export { linkedSignal } from './linked';
 export { persistedSignal } from './persisted';
 export { readonly } from './readonly';
+export { effectScope, getCurrentScope, onScopeDispose } from './scope';
 export { isComputed, isSignal } from './type-guards';
+export { toValue } from './to-value';
 export { untrack } from './untrack';
 export { watch } from './watch';
 
@@ -25,5 +27,7 @@ export type {
   UseAsyncDataOptions,
   UseFetchOptions,
 } from './async-data';
+export type { EffectScope } from './scope';
 export type { LinkedSignal } from './linked';
-export type { ReadonlySignal } from './readonly';
+export type { MaybeSignal } from './to-value';
+export type { ReadonlySignal, ReadonlySignalHandle } from './readonly';

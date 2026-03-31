@@ -4,15 +4,19 @@ import {
   custom,
   customAsync,
   email,
+  matchField,
   max,
   maxLength,
   min,
   minLength,
   pattern,
   required,
+  useFormField,
   url,
 } from '../src/forms/index';
-import { effect } from '../src/reactive/index';
+import { computed, effect, readonly, signal } from '../src/reactive/index';
+
+const expectType = <T>(_value: T): void => {};
 
 // ---------------------------------------------------------------------------
 // Validators
@@ -886,5 +890,504 @@ describe('forms/createForm', () => {
       expect(form.fields.first.value.value).toBe('A');
       expect(form.fields.second.value.value).toBe('Y');
     });
+  });
+
+  // -------------------------------------------------------------------------
+  // setValues
+  // -------------------------------------------------------------------------
+
+  describe('setValues', () => {
+    it('bulk-sets field values from a partial object', () => {
+      const form = createForm({
+        fields: {
+          name: { initialValue: '' },
+          age: { initialValue: 0 },
+          email: { initialValue: '' },
+        },
+      });
+
+      form.setValues({ name: 'Ada', age: 30 });
+
+      expect(form.fields.name.value.value).toBe('Ada');
+      expect(form.fields.age.value.value).toBe(30);
+      expect(form.fields.email.value.value).toBe(''); // unchanged
+    });
+
+    it('marks affected fields as dirty', () => {
+      const form = createForm({
+        fields: {
+          first: { initialValue: 'A' },
+          second: { initialValue: 'B' },
+        },
+      });
+
+      form.setValues({ first: 'X' });
+
+      expect(form.fields.first.isDirty.value).toBe(true);
+      expect(form.fields.second.isDirty.value).toBe(false);
+      expect(form.isDirty.value).toBe(true);
+    });
+
+    it('ignores unknown field names', () => {
+      const form = createForm({
+        fields: {
+          name: { initialValue: '' },
+        },
+      });
+
+      // Should not throw
+      form.setValues({ name: 'Ada', unknownField: 'ignored' } as Record<string, unknown>);
+
+      expect(form.fields.name.value.value).toBe('Ada');
+    });
+
+    it('handles empty object', () => {
+      const form = createForm({
+        fields: {
+          name: { initialValue: 'test' },
+        },
+      });
+
+      form.setValues({});
+      expect(form.fields.name.value.value).toBe('test');
+    });
+
+    it('ignores prototype pollution keys', () => {
+      const form = createForm({
+        fields: {
+          name: { initialValue: '' },
+        },
+      });
+      const values = { name: 'Ada' } as Record<string, unknown>;
+
+      Object.defineProperty(values, '__proto__', { value: 'ignored', enumerable: true });
+      Object.defineProperty(values, 'constructor', { value: 'ignored', enumerable: true });
+      Object.defineProperty(values, 'prototype', { value: 'ignored', enumerable: true });
+
+      expect(() => form.setValues(values)).not.toThrow();
+      expect(form.fields.name.value.value).toBe('Ada');
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // setErrors
+  // -------------------------------------------------------------------------
+
+  describe('setErrors', () => {
+    it('bulk-sets error messages on specific fields', () => {
+      const form = createForm({
+        fields: {
+          name: { initialValue: '' },
+          email: { initialValue: '' },
+          age: { initialValue: 0 },
+        },
+      });
+
+      form.setErrors({ name: 'Name is required', email: 'Invalid email' });
+
+      expect(form.fields.name.error.value).toBe('Name is required');
+      expect(form.fields.email.error.value).toBe('Invalid email');
+      expect(form.fields.age.error.value).toBe(''); // untouched
+    });
+
+    it('makes isValid reflect the errors', () => {
+      const form = createForm({
+        fields: {
+          name: { initialValue: '' },
+        },
+      });
+
+      form.setErrors({ name: 'Required' });
+      expect(form.isValid.value).toBe(false);
+
+      form.setErrors({ name: '' });
+      expect(form.isValid.value).toBe(true);
+    });
+
+    it('ignores unknown field names', () => {
+      const form = createForm({
+        fields: {
+          name: { initialValue: '' },
+        },
+      });
+
+      // Should not throw
+      form.setErrors({ name: 'Error', unknown: 'ignored' } as Record<string, string>);
+      expect(form.fields.name.error.value).toBe('Error');
+    });
+
+    it('handles empty error map', () => {
+      const form = createForm({
+        fields: {
+          name: { initialValue: '' },
+        },
+      });
+
+      form.setErrors({ name: 'Error' });
+      form.setErrors({});
+      expect(form.fields.name.error.value).toBe('Error'); // unchanged
+    });
+
+    it('ignores prototype pollution keys', () => {
+      const form = createForm({
+        fields: {
+          name: { initialValue: '' },
+        },
+      });
+      const errors = { name: 'Required' } as Record<string, string>;
+
+      Object.defineProperty(errors, '__proto__', { value: 'ignored', enumerable: true });
+      Object.defineProperty(errors, 'constructor', { value: 'ignored', enumerable: true });
+      Object.defineProperty(errors, 'prototype', { value: 'ignored', enumerable: true });
+
+      expect(() => form.setErrors(errors)).not.toThrow();
+      expect(form.fields.name.error.value).toBe('Required');
+    });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// useFormField
+// ---------------------------------------------------------------------------
+
+describe('forms/useFormField', () => {
+  it('creates standalone reactive field state from a plain value', () => {
+    const field = useFormField('Ada');
+
+    expect(field.value.value).toBe('Ada');
+    expect(field.error.value).toBe('');
+    expect(field.isDirty.value).toBe(false);
+    expect(field.isPristine.value).toBe(true);
+    expect(field.isTouched.value).toBe(false);
+    expect(field.isValid.value).toBe(true);
+    expect(field.isValidating.value).toBe(false);
+  });
+
+  it('reuses an external signal when provided', () => {
+    const value = signal('Ada');
+    const field = useFormField(value);
+
+    expect(field.value).toBe(value);
+
+    field.value.value = 'Grace';
+    expect(value.value).toBe('Grace');
+    expect(field.isDirty.value).toBe(true);
+  });
+
+  it('does not treat computed values as writable external signals', () => {
+    const source = signal('Ada');
+    const readonlyValue = computed(() => source.value);
+    const field = useFormField(readonlyValue);
+
+    expectType<string>(field.value.value);
+
+    expect(field.value).not.toBe(readonlyValue);
+    expect(field.value.value).toBe('Ada');
+
+    expect(() => field.reset()).not.toThrow();
+  });
+
+  it('snapshots computed values without subscribing the active observer', () => {
+    const source = signal('Ada');
+    const readonlyValue = computed(() => source.value);
+    let runs = 0;
+
+    const stop = effect(() => {
+      const field = useFormField(readonlyValue);
+      expectType<string>(field.value.value);
+      runs++;
+    });
+
+    expect(runs).toBe(1);
+
+    source.value = 'Grace';
+    expect(runs).toBe(1);
+
+    stop();
+  });
+
+  it('snapshots readonly signal wrappers without reusing them as writable field state', () => {
+    const source = signal('Ada');
+    const readonlyValue = readonly(source);
+    const field = useFormField(readonlyValue);
+
+    expectType<string>(field.value.value);
+    expect(field.value.value).toBe('Ada');
+    expect(field.value).not.toBe(readonlyValue);
+
+    expect(() => field.reset()).not.toThrow();
+  });
+
+  it('validates manually by default', async () => {
+    const field = useFormField('', {
+      validators: [required('Required')],
+    });
+
+    field.value.value = '';
+    expect(field.error.value).toBe('');
+
+    await field.validate();
+    expect(field.error.value).toBe('Required');
+    expect(field.isValid.value).toBe(false);
+  });
+
+  it('validates on change when configured', async () => {
+    const field = useFormField<string>('Ada', {
+      validators: [required('Required')],
+      validateOn: 'change',
+    });
+
+    field.value.value = '';
+    await new Promise<void>((resolve) => queueMicrotask(resolve));
+    expect(field.error.value).toBe('Required');
+
+    field.value.value = 'Ada';
+    await new Promise<void>((resolve) => queueMicrotask(resolve));
+    expect(field.error.value).toBe('');
+  });
+
+  it('validates on blur when configured', async () => {
+    const field = useFormField<string>('', {
+      validators: [required('Required')],
+      validateOn: 'blur',
+    });
+
+    field.value.value = '';
+    await new Promise<void>((resolve) => queueMicrotask(resolve));
+    expect(field.error.value).toBe('');
+
+    field.touch();
+    await new Promise<void>((resolve) => queueMicrotask(resolve));
+    expect(field.isTouched.value).toBe(true);
+    expect(field.error.value).toBe('Required');
+  });
+
+  it('validates on both change and blur when configured', async () => {
+    const field = useFormField<string>('Ada', {
+      validators: [required('Required')],
+      validateOn: 'both',
+    });
+
+    field.value.value = '';
+    await new Promise<void>((resolve) => queueMicrotask(resolve));
+    expect(field.error.value).toBe('Required');
+
+    field.value.value = 'Ada';
+    await new Promise<void>((resolve) => queueMicrotask(resolve));
+    expect(field.error.value).toBe('');
+
+    field.value.value = '';
+    field.touch();
+    await new Promise<void>((resolve) => queueMicrotask(resolve));
+    expect(field.error.value).toBe('Required');
+  });
+
+  it('supports debounced automatic validation', async () => {
+    const field = useFormField<string>('Ada', {
+      validators: [required('Required')],
+      validateOn: 'change',
+      debounceMs: 20,
+    });
+
+    field.value.value = '';
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    expect(field.error.value).toBe('');
+
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    expect(field.error.value).toBe('Required');
+  });
+
+  it('resets pending debounce, touched state, and errors', async () => {
+    const field = useFormField<string>('', {
+      validators: [required('Required')],
+      validateOn: 'change',
+      debounceMs: 20,
+      initialError: 'Initial',
+    });
+
+    field.value.value = 'Ada';
+    field.touch();
+    field.reset();
+
+    await new Promise((resolve) => setTimeout(resolve, 30));
+
+    expect(field.value.value).toBe('');
+    expect(field.isTouched.value).toBe(false);
+    expect(field.error.value).toBe('Initial');
+    expect(field.isValidating.value).toBe(false);
+  });
+
+  it('ignores stale async validation results', async () => {
+    const field = useFormField<string>('', {
+      validators: [
+        customAsync(
+          async (value: string) => {
+            if (value === 'slow') {
+              await new Promise((resolve) => setTimeout(resolve, 20));
+              return false;
+            }
+
+            await new Promise((resolve) => setTimeout(resolve, 0));
+            return true;
+          },
+          'Taken'
+        ),
+      ],
+      validateOn: 'change',
+    });
+
+    field.value.value = 'slow';
+    await new Promise<void>((resolve) => queueMicrotask(resolve));
+    expect(field.isValidating.value).toBe(true);
+
+    field.value.value = 'fast';
+    await new Promise((resolve) => setTimeout(resolve, 30));
+
+    expect(field.error.value).toBe('');
+    expect(field.isValid.value).toBe(true);
+    expect(field.isValidating.value).toBe(false);
+  });
+
+  it('catches scheduled validation rejections and clears isValidating', async () => {
+    const field = useFormField<string>('Ada', {
+      validators: [
+        async () => {
+          throw new Error('validator failed');
+        },
+      ],
+      validateOn: 'change',
+    });
+    const loggedMessages: string[] = [];
+    const originalError = console.error;
+
+    try {
+      console.error = (message: string) => loggedMessages.push(message);
+
+      field.value.value = 'Grace';
+      await new Promise<void>((resolve) => queueMicrotask(resolve));
+      await new Promise<void>((resolve) => queueMicrotask(resolve));
+
+      expect(field.isValidating.value).toBe(false);
+      expect(loggedMessages).toHaveLength(1);
+      expect(loggedMessages[0]).toContain('Error in scheduled field validation');
+    } finally {
+      console.error = originalError;
+    }
+  });
+
+  it('destroy cancels automatic validation timers and subscriptions', async () => {
+    const field = useFormField<string>('Ada', {
+      validators: [required('Required')],
+      validateOn: 'both',
+      debounceMs: 20,
+    });
+
+    field.value.value = '';
+    field.destroy();
+
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    expect(field.error.value).toBe('');
+
+    field.touch();
+    field.value.value = 'Grace';
+    field.value.value = '';
+
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    expect(field.error.value).toBe('');
+    expect(field.isValidating.value).toBe(false);
+  });
+
+  it('destroy disposes internal computed state subscriptions', () => {
+    const value = signal('Ada');
+    const field = useFormField(value);
+    const valueSubscribers = value as unknown as { subscribers: Set<() => void> };
+    const errorSubscribers = field.error as unknown as { subscribers: Set<() => void> };
+    const dirtySubscribers = field.isDirty as unknown as { subscribers: Set<() => void> };
+
+    void field.isDirty.value;
+    void field.isPristine.value;
+    void field.isValid.value;
+
+    expect(valueSubscribers.subscribers.size).toBe(1);
+    expect(errorSubscribers.subscribers.size).toBe(1);
+    expect(dirtySubscribers.subscribers.size).toBe(1);
+
+    field.destroy();
+
+    expect(valueSubscribers.subscribers.size).toBe(0);
+    expect(errorSubscribers.subscribers.size).toBe(0);
+    expect(dirtySubscribers.subscribers.size).toBe(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// matchField validator
+// ---------------------------------------------------------------------------
+
+describe('forms/matchField', () => {
+  it('passes when values match', () => {
+    const ref = signal('secret');
+    const validate = matchField(ref);
+
+    expectType<string | true | undefined>(validate('secret'));
+    expect(validate('secret')).toBe(true);
+  });
+
+  it('fails when values do not match', () => {
+    const ref = signal('secret');
+    const validate = matchField(ref);
+
+    expect(validate('wrong')).toBe('Fields do not match');
+  });
+
+  it('uses custom error message', () => {
+    const ref = signal('abc');
+    const validate = matchField(ref, 'Passwords must match');
+
+    expect(validate('xyz')).toBe('Passwords must match');
+  });
+
+  it('tracks reactive changes in the reference signal', () => {
+    const ref = signal('first');
+    const validate = matchField(ref);
+
+    expect(validate('first')).toBe(true);
+    ref.value = 'second';
+    expect(validate('first')).toBe('Fields do not match');
+    expect(validate('second')).toBe(true);
+  });
+
+  it('uses Object.is comparison (handles NaN)', () => {
+    const ref = signal(NaN);
+    const validate = matchField(ref);
+
+    expect(validate(NaN)).toBe(true);
+    expect(validate(0)).toBe('Fields do not match');
+  });
+
+  it('handles null and undefined', () => {
+    const ref = signal<unknown>(null);
+    const validate = matchField(ref);
+
+    expect(validate(null)).toBe(true);
+    expect(validate(undefined)).toBe('Fields do not match');
+  });
+
+  it('works with plain object references', () => {
+    const ref = { value: 'test' };
+    const validate = matchField(ref);
+
+    expect(validate('test')).toBe(true);
+    expect(validate('other')).toBe('Fields do not match');
+  });
+
+  it('preserves the reference value type in the validator signature', () => {
+    const ref = signal('secret');
+    const validate = matchField(ref);
+
+    expectType<string | true | undefined>(validate('secret'));
+
+    // @ts-expect-error matchField validator should require the same value type as ref
+    validate(123);
   });
 });

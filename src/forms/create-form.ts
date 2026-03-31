@@ -5,6 +5,7 @@
  */
 
 import { computed, signal } from '../reactive/index';
+import { isPrototypePollutionKey } from '../core/utils/object';
 import { isPromise } from '../core/utils/type-guards';
 import type {
   CrossFieldValidator,
@@ -263,6 +264,51 @@ export const createForm = <T extends Record<string, unknown>>(config: FormConfig
     return values as T;
   };
 
+  /**
+   * Bulk-set field values from a partial object.
+   * Only fields present in the object are updated; missing keys are left unchanged.
+   */
+  const setValues = (values: Partial<T>): void => {
+    for (const [name, val] of Object.entries(values)) {
+      // Ignore inherited keys and prototype-pollution vectors before mutating field state.
+      if (
+        isPrototypePollutionKey(name) ||
+        !Object.prototype.hasOwnProperty.call(fields, name)
+      ) {
+        continue;
+      }
+
+      const field = (fields as Record<string, FormField>)[name];
+      if (!field) {
+        continue;
+      }
+      field.value.value = val;
+    }
+  };
+
+  /**
+   * Bulk-set field error messages from a partial object.
+   * Useful for applying server-side validation errors.
+   * Only fields present in the object are updated; missing keys are left unchanged.
+   */
+  const setErrors = (errorMap: Partial<Record<keyof T & string, string>>): void => {
+    for (const [name, msg] of Object.entries(errorMap)) {
+      // Ignore inherited keys and prototype-pollution vectors before mutating field state.
+      if (
+        isPrototypePollutionKey(name) ||
+        !Object.prototype.hasOwnProperty.call(fields, name)
+      ) {
+        continue;
+      }
+
+      const field = (fields as Record<string, FormField>)[name];
+      if (!field) {
+        continue;
+      }
+      field.error.value = (msg as string) ?? '';
+    }
+  };
+
   return {
     fields,
     errors,
@@ -274,5 +320,7 @@ export const createForm = <T extends Record<string, unknown>>(config: FormConfig
     validate,
     reset,
     getValues,
+    setValues,
+    setErrors,
   };
 };
