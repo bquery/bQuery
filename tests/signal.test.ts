@@ -1448,3 +1448,463 @@ describe('type guards edge cases', () => {
     expect(isComputed(computed(() => 1))).toBe(true);
   });
 });
+
+// ---------------------------------------------------------------------------
+// effectScope
+// ---------------------------------------------------------------------------
+
+import {
+  effectScope,
+  getCurrentScope,
+  onScopeDispose,
+} from '../src/reactive/scope';
+import { watch as watchFn } from '../src/reactive/watch';
+import { untrack as untrackedFn } from '../src/reactive/untrack';
+import type { EffectScope } from '../src/reactive/scope';
+
+describe('effectScope', () => {
+  it('creates an active scope', () => {
+    const scope = effectScope();
+    expect(scope.active).toBe(true);
+  });
+
+  it('stops and marks scope inactive', () => {
+    const scope = effectScope();
+    scope.stop();
+    expect(scope.active).toBe(false);
+  });
+
+  it('stop is a safe no-op when called twice', () => {
+    const scope = effectScope();
+    scope.stop();
+    scope.stop(); // should not throw
+    expect(scope.active).toBe(false);
+  });
+
+  it('run returns the function return value', () => {
+    const scope = effectScope();
+    const result = scope.run(() => 42);
+    expect(result).toBe(42);
+    scope.stop();
+  });
+
+  it('throws when running inside a stopped scope', () => {
+    const scope = effectScope();
+    scope.stop();
+    expect(() => scope.run(() => {})).toThrow('Cannot run in a stopped effectScope');
+  });
+
+  // -----------------------------------------------------------------------
+  // Effect collection
+  // -----------------------------------------------------------------------
+
+  it('collects effects and disposes them on stop', () => {
+    const scope = effectScope();
+    const count = signal(0);
+    let runs = 0;
+
+    scope.run(() => {
+      effect(() => {
+        void count.value;
+        runs++;
+      });
+    });
+
+    expect(runs).toBe(1);
+    count.value = 1;
+    expect(runs).toBe(2);
+
+    scope.stop();
+
+    // After stop, effect should no longer react
+    count.value = 2;
+    expect(runs).toBe(2);
+  });
+
+  it('collects multiple effects', () => {
+    const scope = effectScope();
+    const a = signal(0);
+    const b = signal(0);
+    let runsA = 0;
+    let runsB = 0;
+
+    scope.run(() => {
+      effect(() => { void a.value; runsA++; });
+      effect(() => { void b.value; runsB++; });
+    });
+
+    expect(runsA).toBe(1);
+    expect(runsB).toBe(1);
+
+    a.value = 1;
+    b.value = 1;
+    expect(runsA).toBe(2);
+    expect(runsB).toBe(2);
+
+    scope.stop();
+
+    a.value = 2;
+    b.value = 2;
+    expect(runsA).toBe(2);
+    expect(runsB).toBe(2);
+  });
+
+  // -----------------------------------------------------------------------
+  // Computed collection
+  // -----------------------------------------------------------------------
+
+  it('collects computed values and disposes them on stop', () => {
+    const scope = effectScope();
+    const count = signal(1);
+    let c: ReturnType<typeof computed<number>> | undefined;
+
+    scope.run(() => {
+      c = computed(() => count.value * 2);
+    });
+
+    expect(c!.value).toBe(2);
+    count.value = 5;
+    expect(c!.value).toBe(10);
+
+    scope.stop();
+
+    // After dispose, computed returns last cached value and no longer updates
+    count.value = 100;
+    expect(c!.value).toBe(10);
+  });
+
+  // -----------------------------------------------------------------------
+  // Watch collection
+  // -----------------------------------------------------------------------
+
+  it('collects watches and disposes them on stop', () => {
+    const scope = effectScope();
+    const count = signal(0);
+    const values: number[] = [];
+
+    scope.run(() => {
+      watchFn(count, (v: number) => values.push(v));
+    });
+
+    count.value = 1;
+    expect(values).toEqual([1]);
+
+    scope.stop();
+
+    count.value = 2;
+    expect(values).toEqual([1]); // watch stopped
+  });
+
+  // -----------------------------------------------------------------------
+  // onScopeDispose
+  // -----------------------------------------------------------------------
+
+  it('runs onScopeDispose callbacks on stop', () => {
+    const scope = effectScope();
+    let disposed = false;
+
+    scope.run(() => {
+      onScopeDispose(() => {
+        disposed = true;
+      });
+    });
+
+    expect(disposed).toBe(false);
+    scope.stop();
+    expect(disposed).toBe(true);
+  });
+
+  it('runs multiple onScopeDispose callbacks in reverse order', () => {
+    const scope = effectScope();
+    const order: number[] = [];
+
+    scope.run(() => {
+      onScopeDispose(() => order.push(1));
+      onScopeDispose(() => order.push(2));
+      onScopeDispose(() => order.push(3));
+    });
+
+    scope.stop();
+    expect(order).toEqual([3, 2, 1]);
+  });
+
+  it('throws when onScopeDispose is called outside a scope', () => {
+    expect(() => onScopeDispose(() => {})).toThrow(
+      'onScopeDispose() must be called inside an active effectScope'
+    );
+  });
+
+  // -----------------------------------------------------------------------
+  // getCurrentScope
+  // -----------------------------------------------------------------------
+
+  it('getCurrentScope returns the active scope inside run', () => {
+    const scope = effectScope();
+    let captured: EffectScope | undefined;
+
+    scope.run(() => {
+      captured = getCurrentScope();
+    });
+
+    expect(captured).toBe(scope);
+  });
+
+  it('getCurrentScope returns undefined outside any scope', () => {
+    expect(getCurrentScope()).toBeUndefined();
+  });
+
+  it('getCurrentScope reflects the innermost scope when nested', () => {
+    const outer = effectScope();
+    const inner = effectScope();
+    let outerCaptured: EffectScope | undefined;
+    let innerCaptured: EffectScope | undefined;
+
+    outer.run(() => {
+      outerCaptured = getCurrentScope();
+      inner.run(() => {
+        innerCaptured = getCurrentScope();
+      });
+    });
+
+    expect(outerCaptured).toBe(outer);
+    expect(innerCaptured).toBe(inner);
+  });
+
+  // -----------------------------------------------------------------------
+  // Nested scopes
+  // -----------------------------------------------------------------------
+
+  it('nested scopes are collected by parent and disposed together', () => {
+    const parent = effectScope();
+    const count = signal(0);
+    let childRuns = 0;
+
+    parent.run(() => {
+      const child = effectScope();
+      child.run(() => {
+        effect(() => {
+          void count.value;
+          childRuns++;
+        });
+      });
+    });
+
+    expect(childRuns).toBe(1);
+    count.value = 1;
+    expect(childRuns).toBe(2);
+
+    parent.stop();
+
+    count.value = 2;
+    expect(childRuns).toBe(2); // child was stopped by parent
+  });
+
+  it('stopping parent stops deeply nested scopes', () => {
+    const root = effectScope();
+    const count = signal(0);
+    let deepRuns = 0;
+
+    root.run(() => {
+      const level1 = effectScope();
+      level1.run(() => {
+        const level2 = effectScope();
+        level2.run(() => {
+          effect(() => {
+            void count.value;
+            deepRuns++;
+          });
+        });
+      });
+    });
+
+    expect(deepRuns).toBe(1);
+    count.value = 1;
+    expect(deepRuns).toBe(2);
+
+    root.stop();
+
+    count.value = 2;
+    expect(deepRuns).toBe(2);
+  });
+
+  // -----------------------------------------------------------------------
+  // Edge cases
+  // -----------------------------------------------------------------------
+
+  it('effects created outside scope are NOT collected', () => {
+    const count = signal(0);
+    let runs = 0;
+
+    const stop = effect(() => {
+      void count.value;
+      runs++;
+    });
+
+    expect(runs).toBe(1);
+    count.value = 1;
+    expect(runs).toBe(2);
+
+    // Must be manually stopped
+    stop();
+    count.value = 2;
+    expect(runs).toBe(2);
+  });
+
+  it('effect cleanup functions still run when scope stops', () => {
+    const scope = effectScope();
+    let cleanedUp = false;
+
+    scope.run(() => {
+      effect(() => {
+        return () => {
+          cleanedUp = true;
+        };
+      });
+    });
+
+    expect(cleanedUp).toBe(false);
+    scope.stop();
+    expect(cleanedUp).toBe(true);
+  });
+
+  it('errors in scope cleanup are caught and logged', () => {
+    const scope = effectScope();
+    const errors: unknown[] = [];
+    const originalError = console.error;
+    console.error = (...args: unknown[]) => errors.push(args);
+
+    scope.run(() => {
+      onScopeDispose(() => {
+        throw new Error('cleanup error');
+      });
+    });
+
+    scope.stop();
+    console.error = originalError;
+
+    expect(errors.length).toBe(1);
+    expect((errors[0] as unknown[])[0]).toContain('Error in scope cleanup');
+  });
+
+  it('scope.run can be called multiple times to collect more resources', () => {
+    const scope = effectScope();
+    const count = signal(0);
+    let runsA = 0;
+    let runsB = 0;
+
+    scope.run(() => {
+      effect(() => { void count.value; runsA++; });
+    });
+
+    scope.run(() => {
+      effect(() => { void count.value; runsB++; });
+    });
+
+    count.value = 1;
+    expect(runsA).toBe(2);
+    expect(runsB).toBe(2);
+
+    scope.stop();
+
+    count.value = 2;
+    expect(runsA).toBe(2);
+    expect(runsB).toBe(2);
+  });
+
+  it('manually stopping an effect inside a scope is safe', () => {
+    const scope = effectScope();
+    const count = signal(0);
+    let runs = 0;
+    let manualStop: () => void;
+
+    scope.run(() => {
+      manualStop = effect(() => {
+        void count.value;
+        runs++;
+      });
+    });
+
+    expect(runs).toBe(1);
+
+    // Manual stop
+    manualStop!();
+    count.value = 1;
+    expect(runs).toBe(1);
+
+    // scope.stop() should not error (double-dispose is safe)
+    scope.stop();
+  });
+
+  it('does not collect effects added after scope.stop()', () => {
+    const scope = effectScope();
+    const count = signal(0);
+    let runs = 0;
+
+    scope.stop();
+
+    // Can't run anymore
+    expect(() => scope.run(() => {
+      effect(() => { void count.value; runs++; });
+    })).toThrow();
+
+    expect(runs).toBe(0);
+  });
+
+  it('batch and scope work correctly together', () => {
+    const scope = effectScope();
+    const a = signal(0);
+    const b = signal(0);
+    let runs = 0;
+
+    scope.run(() => {
+      effect(() => {
+        void a.value;
+        void b.value;
+        runs++;
+      });
+    });
+
+    expect(runs).toBe(1);
+
+    batch(() => {
+      a.value = 1;
+      b.value = 1;
+    });
+
+    expect(runs).toBe(2); // One batched run
+
+    scope.stop();
+
+    batch(() => {
+      a.value = 2;
+      b.value = 2;
+    });
+
+    expect(runs).toBe(2); // No runs after stop
+  });
+
+  it('untrack inside scope still works', () => {
+    const scope = effectScope();
+    const tracked = signal(0);
+    const untracked = signal(0);
+    let runs = 0;
+
+    scope.run(() => {
+      effect(() => {
+        void tracked.value;
+        untrackedFn(() => untracked.value);
+        runs++;
+      });
+    });
+
+    expect(runs).toBe(1);
+
+    untracked.value = 1; // Should not trigger
+    expect(runs).toBe(1);
+
+    tracked.value = 1; // Should trigger
+    expect(runs).toBe(2);
+
+    scope.stop();
+  });
+});

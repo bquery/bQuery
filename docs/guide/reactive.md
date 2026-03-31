@@ -10,6 +10,9 @@ import {
   batch,
   watch,
   readonly,
+  effectScope,
+  getCurrentScope,
+  onScopeDispose,
   useAsyncData,
   useFetch,
   createUseFetch,
@@ -271,6 +274,90 @@ isSignal(doubled); // false
 isComputed(doubled); // true
 isComputed(count); // false
 ```
+
+## Effect Scope
+
+`effectScope()` creates a scope that collects all effects, computed values, and watches created inside it. When the scope is stopped, all collected resources are disposed at once.
+
+This is essential for managing cleanup in non-component code such as store plugins, router guards, feature modules, and test setup.
+
+```ts
+import { effectScope, signal, effect, computed, onScopeDispose } from '@bquery/bquery/reactive';
+
+const scope = effectScope();
+
+scope.run(() => {
+  const count = signal(0);
+  const doubled = computed(() => count.value * 2);
+
+  effect(() => {
+    console.log('Count:', count.value, 'Doubled:', doubled.value);
+  });
+
+  onScopeDispose(() => {
+    console.log('Custom cleanup');
+  });
+});
+
+scope.stop(); // All effects, computed values, and custom cleanup run
+```
+
+### Nested scopes
+
+Scopes nest automatically — a child scope created inside a parent's `run()` is collected by the parent:
+
+```ts
+const parent = effectScope();
+
+parent.run(() => {
+  const child = effectScope();
+  child.run(() => {
+    effect(() => console.log('inner effect'));
+  });
+});
+
+parent.stop(); // Stops the child scope and its effects too
+```
+
+### getCurrentScope
+
+Check whether code is running inside a scope:
+
+```ts
+import { effectScope, getCurrentScope } from '@bquery/bquery/reactive';
+
+const scope = effectScope();
+scope.run(() => {
+  console.log(getCurrentScope() !== undefined); // true
+});
+
+console.log(getCurrentScope()); // undefined
+```
+
+### onScopeDispose
+
+Register arbitrary cleanup callbacks on the current scope:
+
+```ts
+import { effectScope, onScopeDispose } from '@bquery/bquery/reactive';
+
+const scope = effectScope();
+
+scope.run(() => {
+  const controller = new AbortController();
+  fetch('/api/data', { signal: controller.signal });
+
+  onScopeDispose(() => controller.abort());
+});
+
+scope.stop(); // abort() is called
+```
+
+### EffectScope API
+
+- `active` (readonly) — `true` until `stop()` is called
+- `run(fn)` — Execute `fn` inside the scope, collecting reactive resources
+- `stop()` — Dispose all collected resources; safe to call multiple times
 
 ## toValue
 

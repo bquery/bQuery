@@ -11,6 +11,7 @@ import {
   withoutCurrentObserver,
   type ReactiveSource,
 } from './internals';
+import { getActiveScope } from './scope';
 
 /**
  * A computed value that derives from other reactive sources.
@@ -123,8 +124,21 @@ export class Computed<T> implements ReactiveSource {
 /**
  * Creates a new computed value.
  *
+ * If created inside an {@link effectScope}, the computed value is automatically
+ * collected and will be disposed when the scope stops.
+ *
  * @template T - The type of the computed value
  * @param fn - Function that computes the value from reactive sources
  * @returns A new Computed instance
  */
-export const computed = <T>(fn: () => T): Computed<T> => new Computed(fn);
+export const computed = <T>(fn: () => T): Computed<T> => {
+  const c = new Computed(fn);
+
+  // Auto-register with the current scope so scope.stop() disposes this computed
+  const scope = getActiveScope();
+  if (scope) {
+    scope._addDisposer(() => c.dispose());
+  }
+
+  return c;
+};
