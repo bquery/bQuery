@@ -38,6 +38,7 @@ export type {
   MaybeSignal,
   Observer,
   ReadonlySignal,
+  ReadonlySignalHandle,
   UseAsyncDataOptions,
   UseFetchOptions,
 } from './signal';

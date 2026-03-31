@@ -30,4 +30,4 @@ export type {
 export type { EffectScope } from './scope';
 export type { LinkedSignal } from './linked';
 export type { MaybeSignal } from './to-value';
-export type { ReadonlySignal } from './readonly';
+export type { ReadonlySignal, ReadonlySignalHandle } from './readonly';

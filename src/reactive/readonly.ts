@@ -69,3 +69,11 @@ export const readonly = <T>(sig: Signal<T>): ReadonlySignalWrapper<T> =>
       },
     }
   ) as ReadonlySignalWrapper<T>;
+
+/**
+ * Branded readonly wrapper type produced by {@link readonly}.
+ *
+ * Useful for APIs that compose additional behavior on top of a readonly signal
+ * without widening to arbitrary structural `{ value, peek }` objects.
+ */
+export type ReadonlySignalHandle<T> = ReturnType<typeof readonly<T>>;

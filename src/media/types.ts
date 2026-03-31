@@ -4,7 +4,7 @@
  * @module bquery/media
  */
 
-import type { ReadonlySignal } from '../reactive/index';
+import type { ReadonlySignalHandle } from '../reactive/index';
 
 /**
  * Readonly media signal with an explicit cleanup hook.
@@ -13,7 +13,7 @@ import type { ReadonlySignal } from '../reactive/index';
  * geolocation watchers. Call `destroy()` when the signal is no longer needed
  * to release those underlying subscriptions.
  */
-export interface MediaSignalHandle<T> extends ReadonlySignal<T> {
+export interface MediaSignalHandle<T> extends ReadonlySignalHandle<T> {
   /** Releases any underlying browser listeners or observers. Safe to call multiple times. */
   destroy(): void;
 }
