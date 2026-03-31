@@ -4,7 +4,6 @@
 
 import {
   clearDependencies,
-  type CleanupFn,
   getCurrentObserver,
   registerDependency,
   scheduleObserver,
@@ -138,7 +137,7 @@ export const computed = <T>(fn: () => T): Computed<T> => {
   // Auto-register with the current scope so scope.stop() disposes this computed
   const scope = getActiveScope();
   if (hasScopeDisposer(scope)) {
-    scope._addDisposer((() => c.dispose()) as CleanupFn);
+    scope._addDisposer(() => c.dispose());
   }
 
   return c;
