@@ -204,7 +204,7 @@ All mutating methods are chainable and apply to every element. Getter methods re
 
 ### DOM traversal
 
-- `closest(selector)` – matching ancestors (deduplicated)
+- `closest(selector)` – closest matching element, including the element itself when it matches (deduplicated)
 - `parent()` – unique parent elements
 - `children()` – all child elements across the collection
 - `siblings()` – all siblings excluding collection elements

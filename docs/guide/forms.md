@@ -51,7 +51,7 @@ const form = createForm({
 
 ## Field state
 
-Each field exposes reactive primitives for value and validation state.
+`createForm()` fields expose reactive primitives for value, error, and dirty/touched state.
 
 ```ts
 console.log(form.fields.email.value.value);
@@ -69,9 +69,13 @@ Available helpers:
 - `isTouched`
 - `isDirty`
 - `isPristine`
+
+Helpers available only on values returned by `useFormField()` (not on `createForm().fields.*`):
+
 - `isValid`
 - `isValidating`
-- `validate()` (when using `useFormField()`)
+- `validate()`
+- `destroy()`
 
 ## Form state
 

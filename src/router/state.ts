@@ -3,7 +3,7 @@
  * @module bquery/router
  */
 
-import { computed, signal, type ReadonlySignal, type Signal } from '../reactive/index';
+import { computed, readonly, signal, type ReadonlySignal, type Signal } from '../reactive/index';
 import type { Route, Router } from './types';
 
 // ============================================================================
@@ -40,6 +40,9 @@ export const currentRoute: ReadonlySignal<Route> = computed(() => routeSignal.va
 /** @internal */
 const navigationCountSignal: Signal<number> = signal(0);
 
+/** @internal */
+const isNavigatingSignal: Signal<boolean> = signal(false);
+
 /**
  * Reactive signal indicating whether a navigation is currently in progress.
  *
@@ -56,21 +59,30 @@ const navigationCountSignal: Signal<number> = signal(0);
  * });
  * ```
  */
-export const isNavigating: ReadonlySignal<boolean> = computed(() => navigationCountSignal.value > 0);
+export const isNavigating: ReadonlySignal<boolean> = readonly(isNavigatingSignal);
 
 /** @internal */
 export const beginNavigation = (): void => {
+  if (navigationCountSignal.value === 0) {
+    isNavigatingSignal.value = true;
+  }
   navigationCountSignal.value += 1;
 };
 
 /** @internal */
 export const endNavigation = (): void => {
-  navigationCountSignal.value = Math.max(0, navigationCountSignal.value - 1);
+  const nextCount = Math.max(0, navigationCountSignal.value - 1);
+  navigationCountSignal.value = nextCount;
+
+  if (nextCount === 0) {
+    isNavigatingSignal.value = false;
+  }
 };
 
 /** @internal */
 export const resetNavigationState = (): void => {
   navigationCountSignal.value = 0;
+  isNavigatingSignal.value = false;
 };
 
 /** @internal */

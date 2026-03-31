@@ -6,6 +6,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, spyOn } from 'bun:test';
+import { effect } from '../src/reactive/index';
 import { clearRouteConstraintCache, getRouteConstraintRegex } from '../src/router/constraints';
 import {
   back,
@@ -26,6 +27,7 @@ import {
   type Router,
 } from '../src/router/index';
 import { matchRoute } from '../src/router/match';
+import { beginNavigation, endNavigation, resetNavigationState } from '../src/router/state';
 
 // ============================================================================
 // Test Setup - Mock History API and Location
@@ -36,6 +38,7 @@ const expectType = <T>(_value: T): void => {};
 
 afterEach(() => {
   clearRouteConstraintCache();
+  resetNavigationState();
 });
 
 /**
@@ -840,6 +843,22 @@ describe('Router', () => {
 
       expect(isNavigating.value).toBe(false);
       expect(currentRoute.value.path).toBe('/target');
+    });
+
+    it('should not retrigger isNavigating observers while nested navigation stays in flight', () => {
+      const observedValues: boolean[] = [];
+      const stop = effect(() => {
+        observedValues.push(isNavigating.value);
+      });
+
+      beginNavigation();
+      beginNavigation();
+      endNavigation();
+      endNavigation();
+
+      stop();
+
+      expect(observedValues).toEqual([false, true, false]);
     });
 
     it('should expose pending navigation state during async popstate navigation', async () => {
