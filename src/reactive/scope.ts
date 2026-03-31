@@ -75,12 +75,23 @@ const isPromiseLike = (value: unknown): value is PromiseLike<unknown> =>
   value !== null &&
   typeof (value as { then?: unknown }).then === 'function';
 
+/**
+ * Best-effort detection for native async functions so `run()` can reject them
+ * before invocation. Transpiled async functions may not preserve this shape, so
+ * promise-like return values are still checked after execution as a fallback.
+ * @internal
+ */
 const isAsyncFunction = (value: unknown): value is (...args: never[]) => Promise<unknown> => {
+  const constructorName =
+    typeof (value as { constructor?: unknown }).constructor === 'function'
+      ? (value as { constructor: { name?: unknown } }).constructor.name
+      : undefined;
+
   return (
     typeof value === 'function' &&
     ((Symbol.toStringTag in value &&
       (value as { [Symbol.toStringTag]?: unknown })[Symbol.toStringTag] === 'AsyncFunction') ||
-      value.constructor?.name === 'AsyncFunction')
+      constructorName === 'AsyncFunction')
   );
 };
 

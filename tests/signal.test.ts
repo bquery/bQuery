@@ -1400,12 +1400,12 @@ describe('toValue', () => {
       label: string;
     };
 
-    const domainObject: DomainObject = {
+    const domainObject = {
       value: 123,
       peek: () => 123,
       label: 'not a readonly signal',
-    };
-    const result = toValue<DomainObject>(domainObject as MaybeSignal<DomainObject>);
+    } satisfies DomainObject;
+    const result = toValue<DomainObject>(domainObject);
 
     expect(result).toBe(domainObject);
     expect(result.label).toBe('not a readonly signal');
