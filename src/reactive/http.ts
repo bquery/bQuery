@@ -615,7 +615,8 @@ export function createHttp(defaults: HttpRequestConfig = {}): HttpClient {
           throw finalError;
         }
 
-        await sleep(resolveRetryDelay(retryConfig!.delay, attempt), resolvedConfig.signal);
+        const retryDelay = retryConfig ? resolveRetryDelay(retryConfig.delay, attempt) : 0;
+        await sleep(retryDelay, resolvedConfig.signal);
       }
     }
 

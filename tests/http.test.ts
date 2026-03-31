@@ -139,7 +139,7 @@ describe('createHttp', () => {
       }),
     });
 
-    await api.get('/data', { url: '/data', query: { page: 1 } });
+    await api.get('/data', { query: { page: 1 } });
     expect(capturedUrl).toContain('token=abc');
     expect(capturedUrl).toContain('page=1');
   });
