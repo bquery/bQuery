@@ -29,6 +29,12 @@ export interface WebSocketReconnectConfig {
   shouldReconnect?: (event: CloseEvent, attempts: number) => boolean;
 }
 
+/** Reconnect configuration supported by `useEventSource()`. */
+export type EventSourceReconnectConfig = Pick<
+  WebSocketReconnectConfig,
+  'maxAttempts' | 'delay' | 'maxDelay' | 'factor'
+>;
+
 /** Configuration for keep-alive heartbeats. */
 export interface WebSocketHeartbeatConfig {
   /** Outgoing ping message (default: `'ping'`). */
@@ -109,11 +115,11 @@ export interface UseWebSocketReturn<TSend = unknown, TReceive = unknown> {
 // ---------------------------------------------------------------------------
 
 /** @internal */
-const resolveReconnect = (
-  opt: UseWebSocketOptions['autoReconnect']
-): WebSocketReconnectConfig | false => {
+const resolveReconnect = <TReconnectConfig extends object>(
+  opt: boolean | TReconnectConfig | undefined
+): TReconnectConfig | false => {
   if (opt === false) return false;
-  if (opt === true || opt === undefined) return {};
+  if (opt === true || opt === undefined) return {} as TReconnectConfig;
   return opt;
 };
 
@@ -237,6 +243,9 @@ export const useWebSocket = <TSend = string, TReceive = string>(
       if (ws?.readyState === WebSocket.OPEN) {
         pingSentAt = Date.now();
         ws.send(pingMsg as string | ArrayBufferLike);
+        if (pongTimer !== undefined) {
+          clearTimeout(pongTimer);
+        }
         pongTimer = setTimeout(() => {
           // No pong received — force close to trigger reconnect
           ws?.close(4000, 'Heartbeat timeout');
@@ -313,6 +322,7 @@ export const useWebSocket = <TSend = string, TReceive = string>(
 
   const open = (): void => {
     if (disposed) return;
+    cancelReconnect();
 
     // Clean up any existing connection
     if (ws) {
@@ -538,16 +548,16 @@ export const useWebSocketChannel = <TSend = unknown, TReceive = unknown>(
     channelOptions.wrap ??
     ((ch: string, data: TSend) => ({ channel: ch, data }) as unknown as TReceive);
 
-  const channels = new Map<string, Signal<TReceive | undefined>>();
+  const channels = new Map<string, { signal: Signal<TReceive | undefined>; subscriptions: number }>();
 
   const ws = useWebSocket<TReceive, TReceive>(url, {
     ...wsOptions,
     onMessage: (msg, event) => {
       const ch = getChannel(msg);
       if (ch !== undefined) {
-        const sig = channels.get(ch);
-        if (sig) {
-          sig.value = msg;
+        const entry = channels.get(ch);
+        if (entry) {
+          entry.signal.value = msg;
         }
       }
       wsOptions.onMessage?.(msg, event);
@@ -555,16 +565,23 @@ export const useWebSocketChannel = <TSend = unknown, TReceive = unknown>(
   });
 
   const subscribe = (channel: string): ChannelSubscription<TReceive> => {
-    let sig = channels.get(channel);
-    if (!sig) {
-      sig = signal<TReceive | undefined>(undefined);
-      channels.set(channel, sig);
+    let entry = channels.get(channel);
+    if (!entry) {
+      entry = { signal: signal<TReceive | undefined>(undefined), subscriptions: 0 };
+      channels.set(channel, entry);
     }
+    entry.subscriptions++;
+    let unsubscribed = false;
 
     return {
-      data: sig,
+      data: entry.signal,
       unsubscribe: () => {
-        channels.delete(channel);
+        if (unsubscribed) return;
+        unsubscribed = true;
+        entry.subscriptions--;
+        if (entry.subscriptions <= 0) {
+          channels.delete(channel);
+        }
       },
     };
   };
@@ -584,8 +601,8 @@ export const useWebSocketChannel = <TSend = unknown, TReceive = unknown>(
 export interface UseEventSourceOptions<TData = unknown> {
   /** Whether to open the connection immediately (default: true). */
   immediate?: boolean;
-  /** Automatically reconnect on error (default: true). Pass a `WebSocketReconnectConfig` for full control. */
-  autoReconnect?: boolean | WebSocketReconnectConfig;
+  /** Automatically reconnect on error (default: true). Pass a reconnect config to customize delay and attempt limits. */
+  autoReconnect?: boolean | EventSourceReconnectConfig;
   /** Event names to listen for besides the default `message` event. */
   events?: string[];
   /** Deserializer for incoming event data. Default: `JSON.parse` with string fallback. */

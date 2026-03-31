@@ -776,7 +776,7 @@ sse.dispose();
 | Option            | Type                                  | Default        | Description                          |
 | ----------------- | ------------------------------------- | -------------- | ------------------------------------ |
 | `immediate`       | `boolean`                             | `true`         | Connect immediately                  |
-| `autoReconnect`   | `boolean \| WebSocketReconnectConfig` | `true`         | Auto-reconnect on error              |
+| `autoReconnect`   | `boolean \| EventSourceReconnectConfig` | `true`       | Auto-reconnect on error with configurable delay and attempt limits |
 | `events`          | `string[]`                            | `[]`           | Named events to listen for           |
 | `deserialize`     | `(data: string) => TData`            | `JSON.parse`   | Custom deserializer                  |
 | `eventSourceInit` | `EventSourceInit`                     | —              | Native EventSource init (e.g. `withCredentials`) |

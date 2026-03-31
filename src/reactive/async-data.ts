@@ -371,7 +371,13 @@ const DEFAULT_VALIDATE_STATUS = (status: number): boolean => status >= 200 && st
 
 /** @internal */
 const DEFAULT_RETRY_ON = (error: Error): boolean => {
-  if (error instanceof DOMException && error.name === 'AbortError') return false;
+  if (
+    (error instanceof DOMException && (error.name === 'AbortError' || error.name === 'TimeoutError')) ||
+    (error as Error & { code?: string }).code === 'ABORT' ||
+    (error as Error & { code?: string }).code === 'TIMEOUT'
+  ) {
+    return false;
+  }
   const status = (error as Error & { status?: number }).status;
   return status === undefined || status >= 500;
 };
@@ -442,6 +448,18 @@ export const useFetch = <TResponse = unknown, TData = TResponse>(
   const validateStatus = options.validateStatus ?? DEFAULT_VALIDATE_STATUS;
 
   let currentAbortController: AbortController | null = null;
+  const normalizeAbortLikeError = (reason: unknown, didTimeout: boolean): Error => {
+    const isTimeout =
+      didTimeout ||
+      (reason instanceof DOMException && reason.name === 'TimeoutError') ||
+      (currentAbortController?.signal.reason instanceof DOMException &&
+        currentAbortController.signal.reason.name === 'TimeoutError');
+
+    return Object.assign(
+      new Error(isTimeout ? `Request timeout of ${options.timeout}ms exceeded` : 'Request aborted'),
+      { code: isTimeout ? 'TIMEOUT' : 'ABORT' }
+    );
+  };
 
   const state = useAsyncData<TResponse, TData>(async () => {
     const requestInput = resolveInput(input);
@@ -474,6 +492,7 @@ export const useFetch = <TResponse = unknown, TData = TResponse>(
     const abortController = new AbortController();
     currentAbortController = abortController;
     let timeoutId: ReturnType<typeof setTimeout> | undefined;
+    let didTimeout = false;
 
     if (options.signal) {
       if (options.signal.aborted) {
@@ -489,6 +508,7 @@ export const useFetch = <TResponse = unknown, TData = TResponse>(
 
     if (options.timeout && options.timeout > 0) {
       timeoutId = setTimeout(() => {
+        didTimeout = true;
         abortController.abort(new DOMException('Request timeout', 'TimeoutError'));
       }, options.timeout);
     }
@@ -548,17 +568,13 @@ export const useFetch = <TResponse = unknown, TData = TResponse>(
 
           // Abort errors should not be retried
           if (
-            normalizedError instanceof DOMException &&
-            normalizedError.name === 'AbortError'
+            abortController.signal.aborted ||
+            (normalizedError instanceof DOMException &&
+              (normalizedError.name === 'AbortError' || normalizedError.name === 'TimeoutError'))
           ) {
-            const isTimeout = normalizedError.message === 'Request timeout';
-            throw Object.assign(
-              new Error(
-                isTimeout
-                  ? `Request timeout of ${options.timeout}ms exceeded`
-                  : 'Request aborted'
-              ),
-              { code: isTimeout ? 'TIMEOUT' : 'ABORT' }
+            throw normalizeAbortLikeError(
+              abortController.signal.aborted ? abortController.signal.reason : normalizedError,
+              didTimeout
             );
           }
 

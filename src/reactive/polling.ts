@@ -127,6 +127,7 @@ export const usePolling = <TResponse = unknown, TData = TResponse>(
 
   // Listen for visibility changes
   if (pauseOnHidden && typeof document !== 'undefined') {
+    documentHidden.value = document.hidden;
     const onVisibilityChange = (): void => {
       documentHidden.value = document.hidden;
     };

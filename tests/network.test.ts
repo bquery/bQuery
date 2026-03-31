@@ -13,6 +13,18 @@ import {
   signal,
 } from '../src/reactive/signal';
 import type { HttpResponse } from '../src/reactive/http';
+import type { UseEventSourceOptions } from '../src/reactive/websocket';
+
+const _eventSourceReconnectConfig: UseEventSourceOptions<string> = {
+  autoReconnect: { delay: 10, maxAttempts: 2 },
+};
+void _eventSourceReconnectConfig;
+
+const _invalidEventSourceReconnectConfig: UseEventSourceOptions<string> = {
+  // @ts-expect-error EventSource autoReconnect does not support a CloseEvent-based predicate
+  autoReconnect: { shouldReconnect: () => true },
+};
+void _invalidEventSourceReconnectConfig;
 
 // ---------------------------------------------------------------------------
 // Mock helpers
@@ -1189,6 +1201,52 @@ describe('useWebSocket — new extensions', () => {
     expect(ws.latency.value).toBeGreaterThan(0);
     ws.dispose();
   });
+
+  it('clears stale pong timers before scheduling a new heartbeat timeout', async () => {
+    const ws = useWebSocket('ws://localhost/test', {
+      autoReconnect: false,
+      heartbeat: { interval: 20, pongTimeout: 60, responseMessage: 'pong' },
+    });
+    await new Promise((r) => setTimeout(r, 10));
+    expect(ws.isConnected.value).toBe(true);
+
+    await new Promise((r) => setTimeout(r, 55));
+    lastMockWS!._simulateMessage('pong');
+    await new Promise((r) => setTimeout(r, 35));
+
+    expect(ws.status.value).toBe('OPEN');
+    ws.dispose();
+  });
+
+  it('cancels a pending reconnect when manually reopened', async () => {
+    let connectCount = 0;
+    const OriginalWebSocket = (globalThis as unknown as { WebSocket: typeof MockWebSocket }).WebSocket;
+    (globalThis as unknown as { WebSocket: unknown }).WebSocket = class extends MockWebSocket {
+      constructor(url: string, protocols?: string | string[]) {
+        super(url, protocols);
+        connectCount++;
+      }
+    };
+
+    const ws = useWebSocket('ws://localhost/test', {
+      autoReconnect: { delay: 40, maxAttempts: 3 },
+    });
+    await new Promise((r) => setTimeout(r, 10));
+    expect(connectCount).toBe(1);
+
+    lastMockWS!._simulateClose(1006, 'unexpected');
+    await new Promise((r) => setTimeout(r, 10));
+
+    ws.open();
+    await new Promise((r) => setTimeout(r, 10));
+    expect(connectCount).toBe(2);
+
+    await new Promise((r) => setTimeout(r, 60));
+    expect(connectCount).toBe(2);
+
+    ws.dispose();
+    (globalThis as unknown as { WebSocket: unknown }).WebSocket = OriginalWebSocket;
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -1249,6 +1307,30 @@ describe('useWebSocketChannel', () => {
     await new Promise((r) => setTimeout(r, 10));
 
     expect(sub.data.value).toBeUndefined();
+
+    mux.ws.dispose();
+  });
+
+  it('keeps shared channel subscriptions active until the last unsubscribe', async () => {
+    const mux = useWebSocketChannel('ws://localhost/mux');
+    await new Promise((r) => setTimeout(r, 10));
+
+    const first = mux.subscribe('shared');
+    const second = mux.subscribe('shared');
+    expect(first.data).toBe(second.data);
+
+    first.unsubscribe();
+
+    lastMockWS!._simulateMessage(JSON.stringify({ channel: 'shared', data: 'still here' }));
+    await new Promise((r) => setTimeout(r, 10));
+
+    expect(second.data.value).toEqual({ channel: 'shared', data: 'still here' });
+
+    second.unsubscribe();
+    lastMockWS!._simulateMessage(JSON.stringify({ channel: 'shared', data: 'gone' }));
+    await new Promise((r) => setTimeout(r, 10));
+
+    expect(second.data.value).toEqual({ channel: 'shared', data: 'still here' });
 
     mux.ws.dispose();
   });

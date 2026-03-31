@@ -582,6 +582,38 @@ describe('useFetch timeout', () => {
     expect(state.status.value).toBe('error');
     expect(state.error.value?.message).toContain('timeout');
   });
+
+  it('does not retry timeout aborts and reports TIMEOUT consistently', async () => {
+    let attempts = 0;
+
+    const state = useFetch<{ ok: boolean }>('/api/slow', {
+      immediate: false,
+      timeout: 30,
+      retry: { count: 2, delay: 10 },
+      fetcher: asMockFetch(async (_input, init) => {
+        attempts++;
+        await new Promise((resolve, reject) => {
+          const timer = setTimeout(resolve, 500);
+          init?.signal?.addEventListener(
+            'abort',
+            () => {
+              clearTimeout(timer);
+              reject(init.signal!.reason ?? new DOMException('aborted', 'AbortError'));
+            },
+            { once: true }
+          );
+        });
+        return new Response(JSON.stringify({ ok: true }), { status: 200 });
+      }),
+    });
+
+    await state.execute();
+
+    expect(attempts).toBe(1);
+    expect(state.status.value).toBe('error');
+    expect(state.error.value?.message).toContain('timeout');
+    expect((state.error.value as (Error & { code?: string }) | null)?.code).toBe('TIMEOUT');
+  });
 });
 
 describe('useFetch retry', () => {
@@ -830,6 +862,42 @@ describe('usePolling', () => {
     await new Promise((resolve) => setTimeout(resolve, 100));
 
     expect(fetchCount).toBe(count);
+  });
+
+  it('does not start polling while the document is initially hidden', async () => {
+    const originalHiddenDescriptor = Object.getOwnPropertyDescriptor(document, 'hidden');
+    Object.defineProperty(document, 'hidden', { configurable: true, value: true });
+
+    let fetchCount = 0;
+
+    try {
+      const state = usePolling<{ ok: boolean }>('/api/data', {
+        interval: 30,
+        immediate: false,
+        pauseOnHidden: true,
+        pauseOnOffline: false,
+        fetcher: asMockFetch(async () => {
+          fetchCount++;
+          return new Response(JSON.stringify({ ok: true }), { status: 200 });
+        }),
+      });
+
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      expect(fetchCount).toBe(0);
+
+      Object.defineProperty(document, 'hidden', { configurable: true, value: false });
+      document.dispatchEvent(new Event('visibilitychange'));
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      expect(fetchCount).toBeGreaterThan(0);
+      state.dispose();
+    } finally {
+      if (originalHiddenDescriptor) {
+        Object.defineProperty(document, 'hidden', originalHiddenDescriptor);
+      } else {
+        Object.defineProperty(document, 'hidden', { configurable: true, value: false });
+      }
+    }
   });
 });
 
