@@ -370,9 +370,22 @@ export const useAsyncData = <TResult, TData = TResult>(
 const DEFAULT_VALIDATE_STATUS = (status: number): boolean => status >= 200 && status < 300;
 
 /** @internal */
+const isDomExceptionNamed = (error: unknown, name: string): error is DOMException =>
+  error instanceof DOMException && error.name === name;
+
+/** @internal */
+const isTimeoutDomException = (error: unknown): error is DOMException =>
+  isDomExceptionNamed(error, 'TimeoutError');
+
+/** @internal */
+const isAbortDomException = (error: unknown): error is DOMException =>
+  isDomExceptionNamed(error, 'AbortError');
+
+/** @internal */
 const DEFAULT_RETRY_ON = (error: Error): boolean => {
   if (
-    (error instanceof DOMException && (error.name === 'AbortError' || error.name === 'TimeoutError')) ||
+    isAbortDomException(error) ||
+    isTimeoutDomException(error) ||
     (error as Error & { code?: string }).code === 'ABORT' ||
     (error as Error & { code?: string }).code === 'TIMEOUT'
   ) {
@@ -451,9 +464,8 @@ export const useFetch = <TResponse = unknown, TData = TResponse>(
   const normalizeAbortLikeError = (reason: unknown, didTimeout: boolean): Error => {
     const isTimeout =
       didTimeout ||
-      (reason instanceof DOMException && reason.name === 'TimeoutError') ||
-      (currentAbortController?.signal.reason instanceof DOMException &&
-        currentAbortController.signal.reason.name === 'TimeoutError');
+      isTimeoutDomException(reason) ||
+      isTimeoutDomException(currentAbortController?.signal.reason);
 
     return Object.assign(
       new Error(isTimeout ? `Request timeout of ${options.timeout}ms exceeded` : 'Request aborted'),
@@ -569,8 +581,8 @@ export const useFetch = <TResponse = unknown, TData = TResponse>(
           // Abort errors should not be retried
           if (
             abortController.signal.aborted ||
-            (normalizedError instanceof DOMException &&
-              (normalizedError.name === 'AbortError' || normalizedError.name === 'TimeoutError'))
+            isAbortDomException(normalizedError) ||
+            isTimeoutDomException(normalizedError)
           ) {
             throw normalizeAbortLikeError(
               abortController.signal.aborted ? abortController.signal.reason : normalizedError,

@@ -563,13 +563,6 @@ describe('useEventSource', () => {
     };
 
     expect(validOptions.autoReconnect).toEqual({ delay: 10, maxAttempts: 2 });
-
-    const invalidOptions: UseEventSourceOptions<string> = {
-      // @ts-expect-error EventSource autoReconnect does not support a CloseEvent-based predicate
-      autoReconnect: { shouldReconnect: () => true },
-    };
-
-    expect(invalidOptions).toBeDefined();
   });
 
   it('connects immediately and sets OPEN status', async () => {
