@@ -148,7 +148,10 @@ export const usePolling = <TResponse = unknown, TData = TResponse>(
       window.removeEventListener('online', onOnline);
       window.removeEventListener('offline', onOffline);
     });
-    browserOffline.value = typeof navigator !== 'undefined' ? !navigator.onLine : false;
+    browserOffline.value =
+      typeof navigator !== 'undefined' && navigator.onLine !== undefined
+        ? !navigator.onLine
+        : false;
   }
 
   const originalDispose = fetchState.dispose;

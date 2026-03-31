@@ -223,9 +223,18 @@ export const useInfiniteFetch = <TResponse = unknown, TData = TResponse[], TCurs
       });
 
       const pageData = await pageState.execute();
+      const pageError = pageState.error.peek();
       pageState.dispose();
 
       if (disposed || currentExecution !== executionId) return data.peek();
+
+      // Check if the inner fetch encountered an error
+      if (pageError) {
+        error.value = pageError;
+        status.value = 'error';
+        options.onError?.(pageError);
+        return data.peek();
+      }
 
       if (pageData !== undefined) {
         const typedPageData = pageData as TResponse;

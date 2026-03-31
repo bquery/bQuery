@@ -40,7 +40,7 @@ src/
 ├── index.ts            # Default entry — re-exports all modules
 ├── full.ts             # Full bundle with explicit named exports (CDN)
 ├── core/               # $, $$, BQueryElement, BQueryCollection, utils
-├── reactive/           # signal, computed, effect, batch, watch, async data/fetch
+├── reactive/           # signal, computed, effect, batch, watch, async data/fetch, HTTP client, polling, pagination
 ├── component/          # component(), defineComponent(), scoped reactivity, defaults
 ├── storybook/          # storyHtml(), when() helpers for Storybook stories
 ├── motion/             # animate, transition, flip, morph, spring, timeline, scroll
@@ -101,8 +101,14 @@ Each `src/<module>/index.ts` re-exports the module's public API.
 | `linkedSignal(get, set)`     | function  | Writable computed (bidirectional)                             |
 | `persistedSignal(key, init)` | function  | Signal persisted to localStorage                              |
 | `useAsyncData(handler)`      | function  | Reactive async lifecycle wrapper with `status`, `error`, etc. |
-| `useFetch(input, options)`   | function  | Fetch composable with query/header/body helpers               |
+| `useFetch(input, options)`   | function  | Fetch composable with query/header/body/timeout/retry/abort   |
 | `createUseFetch(defaults)`   | function  | Factory for preconfigured fetch composables                   |
+| `createHttp(defaults)`       | function  | Imperative HTTP client with interceptors and method shortcuts |
+| `http`                       | instance  | Default HTTP client using global bQuery config                |
+| `HttpError`                  | class     | Error subclass with code, config, response metadata           |
+| `usePolling(input, options)` | function  | Periodic data fetching with pause/resume/visibility           |
+| `usePaginatedFetch(fn, opt)` | function  | Cursor-based pagination with next/prev/goTo helpers           |
+| `useInfiniteFetch(fn, opt)`  | function  | Infinite scroll with accumulated pages and fetchNextPage      |
 | `readonly(sig)`              | function  | Read-only wrapper around a signal                             |
 | `isSignal`, `isComputed`     | functions | Type guards                                                   |
 | `Signal`, `Computed`         | classes   | Signal and Computed value classes                             |

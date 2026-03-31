@@ -16,6 +16,12 @@ import {
   useAsyncData,
   useFetch,
   createUseFetch,
+  createHttp,
+  http,
+  HttpError,
+  usePolling,
+  usePaginatedFetch,
+  useInfiniteFetch,
   untrack,
   isSignal,
   isComputed,
@@ -153,6 +159,7 @@ console.log(user.status.value, user.pending.value, user.data.value);
 - `status` – `'idle' | 'pending' | 'success' | 'error'`
 - `pending` – computed boolean for loading state
 - `execute()` / `refresh()` – trigger the async handler manually
+- `abort()` – cancel the current in-flight request (useFetch only)
 - `clear()` – reset data, error, and status
 - `dispose()` – stop watchers and future executions
 
@@ -191,6 +198,259 @@ const profile = useApiFetch<{ id: number; name: string }>('/profile');
 ```
 
 Factory defaults merge with per-call options, including request headers and query params.
+
+## Timeout, retry and abort
+
+`useFetch()` supports request timeouts, automatic retries, and request
+cancellation out of the box.
+
+```ts
+const data = useFetch('/api/data', {
+  timeout: 5000,
+  retry: 3,
+});
+
+// Or with full retry configuration
+const resilient = useFetch('/api/important', {
+  timeout: 10_000,
+  retry: {
+    count: 3,
+    delay: (attempt) => 1000 * 2 ** attempt,
+    retryOn: (error) => error.message.includes('500'),
+  },
+});
+
+// Abort an in-flight request
+data.abort();
+```
+
+External `AbortSignal` support:
+
+```ts
+const controller = new AbortController();
+const data = useFetch('/api/data', { signal: controller.signal });
+controller.abort(); // cancels the request
+```
+
+### `validateStatus`
+
+Override which HTTP status codes are considered successful:
+
+```ts
+const data = useFetch('/api/resource', {
+  validateStatus: (status) => status < 500,
+});
+```
+
+## Imperative HTTP client
+
+`createHttp()` returns an Axios-style imperative client with method
+shortcuts, interceptors, retry, timeout, and abort support.
+
+```ts
+import { createHttp, http } from '@bquery/bquery/reactive';
+
+// Use the default instance
+const { data } = await http.get<User[]>('/api/users');
+const { data: created } = await http.post('/api/users', { name: 'Ada' });
+
+// Or create a custom instance
+const api = createHttp({
+  baseUrl: 'https://api.example.com',
+  headers: { authorization: 'Bearer token' },
+  timeout: 10_000,
+});
+
+const { data: users } = await api.get<User[]>('/users');
+```
+
+### Method shortcuts
+
+```ts
+api.get<T>(url, config?)
+api.post<T>(url, body?, config?)
+api.put<T>(url, body?, config?)
+api.patch<T>(url, body?, config?)
+api.delete<T>(url, config?)
+api.head<T>(url, config?)
+api.options<T>(url, config?)
+api.request<T>(config)
+```
+
+### Interceptors
+
+```ts
+// Request interceptor
+api.interceptors.request.use((config) => {
+  config.headers = {
+    ...Object.fromEntries(new Headers(config.headers)),
+    'x-request-id': crypto.randomUUID(),
+  };
+  return config;
+});
+
+// Response interceptor
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error instanceof HttpError && error.response?.status === 401) {
+      // handle auth errors
+    }
+    throw error;
+  }
+);
+
+// Remove interceptor
+const id = api.interceptors.request.use((c) => c);
+api.interceptors.request.eject(id);
+api.interceptors.request.clear();
+```
+
+### Retry and timeout
+
+```ts
+const api = createHttp({
+  timeout: 5000,
+  retry: {
+    count: 3,
+    delay: 1000,
+    retryOn: (error, attempt) => error.code === 'TIMEOUT' || error.code === 'NETWORK',
+  },
+});
+```
+
+### HttpResponse
+
+Every imperative method returns a structured `HttpResponse<T>`:
+
+| Field        | Type               | Description                       |
+| ------------ | ------------------ | --------------------------------- |
+| `data`       | `T`                | Parsed response body              |
+| `status`     | `number`           | HTTP status code                  |
+| `statusText` | `string`           | HTTP status text                  |
+| `headers`    | `Headers`          | Response headers                  |
+| `config`     | `HttpRequestConfig` | Resolved request configuration   |
+
+### HttpError
+
+Failed requests throw `HttpError` with rich metadata:
+
+| Field      | Type               | Description                               |
+| ---------- | ------------------ | ----------------------------------------- |
+| `message`  | `string`           | Human-readable error message              |
+| `code`     | `string`           | `'TIMEOUT'`, `'ABORT'`, `'NETWORK'`, `'ERR_BAD_RESPONSE'` |
+| `config`   | `HttpRequestConfig` | Resolved request config                  |
+| `response` | `HttpResponse?`    | Response if server replied                |
+
+## Polling
+
+`usePolling()` wraps `useFetch()` and executes it on a fixed interval with
+automatic pause/resume support.
+
+```ts
+import { usePolling } from '@bquery/bquery/reactive';
+
+const notifications = usePolling<Notification[]>('/api/notifications', {
+  interval: 30_000,
+  pauseOnHidden: true,
+  pauseOnOffline: true,
+});
+
+// Manual control
+notifications.pause();
+notifications.resume();
+console.log(notifications.isActive.value);
+
+// Cleanup
+notifications.dispose();
+```
+
+### Options
+
+All `useFetch()` options plus:
+
+| Option           | Type                | Default | Description                        |
+| ---------------- | ------------------- | ------- | ---------------------------------- |
+| `interval`       | `number`            | —       | Polling interval in milliseconds   |
+| `enabled`        | `boolean \| () => boolean` | `true` | Enable/disable polling    |
+| `pauseOnHidden`  | `boolean`           | `true`  | Pause when document is hidden      |
+| `pauseOnOffline` | `boolean`           | `true`  | Pause when browser is offline      |
+
+## Paginated fetch
+
+`usePaginatedFetch()` adds page navigation helpers on top of `useFetch()`.
+
+```ts
+import { usePaginatedFetch } from '@bquery/bquery/reactive';
+
+const users = usePaginatedFetch<User[]>(
+  (page) => `/api/users?page=${page}`,
+  { baseUrl: 'https://api.example.com' }
+);
+
+await users.next();
+await users.prev();
+await users.goTo(5);
+console.log(users.page.value); // 5
+```
+
+### Returned state
+
+All `AsyncDataState` fields plus:
+
+| Field  | Type                      | Description                          |
+| ------ | ------------------------- | ------------------------------------ |
+| `page` | `Signal<number>`          | Current page (writable)              |
+| `next`  | `() => Promise`          | Advance to the next page             |
+| `prev`  | `() => Promise`          | Go back one page (minimum 1)        |
+| `goTo`  | `(page) => Promise`      | Jump to a specific page              |
+
+## Infinite fetch
+
+`useInfiniteFetch()` accumulates pages using a cursor pattern, ideal for
+infinite scroll or "load more" UIs.
+
+```ts
+import { useInfiniteFetch } from '@bquery/bquery/reactive';
+
+const feed = useInfiniteFetch<Post[], Post[]>(
+  (cursor) => `/api/posts?cursor=${cursor ?? ''}`,
+  {
+    getNextCursor: (page) =>
+      page.length > 0 ? page[page.length - 1].id : undefined,
+    transform: (pages) => pages.flat(),
+  }
+);
+
+await feed.fetchNextPage();
+console.log(feed.data.value);     // All accumulated posts
+console.log(feed.hasMore.value);  // true if more pages available
+
+// Reset and start over
+await feed.refresh();
+```
+
+### Options
+
+All `useFetch()` options (except `transform`) plus:
+
+| Option           | Type                                     | Description                             |
+| ---------------- | ---------------------------------------- | --------------------------------------- |
+| `getNextCursor`  | `(page, allPages) => cursor \| undefined` | Extract cursor for the next request    |
+| `transform`      | `(pages[]) => TData`                    | Transform accumulated pages             |
+| `initialCursor`  | `TCursor`                                | Starting cursor value                   |
+
+### Returned state
+
+| Field           | Type                                    | Description                            |
+| --------------- | --------------------------------------- | -------------------------------------- |
+| `data`          | `Signal<TData>`                         | Transformed accumulated data           |
+| `pages`         | `Signal<TResponse[]>`                   | Raw accumulated pages                  |
+| `hasMore`       | `computed boolean`                      | Whether more pages are available       |
+| `fetchNextPage` | `() => Promise`                         | Load the next page                     |
+| `refresh`       | `() => Promise`                         | Reset and re-fetch from initial cursor |
+| `clear`         | `() => void`                            | Clear all accumulated data             |
+| `dispose`       | `() => void`                            | Stop and clean up                      |
 
 ## Linked signals
 

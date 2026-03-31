@@ -449,13 +449,16 @@ const executeRequest = async <T>(config: HttpRequestConfig): Promise<HttpRespons
   } catch (error) {
     if (error instanceof HttpError) throw error;
 
-    if (error instanceof DOMException && error.name === 'AbortError') {
-      const isTimeout = error.message === 'Request timeout';
-      throw new HttpError(
-        isTimeout ? `Request timeout of ${config.timeout}ms exceeded` : 'Request aborted',
-        config,
-        isTimeout ? 'TIMEOUT' : 'ABORT'
-      );
+    if (error instanceof DOMException) {
+      if (error.name === 'AbortError' || error.name === 'TimeoutError') {
+        const isTimeout =
+          error.name === 'TimeoutError' || error.message === 'Request timeout';
+        throw new HttpError(
+          isTimeout ? `Request timeout of ${config.timeout}ms exceeded` : 'Request aborted',
+          config,
+          isTimeout ? 'TIMEOUT' : 'ABORT'
+        );
+      }
     }
 
     throw new HttpError(
