@@ -15,11 +15,13 @@ export { useInfiniteFetch, usePaginatedFetch } from './pagination';
 export { persistedSignal } from './persisted';
 export { usePolling } from './polling';
 export { readonly } from './readonly';
+export { createRestClient, useResource, useSubmit } from './rest';
 export { effectScope, getCurrentScope, onScopeDispose } from './scope';
 export { isComputed, isSignal } from './type-guards';
 export { toValue } from './to-value';
 export { untrack } from './untrack';
 export { watch } from './watch';
+export { useEventSource, useWebSocket } from './websocket';
 
 export type { CleanupFn, Observer } from './internals';
 export type {
@@ -47,7 +49,24 @@ export type {
   UsePaginatedFetchOptions,
 } from './pagination';
 export type { PollingState, UsePollingOptions } from './polling';
+export type {
+  RestClient,
+  UseResourceOptions,
+  UseResourceReturn,
+  UseSubmitOptions,
+  UseSubmitReturn,
+} from './rest';
 export type { EffectScope } from './scope';
 export type { LinkedSignal } from './linked';
 export type { MaybeSignal } from './to-value';
 export type { ReadonlySignal, ReadonlySignalHandle } from './readonly';
+export type {
+  UseEventSourceOptions,
+  UseEventSourceReturn,
+  UseWebSocketOptions,
+  UseWebSocketReturn,
+  WebSocketHeartbeatConfig,
+  WebSocketReconnectConfig,
+  WebSocketSerializer,
+  WebSocketStatus,
+} from './websocket';
