@@ -1399,8 +1399,10 @@ describe('toValue', () => {
       peek: () => 123,
       label: 'not a readonly signal',
     };
+    const result = toValue(domainObject);
 
-    expect(toValue(domainObject)).toBe(domainObject);
+    expect(result).toBe(domainObject);
+    expect(result.label).toBe('not a readonly signal');
   });
 
   it('participates in reactive tracking', () => {

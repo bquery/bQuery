@@ -41,20 +41,26 @@ export const isReadonlySignal = <T>(value: unknown): value is ReadonlySignal<T> 
  * @returns A readonly signal wrapper
  */
 export const readonly = <T>(sig: Signal<T>): ReadonlySignal<T> =>
-  Object.defineProperty(
+  Object.defineProperties(
+    {},
     {
-      get value(): T {
-        return sig.value;
+      value: {
+        get(): T {
+          return sig.value;
+        },
+        enumerable: true,
       },
-      peek(): T {
-        return sig.peek();
+      peek: {
+        value(): T {
+          return sig.peek();
+        },
+        enumerable: true,
       },
-    },
-    READONLY_SIGNAL_BRAND,
-    {
-      value: true,
-      enumerable: false,
-      configurable: false,
-      writable: false,
+      [READONLY_SIGNAL_BRAND]: {
+        value: true,
+        enumerable: false,
+        configurable: false,
+        writable: false,
+      },
     }
   ) as ReadonlySignal<T>;
