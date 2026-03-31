@@ -1781,19 +1781,22 @@ describe('effectScope', () => {
     const scope = effectScope();
     const loggedMessages: string[] = [];
     const originalError = console.error;
-    console.error = (message: string) => loggedMessages.push(message);
+    try {
+      console.error = (message: string) => loggedMessages.push(message);
 
-    scope.run(() => {
-      onScopeDispose(() => {
-        throw new Error('cleanup error');
+      scope.run(() => {
+        onScopeDispose(() => {
+          throw new Error('cleanup error');
+        });
       });
-    });
 
-    scope.stop();
-    console.error = originalError;
+      scope.stop();
 
-    expect(loggedMessages.length).toBe(1);
-    expect(loggedMessages[0]).toContain('Error in scope cleanup');
+      expect(loggedMessages.length).toBe(1);
+      expect(loggedMessages[0]).toContain('Error in scope cleanup');
+    } finally {
+      console.error = originalError;
+    }
   });
 
   it('scope.run can be called multiple times to collect more resources', () => {

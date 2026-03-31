@@ -79,6 +79,10 @@ export const useFormField = <T>(
   let changeInitialized = false;
   let suppressNextChangeValidation = false;
 
+  const handleScheduledValidationError = (validationError: unknown): void => {
+    console.error('bQuery forms: Error in scheduled field validation', validationError);
+  };
+
   const runValidation = async (): Promise<boolean> => {
     const currentValidationId = ++validationId;
     const validators = options.validators;
@@ -119,7 +123,7 @@ export const useFormField = <T>(
   };
 
   const debouncedValidate = debounce(() => {
-    void runValidation();
+    void runValidation().catch(handleScheduledValidationError);
   }, debounceMs);
 
   const scheduleValidation = (): void => {
@@ -128,7 +132,7 @@ export const useFormField = <T>(
       return;
     }
 
-    void runValidation();
+    void runValidation().catch(handleScheduledValidationError);
   };
 
   if (validateOn === 'change' || validateOn === 'both') {

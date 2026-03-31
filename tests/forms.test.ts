@@ -1065,7 +1065,7 @@ describe('forms/useFormField', () => {
   });
 
   it('validates on change when configured', async () => {
-    const field = useFormField('Ada', {
+    const field = useFormField<string>('Ada', {
       validators: [required('Required')],
       validateOn: 'change',
     });
@@ -1080,7 +1080,7 @@ describe('forms/useFormField', () => {
   });
 
   it('validates on blur when configured', async () => {
-    const field = useFormField('', {
+    const field = useFormField<string>('', {
       validators: [required('Required')],
       validateOn: 'blur',
     });
@@ -1096,7 +1096,7 @@ describe('forms/useFormField', () => {
   });
 
   it('validates on both change and blur when configured', async () => {
-    const field = useFormField('Ada', {
+    const field = useFormField<string>('Ada', {
       validators: [required('Required')],
       validateOn: 'both',
     });
@@ -1116,7 +1116,7 @@ describe('forms/useFormField', () => {
   });
 
   it('supports debounced automatic validation', async () => {
-    const field = useFormField('Ada', {
+    const field = useFormField<string>('Ada', {
       validators: [required('Required')],
       validateOn: 'change',
       debounceMs: 20,
@@ -1131,7 +1131,7 @@ describe('forms/useFormField', () => {
   });
 
   it('resets pending debounce, touched state, and errors', async () => {
-    const field = useFormField('', {
+    const field = useFormField<string>('', {
       validators: [required('Required')],
       validateOn: 'change',
       debounceMs: 20,
@@ -1151,9 +1151,9 @@ describe('forms/useFormField', () => {
   });
 
   it('ignores stale async validation results', async () => {
-    const field = useFormField('', {
+    const field = useFormField<string>('', {
       validators: [
-        customAsync(async (value: string) => {
+        async (value: string) => {
           if (value === 'slow') {
             await new Promise((resolve) => setTimeout(resolve, 20));
             return 'Taken';
@@ -1161,7 +1161,7 @@ describe('forms/useFormField', () => {
 
           await new Promise((resolve) => setTimeout(resolve, 0));
           return true;
-        }),
+        },
       ],
       validateOn: 'change',
     });
@@ -1176,6 +1176,33 @@ describe('forms/useFormField', () => {
     expect(field.error.value).toBe('');
     expect(field.isValid.value).toBe(true);
     expect(field.isValidating.value).toBe(false);
+  });
+
+  it('catches scheduled validation rejections and clears isValidating', async () => {
+    const field = useFormField<string>('Ada', {
+      validators: [
+        async () => {
+          throw new Error('validator failed');
+        },
+      ],
+      validateOn: 'change',
+    });
+    const loggedMessages: string[] = [];
+    const originalError = console.error;
+
+    try {
+      console.error = (message: string) => loggedMessages.push(message);
+
+      field.value.value = 'Grace';
+      await new Promise<void>((resolve) => queueMicrotask(resolve));
+      await new Promise<void>((resolve) => queueMicrotask(resolve));
+
+      expect(field.isValidating.value).toBe(false);
+      expect(loggedMessages).toHaveLength(1);
+      expect(loggedMessages[0]).toContain('Error in scheduled field validation');
+    } finally {
+      console.error = originalError;
+    }
   });
 });
 
