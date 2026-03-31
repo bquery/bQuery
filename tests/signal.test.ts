@@ -1802,6 +1802,33 @@ describe('effectScope', () => {
     expect(innerCaptured).toBe(inner);
   });
 
+  it('getCurrentScope falls back to the nearest active parent after an inner scope stops', () => {
+    const outer = effectScope();
+    const inner = effectScope();
+    const count = signal(0);
+    let capturedAfterInnerStop: EffectScope | undefined;
+    let outerRuns = 0;
+
+    outer.run(() => {
+      inner.run(() => {
+        inner.stop();
+        capturedAfterInnerStop = getCurrentScope();
+        effect(() => {
+          void count.value;
+          outerRuns++;
+        });
+      });
+    });
+
+    expect(capturedAfterInnerStop).toBe(outer);
+    expect(outerRuns).toBe(1);
+
+    outer.stop();
+    count.value = 1;
+
+    expect(outerRuns).toBe(1);
+  });
+
   // -----------------------------------------------------------------------
   // Nested scopes
   // -----------------------------------------------------------------------

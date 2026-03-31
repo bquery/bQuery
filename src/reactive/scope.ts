@@ -105,7 +105,15 @@ const isAsyncFunction = (value: unknown): value is (...args: never[]) => Promise
  * Returns the currently active scope, or `undefined` if none.
  * @internal
  */
-export const getActiveScope = (): EffectScope | undefined => scopeStack[scopeStack.length - 1];
+export const getActiveScope = (): EffectScope | undefined => {
+  for (let i = scopeStack.length - 1; i >= 0; i--) {
+    if (scopeStack[i].active) {
+      return scopeStack[i];
+    }
+  }
+
+  return undefined;
+};
 
 // ---------------------------------------------------------------------------
 // EffectScope implementation
