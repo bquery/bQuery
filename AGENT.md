@@ -109,11 +109,15 @@ Each `src/<module>/index.ts` re-exports the module's public API.
 | `usePolling(input, options)` | function  | Periodic data fetching with pause/resume/visibility           |
 | `usePaginatedFetch(fn, opt)` | function  | Cursor-based pagination with next/prev/goTo helpers           |
 | `useInfiniteFetch(fn, opt)`  | function  | Infinite scroll with accumulated pages and fetchNextPage      |
-| `useWebSocket(url, opt)`     | function  | Reactive WebSocket with auto-reconnect, heartbeat, history    |
+| `useWebSocket(url, opt)`     | function  | Reactive WebSocket with auto-reconnect, heartbeat, latency, history |
+| `useWebSocketChannel(url, wsOpt, chOpt)` | function | Topic-based channel multiplexer over a single WebSocket |
 | `useEventSource(url, opt)`   | function  | Reactive SSE composable with auto-reconnect                   |
 | `useResource(url, opt)`      | function  | REST CRUD composable with optimistic updates                  |
+| `useResourceList(url, opt)`  | function  | Reactive list CRUD with optimistic add/remove/update          |
 | `useSubmit(url, opt)`        | function  | Form submission composable with reactive state                |
 | `createRestClient(url, cfg)` | function  | Typed imperative REST client (list/get/create/update/patch/remove) |
+| `createRequestQueue(opt)`    | function  | Request queue with configurable concurrency limit             |
+| `deduplicateRequest(key, fn)`| function  | Coalesce identical in-flight requests                         |
 | `readonly(sig)`              | function  | Read-only wrapper around a signal                             |
 | `isSignal`, `isComputed`     | functions | Type guards                                                   |
 | `Signal`, `Computed`         | classes   | Signal and Computed value classes                             |

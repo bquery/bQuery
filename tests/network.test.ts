@@ -1,9 +1,14 @@
 import { describe, expect, it, beforeEach, afterEach } from 'bun:test';
 import {
+  createHttp,
+  createRequestQueue,
   createRestClient,
+  deduplicateRequest,
   useResource,
+  useResourceList,
   useSubmit,
   useWebSocket,
+  useWebSocketChannel,
   useEventSource,
   signal,
 } from '../src/reactive/signal';
@@ -1080,5 +1085,641 @@ describe('createRestClient', () => {
 
     await users.list();
     expect(capturedHeaders?.get('authorization')).toBe('Bearer token123');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// NEW: useWebSocket — latency, lastDisconnectedAt, onReconnect
+// ---------------------------------------------------------------------------
+
+describe('useWebSocket — new extensions', () => {
+  beforeEach(() => installWebSocketMock());
+  afterEach(() => uninstallWebSocketMock());
+
+  it('exposes latency signal initialized to 0', async () => {
+    const ws = useWebSocket('ws://localhost/test', {
+      heartbeat: { interval: 50, pongTimeout: 500 },
+    });
+    await new Promise((r) => setTimeout(r, 10));
+    expect(ws.latency.value).toBe(0);
+    ws.dispose();
+  });
+
+  it('exposes lastDisconnectedAt signal initialized to 0', async () => {
+    const ws = useWebSocket('ws://localhost/test');
+    await new Promise((r) => setTimeout(r, 10));
+    expect(ws.lastDisconnectedAt.value).toBe(0);
+    ws.dispose();
+  });
+
+  it('updates lastDisconnectedAt on unexpected close', async () => {
+    const ws = useWebSocket('ws://localhost/test', { autoReconnect: false });
+    await new Promise((r) => setTimeout(r, 10));
+    expect(ws.isConnected.value).toBe(true);
+
+    const before = Date.now();
+    lastMockWS!._simulateClose(1006, 'unexpected');
+    await new Promise((r) => setTimeout(r, 10));
+
+    expect(ws.lastDisconnectedAt.value).toBeGreaterThanOrEqual(before);
+    expect(ws.lastDisconnectedAt.value).toBeLessThanOrEqual(Date.now());
+    ws.dispose();
+  });
+
+  it('does NOT update lastDisconnectedAt on explicit close', async () => {
+    const ws = useWebSocket('ws://localhost/test', { autoReconnect: false });
+    await new Promise((r) => setTimeout(r, 10));
+
+    ws.close();
+    await new Promise((r) => setTimeout(r, 20));
+
+    expect(ws.lastDisconnectedAt.value).toBe(0);
+    ws.dispose();
+  });
+
+  it('calls onReconnect after successful auto-reconnect', async () => {
+    let reconnectCalled = false;
+    let reconnectAttemptCount = -1;
+
+    const ws = useWebSocket('ws://localhost/test', {
+      autoReconnect: { delay: 20, maxAttempts: 3 },
+      onReconnect: (attempts) => {
+        reconnectCalled = true;
+        reconnectAttemptCount = attempts;
+      },
+    });
+
+    await new Promise((r) => setTimeout(r, 10));
+    expect(ws.isConnected.value).toBe(true);
+
+    // Simulate unexpected close
+    lastMockWS!._simulateClose(1006, 'server restart');
+
+    // Wait for reconnect cycle
+    await new Promise((r) => setTimeout(r, 80));
+
+    // After reconnect, open the new socket
+    if (lastMockWS!.readyState !== MockWebSocket.OPEN) {
+      lastMockWS!._simulateOpen();
+    }
+    await new Promise((r) => setTimeout(r, 10));
+
+    expect(reconnectCalled).toBe(true);
+    expect(reconnectAttemptCount).toBeGreaterThanOrEqual(0);
+    ws.dispose();
+  });
+
+  it('measures latency via heartbeat RTT', async () => {
+    const ws = useWebSocket('ws://localhost/test', {
+      heartbeat: { interval: 30, pongTimeout: 5000, responseMessage: 'pong' },
+    });
+    await new Promise((r) => setTimeout(r, 10));
+    expect(ws.isConnected.value).toBe(true);
+
+    // Wait for heartbeat to fire
+    await new Promise((r) => setTimeout(r, 50));
+
+    // Simulate pong
+    lastMockWS!._simulateMessage('pong');
+    await new Promise((r) => setTimeout(r, 10));
+
+    expect(ws.latency.value).toBeGreaterThan(0);
+    ws.dispose();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// NEW: useWebSocketChannel
+// ---------------------------------------------------------------------------
+
+describe('useWebSocketChannel', () => {
+  beforeEach(() => installWebSocketMock());
+  afterEach(() => uninstallWebSocketMock());
+
+  it('routes messages to subscribed channels', async () => {
+    const mux = useWebSocketChannel('ws://localhost/mux');
+    await new Promise((r) => setTimeout(r, 10));
+
+    const general = mux.subscribe('general');
+    const updates = mux.subscribe('updates');
+
+    // Simulate incoming messages for 'general' channel
+    lastMockWS!._simulateMessage(JSON.stringify({ channel: 'general', data: 'hello' }));
+    await new Promise((r) => setTimeout(r, 10));
+
+    expect(general.data.value).toEqual({ channel: 'general', data: 'hello' });
+    expect(updates.data.value).toBeUndefined();
+
+    // Simulate incoming messages for 'updates' channel
+    lastMockWS!._simulateMessage(JSON.stringify({ channel: 'updates', data: 42 }));
+    await new Promise((r) => setTimeout(r, 10));
+
+    expect(updates.data.value).toEqual({ channel: 'updates', data: 42 });
+
+    mux.ws.dispose();
+  });
+
+  it('publishes messages to a channel', async () => {
+    const mux = useWebSocketChannel('ws://localhost/mux');
+    await new Promise((r) => setTimeout(r, 10));
+
+    mux.publish('chat', { text: 'Hi!' });
+
+    expect(lastMockWS!.sentMessages.length).toBe(1);
+    expect(JSON.parse(lastMockWS!.sentMessages[0] as string)).toEqual({
+      channel: 'chat',
+      data: { text: 'Hi!' },
+    });
+
+    mux.ws.dispose();
+  });
+
+  it('allows unsubscribe from a channel', async () => {
+    const mux = useWebSocketChannel('ws://localhost/mux');
+    await new Promise((r) => setTimeout(r, 10));
+
+    const sub = mux.subscribe('temp');
+    sub.unsubscribe();
+
+    // Message to unsubscribed channel should not update signal
+    lastMockWS!._simulateMessage(JSON.stringify({ channel: 'temp', data: 'gone' }));
+    await new Promise((r) => setTimeout(r, 10));
+
+    expect(sub.data.value).toBeUndefined();
+
+    mux.ws.dispose();
+  });
+
+  it('supports custom channel extractor', async () => {
+    const mux = useWebSocketChannel<string, { topic: string; payload: string }>(
+      'ws://localhost/mux',
+      {},
+      {
+        getChannel: (msg) => msg.topic,
+        wrap: (ch, data) => ({ topic: ch, payload: data }),
+      }
+    );
+    await new Promise((r) => setTimeout(r, 10));
+
+    const news = mux.subscribe('news');
+
+    lastMockWS!._simulateMessage(JSON.stringify({ topic: 'news', payload: 'Breaking!' }));
+    await new Promise((r) => setTimeout(r, 10));
+
+    expect(news.data.value).toEqual({ topic: 'news', payload: 'Breaking!' });
+
+    // Test custom wrap
+    mux.publish('news', 'Hello');
+    const sent = JSON.parse(lastMockWS!.sentMessages[0] as string);
+    expect(sent).toEqual({ topic: 'news', payload: 'Hello' });
+
+    mux.ws.dispose();
+  });
+
+  it('exposes the underlying ws composable', async () => {
+    const mux = useWebSocketChannel('ws://localhost/mux');
+    await new Promise((r) => setTimeout(r, 10));
+
+    expect(mux.ws.isConnected.value).toBe(true);
+    expect(mux.ws.status.value).toBe('OPEN');
+
+    mux.ws.dispose();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// NEW: useResourceList
+// ---------------------------------------------------------------------------
+
+describe('useResourceList', () => {
+  it('fetches list data on initialization', async () => {
+    const items = [
+      { id: 1, name: 'A' },
+      { id: 2, name: 'B' },
+    ];
+    const list = useResourceList<{ id: number; name: string }>('http://api.test/items', {
+      immediate: true,
+      fetcher: asMockFetch(async () => new Response(JSON.stringify(items), { status: 200 })),
+    });
+
+    await new Promise((r) => setTimeout(r, 50));
+    expect(list.data.value).toEqual(items);
+    expect(list.status.value).toBe('success');
+    list.dispose();
+  });
+
+  it('adds an item via POST', async () => {
+    const list = useResourceList<{ id: number; name: string }>('http://api.test/items', {
+      immediate: false,
+      fetcher: asMockFetch(async (_input, init) => {
+        if (init?.method === 'POST') {
+          return new Response(JSON.stringify({ id: 3, name: 'C' }), { status: 201 });
+        }
+        return new Response(JSON.stringify([]), { status: 200 });
+      }),
+    });
+
+    // Start with an existing list
+    list.data.value = [
+      { id: 1, name: 'A' },
+      { id: 2, name: 'B' },
+    ];
+
+    await list.actions.add({ name: 'C' });
+    await new Promise((r) => setTimeout(r, 50));
+
+    expect(list.data.value?.length).toBe(3);
+    expect(list.data.value?.[2]).toEqual({ id: 3, name: 'C' });
+    list.dispose();
+  });
+
+  it('removes an item via DELETE', async () => {
+    const list = useResourceList<{ id: number; name: string }>('http://api.test/items', {
+      immediate: false,
+      fetcher: asMockFetch(async (_input, init) => {
+        if (init?.method === 'DELETE') {
+          return new Response('', { status: 204 });
+        }
+        return new Response(JSON.stringify([]), { status: 200 });
+      }),
+    });
+
+    list.data.value = [
+      { id: 1, name: 'A' },
+      { id: 2, name: 'B' },
+    ];
+
+    await list.actions.remove(1);
+    await new Promise((r) => setTimeout(r, 50));
+
+    expect(list.data.value?.length).toBe(1);
+    expect(list.data.value?.[0]).toEqual({ id: 2, name: 'B' });
+    list.dispose();
+  });
+
+  it('updates an item via PUT', async () => {
+    const list = useResourceList<{ id: number; name: string }>('http://api.test/items', {
+      immediate: false,
+      fetcher: asMockFetch(async (_input, init) => {
+        if (init?.method === 'PUT') {
+          return new Response(JSON.stringify({ id: 1, name: 'Updated' }), { status: 200 });
+        }
+        return new Response(JSON.stringify([]), { status: 200 });
+      }),
+    });
+
+    list.data.value = [
+      { id: 1, name: 'A' },
+      { id: 2, name: 'B' },
+    ];
+
+    await list.actions.update(1, { name: 'Updated' });
+    await new Promise((r) => setTimeout(r, 50));
+
+    expect(list.data.value?.[0]).toEqual({ id: 1, name: 'Updated' });
+    expect(list.data.value?.[1]).toEqual({ id: 2, name: 'B' });
+    list.dispose();
+  });
+
+  it('patches an item via PATCH', async () => {
+    const list = useResourceList<{ id: number; name: string }>('http://api.test/items', {
+      immediate: false,
+      fetcher: asMockFetch(async (_input, init) => {
+        if (init?.method === 'PATCH') {
+          return new Response(JSON.stringify({ id: 2, name: 'Patched' }), { status: 200 });
+        }
+        return new Response(JSON.stringify([]), { status: 200 });
+      }),
+    });
+
+    list.data.value = [
+      { id: 1, name: 'A' },
+      { id: 2, name: 'B' },
+    ];
+
+    await list.actions.patch(2, { name: 'Patched' });
+    await new Promise((r) => setTimeout(r, 50));
+
+    expect(list.data.value?.[1]).toEqual({ id: 2, name: 'Patched' });
+    list.dispose();
+  });
+
+  it('supports optimistic add with rollback on error', async () => {
+    const list = useResourceList<{ id: number; name: string }>('http://api.test/items', {
+      immediate: false,
+      optimistic: true,
+      fetcher: asMockFetch(async () => new Response('Server Error', { status: 500 })),
+    });
+
+    list.data.value = [{ id: 1, name: 'A' }];
+
+    // Optimistic add — should appear then roll back
+    await list.actions.add({ name: 'Optimistic' });
+    await new Promise((r) => setTimeout(r, 50));
+
+    // After error, should roll back to original
+    expect(list.data.value?.length).toBe(1);
+    expect(list.data.value?.[0].name).toBe('A');
+    list.dispose();
+  });
+
+  it('supports optimistic remove with rollback on error', async () => {
+    const list = useResourceList<{ id: number; name: string }>('http://api.test/items', {
+      immediate: false,
+      optimistic: true,
+      fetcher: asMockFetch(async () => new Response('Server Error', { status: 500 })),
+    });
+
+    list.data.value = [
+      { id: 1, name: 'A' },
+      { id: 2, name: 'B' },
+    ];
+
+    await list.actions.remove(1);
+    await new Promise((r) => setTimeout(r, 50));
+
+    // After error, should roll back to original
+    expect(list.data.value?.length).toBe(2);
+    list.dispose();
+  });
+
+  it('tracks isMutating during mutations', async () => {
+    let resolveFetch: (() => void) | undefined;
+    const list = useResourceList<{ id: number; name: string }>('http://api.test/items', {
+      immediate: false,
+      fetcher: asMockFetch(
+        () => new Promise<Response>((resolve) => {
+          resolveFetch = () => resolve(new Response(JSON.stringify({ id: 3, name: 'C' }), { status: 201 }));
+        })
+      ),
+    });
+
+    list.data.value = [{ id: 1, name: 'A' }];
+
+    const addPromise = list.actions.add({ name: 'C' });
+    await new Promise((r) => setTimeout(r, 10));
+
+    expect(list.isMutating.value).toBe(true);
+
+    resolveFetch?.();
+    await addPromise;
+    await new Promise((r) => setTimeout(r, 10));
+
+    expect(list.isMutating.value).toBe(false);
+    list.dispose();
+  });
+
+  it('calls mutation callbacks', async () => {
+    let successAction = '';
+    let errorAction = '';
+
+    const list = useResourceList<{ id: number; name: string }>('http://api.test/items', {
+      immediate: false,
+      onMutationSuccess: (action) => {
+        successAction = action;
+      },
+      onMutationError: (_error, action) => {
+        errorAction = action;
+      },
+      fetcher: asMockFetch(async (_input, init) => {
+        if (init?.method === 'POST') {
+          return new Response(JSON.stringify({ id: 3, name: 'C' }), { status: 201 });
+        }
+        return new Response('Error', { status: 500 });
+      }),
+    });
+
+    list.data.value = [{ id: 1, name: 'A' }];
+
+    await list.actions.add({ name: 'C' });
+    await new Promise((r) => setTimeout(r, 50));
+    expect(successAction).toBe('add');
+
+    await list.actions.remove(1);
+    await new Promise((r) => setTimeout(r, 50));
+    expect(errorAction).toBe('remove');
+
+    list.dispose();
+  });
+
+  it('supports custom getId', async () => {
+    const list = useResourceList<{ uid: string; title: string }>('http://api.test/items', {
+      immediate: false,
+      getId: (item) => item.uid,
+      fetcher: asMockFetch(async (_input, init) => {
+        if (init?.method === 'DELETE') {
+          return new Response('', { status: 204 });
+        }
+        return new Response(JSON.stringify([]), { status: 200 });
+      }),
+    });
+
+    list.data.value = [
+      { uid: 'abc', title: 'First' },
+      { uid: 'def', title: 'Second' },
+    ];
+
+    await list.actions.remove('abc');
+    await new Promise((r) => setTimeout(r, 50));
+
+    expect(list.data.value?.length).toBe(1);
+    expect(list.data.value?.[0].uid).toBe('def');
+    list.dispose();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// NEW: deduplicateRequest
+// ---------------------------------------------------------------------------
+
+describe('deduplicateRequest', () => {
+  it('deduplicates identical in-flight requests', async () => {
+    let callCount = 0;
+    const execute = async () => {
+      callCount++;
+      await new Promise((r) => setTimeout(r, 50));
+      return { result: 'data' };
+    };
+
+    const [a, b] = await Promise.all([
+      deduplicateRequest('/users', execute),
+      deduplicateRequest('/users', execute),
+    ]);
+
+    expect(callCount).toBe(1);
+    expect(a).toEqual({ result: 'data' });
+    expect(b).toEqual({ result: 'data' });
+  });
+
+  it('does NOT deduplicate different keys', async () => {
+    let callCount = 0;
+    const execute = async () => {
+      callCount++;
+      return { id: callCount };
+    };
+
+    await Promise.all([
+      deduplicateRequest('/users', execute),
+      deduplicateRequest('/posts', execute),
+    ]);
+
+    expect(callCount).toBe(2);
+  });
+
+  it('allows new request after previous one completes', async () => {
+    let callCount = 0;
+    const execute = async () => {
+      callCount++;
+      return { count: callCount };
+    };
+
+    const first = await deduplicateRequest('/key', execute);
+    expect(first).toEqual({ count: 1 });
+
+    const second = await deduplicateRequest('/key', execute);
+    expect(second).toEqual({ count: 2 });
+    expect(callCount).toBe(2);
+  });
+
+  it('cleans up cache on error', async () => {
+    let callCount = 0;
+    const execute = async () => {
+      callCount++;
+      if (callCount === 1) throw new Error('first fail');
+      return { ok: true };
+    };
+
+    await expect(deduplicateRequest('/fail', execute)).rejects.toThrow('first fail');
+
+    // Should allow retry since error cleared the cache
+    const result = await deduplicateRequest('/fail', execute);
+    expect(result).toEqual({ ok: true });
+    expect(callCount).toBe(2);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// NEW: createRequestQueue
+// ---------------------------------------------------------------------------
+
+describe('createRequestQueue', () => {
+  it('executes requests up to concurrency limit', async () => {
+    const queue = createRequestQueue({ concurrency: 2 });
+    const order: number[] = [];
+    let inFlight = 0;
+    let maxInFlight = 0;
+
+    const makeRequest = (id: number) =>
+      queue.add(async () => {
+        inFlight++;
+        maxInFlight = Math.max(maxInFlight, inFlight);
+        order.push(id);
+        await new Promise((r) => setTimeout(r, 30));
+        inFlight--;
+        return { data: id, status: 200, statusText: 'OK', headers: new Headers(), config: {} } as any;
+      });
+
+    await Promise.all([makeRequest(1), makeRequest(2), makeRequest(3), makeRequest(4)]);
+
+    expect(maxInFlight).toBeLessThanOrEqual(2);
+    expect(order).toEqual([1, 2, 3, 4]);
+  });
+
+  it('reports pending and size', async () => {
+    const queue = createRequestQueue({ concurrency: 1 });
+    let resolve1: (() => void) | undefined;
+
+    const p1 = queue.add(
+      () =>
+        new Promise<any>((resolve) => {
+          resolve1 = () =>
+            resolve({ data: 1, status: 200, statusText: 'OK', headers: new Headers(), config: {} });
+        })
+    );
+    const p2 = queue.add(
+      async () =>
+        ({ data: 2, status: 200, statusText: 'OK', headers: new Headers(), config: {} }) as any
+    );
+
+    await new Promise((r) => setTimeout(r, 10));
+
+    expect(queue.pending).toBe(1);
+    expect(queue.size).toBe(1);
+
+    resolve1?.();
+    await p1;
+    await p2;
+    // Allow drain microtask to complete
+    await new Promise((r) => setTimeout(r, 10));
+
+    expect(queue.pending).toBe(0);
+    expect(queue.size).toBe(0);
+  });
+
+  it('clears pending requests', async () => {
+    const queue = createRequestQueue({ concurrency: 1 });
+    let resolve1: (() => void) | undefined;
+
+    const p1 = queue.add(
+      () =>
+        new Promise<any>((resolve) => {
+          resolve1 = () =>
+            resolve({ data: 1, status: 200, statusText: 'OK', headers: new Headers(), config: {} });
+        })
+    );
+
+    const p2 = queue.add(
+      async () =>
+        ({ data: 2, status: 200, statusText: 'OK', headers: new Headers(), config: {} }) as any
+    );
+
+    await new Promise((r) => setTimeout(r, 10));
+
+    queue.clear();
+
+    // p2 should reject because it was cleared
+    await expect(p2).rejects.toThrow('Request queue cleared');
+
+    resolve1?.();
+    await p1; // p1 was already running, should complete
+  });
+
+  it('defaults to concurrency 6', () => {
+    const queue = createRequestQueue();
+    expect(queue.pending).toBe(0);
+    expect(queue.size).toBe(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// NEW: onRetry callback in RetryConfig
+// ---------------------------------------------------------------------------
+
+describe('http onRetry callback', () => {
+  it('calls onRetry before each retry attempt', async () => {
+    const retryAttempts: number[] = [];
+    let callCount = 0;
+
+    const api = createHttp({
+      fetcher: asMockFetch(async () => {
+        callCount++;
+        if (callCount <= 2) {
+          return new Response('Error', { status: 500 });
+        }
+        return new Response(JSON.stringify({ ok: true }), { status: 200 });
+      }),
+      retry: {
+        count: 3,
+        delay: 10,
+        onRetry: (_error, attempt) => {
+          retryAttempts.push(attempt);
+        },
+      },
+    });
+
+    const result = await api.get<{ ok: boolean }>('/test');
+    expect(result.data).toEqual({ ok: true });
+    expect(retryAttempts).toEqual([1, 2]);
+    expect(callCount).toBe(3);
   });
 });

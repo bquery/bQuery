@@ -23,10 +23,14 @@ import {
   usePaginatedFetch,
   useInfiniteFetch,
   useWebSocket,
+  useWebSocketChannel,
   useEventSource,
   useResource,
+  useResourceList,
   useSubmit,
   createRestClient,
+  createRequestQueue,
+  deduplicateRequest,
   untrack,
   isSignal,
   isComputed,
@@ -915,3 +919,183 @@ users.http.interceptors.request.use((config) => {
 | `update(id, body)` | `PUT` | `{baseUrl}/{id}` | Full replace |
 | `patch(id, body)` | `PATCH` | `{baseUrl}/{id}` | Partial update |
 | `remove(id)` | `DELETE` | `{baseUrl}/{id}` | Delete an item  |
+
+## WebSocket channels
+
+`useWebSocketChannel()` multiplexes a single WebSocket connection into
+topic-based channels. Incoming messages are routed to per-channel
+reactive signals based on a configurable channel extractor.
+
+```ts
+import { useWebSocketChannel } from '@bquery/bquery/reactive';
+
+const chat = useWebSocketChannel('wss://chat.example.com/ws');
+
+const general = chat.subscribe('general');
+const updates = chat.subscribe('updates');
+
+effect(() => console.log('General:', general.data.value));
+
+chat.publish('general', { text: 'Hello!' });
+
+// Unsubscribe from a channel
+updates.unsubscribe();
+
+// Access underlying WebSocket
+chat.ws.dispose();
+```
+
+### Channel options
+
+| Option        | Type                              | Default                     | Description                     |
+| ------------- | --------------------------------- | --------------------------- | ------------------------------- |
+| `getChannel`  | `(msg: TReceive) => string?`     | reads `msg.channel`         | Extract channel from message    |
+| `wrap`        | `(ch, data) => TReceive`         | `{ channel: ch, data }`    | Wrap payload for sending        |
+
+### Default message format
+
+```ts
+interface ChannelMessage<T = unknown> {
+  channel: string;
+  data: T;
+}
+```
+
+## WebSocket latency & reconnect events
+
+`useWebSocket()` now includes additional reactive signals and callbacks:
+
+```ts
+const ws = useWebSocket('wss://api.example.com/ws', {
+  heartbeat: { interval: 30_000, responseMessage: 'pong' },
+  onReconnect: (attempts) => console.log(`Reconnected after ${attempts} attempts`),
+});
+
+effect(() => {
+  console.log('Latency:', ws.latency.value, 'ms');
+  console.log('Last disconnect:', ws.lastDisconnectedAt.value);
+});
+```
+
+| Signal                | Type            | Description                                                    |
+| --------------------- | --------------- | -------------------------------------------------------------- |
+| `latency`             | `Signal<number>`| Round-trip time in ms measured from heartbeat ping/pong         |
+| `lastDisconnectedAt`  | `Signal<number>`| Timestamp of last unexpected disconnection (0 if never)        |
+
+| Callback     | Signature                      | Description                                  |
+| ------------ | ------------------------------ | -------------------------------------------- |
+| `onReconnect`| `(attempts: number) => void`   | Called after a successful auto-reconnection   |
+
+## Resource list composable
+
+`useResourceList()` provides collection-level CRUD with optimistic array mutations.
+
+```ts
+import { useResourceList } from '@bquery/bquery/reactive';
+
+interface Todo { id: number; title: string; done: boolean }
+
+const todos = useResourceList<Todo>('/api/todos', {
+  baseUrl: 'https://api.example.com',
+  optimistic: true,
+  getId: (t) => t.id,
+});
+
+await todos.actions.add({ title: 'Buy milk', done: false });
+await todos.actions.patch(1, { done: true });
+await todos.actions.remove(2);
+
+effect(() => console.log('Todos:', todos.data.value));
+```
+
+### Options
+
+All `useFetch()` options (except `method` and `body`) plus:
+
+| Option              | Type                             | Default           | Description                           |
+| ------------------- | -------------------------------- | ----------------- | ------------------------------------- |
+| `getId`             | `(item: T) => string \| number` | `item.id`         | Extract unique ID from each item      |
+| `optimistic`        | `boolean`                        | `false`           | Apply list mutations optimistically   |
+| `onMutationSuccess` | `(action: string) => void`       | —                 | Called after successful mutations      |
+| `onMutationError`   | `(error, action) => void`        | —                 | Called after failed mutations          |
+
+### Returned state
+
+| Field        | Type                       | Description                          |
+| ------------ | -------------------------- | ------------------------------------ |
+| `data`       | `Signal<T[]>`              | Reactive list data                   |
+| `error`      | `Signal<Error \| null>`    | Last error                           |
+| `status`     | `Signal<AsyncDataStatus>`  | Lifecycle status                     |
+| `pending`    | `computed boolean`         | Whether the list fetch is pending    |
+| `isMutating` | `computed boolean`         | Whether any mutation is in progress  |
+| `actions`    | `ResourceListActions<T>`   | CRUD methods (fetch/add/update/patch/remove) |
+| `refresh`    | `() => Promise`            | Re-fetch the list                    |
+| `clear`      | `() => void`               | Clear data and status                |
+| `dispose`    | `() => void`               | Stop all reactive state              |
+
+## Request deduplication
+
+`deduplicateRequest()` coalesces identical in-flight requests so that
+concurrent callers share a single promise.
+
+```ts
+import { deduplicateRequest, createHttp } from '@bquery/bquery/reactive';
+
+const api = createHttp({ baseUrl: 'https://api.example.com' });
+
+// Both calls share one HTTP request
+const [a, b] = await Promise.all([
+  deduplicateRequest('/users', () => api.get('/users')),
+  deduplicateRequest('/users', () => api.get('/users')),
+]);
+```
+
+## Request queue
+
+`createRequestQueue()` limits the number of concurrent HTTP requests.
+
+```ts
+import { createRequestQueue, createHttp } from '@bquery/bquery/reactive';
+
+const api = createHttp({ baseUrl: 'https://api.example.com' });
+const queue = createRequestQueue({ concurrency: 3 });
+
+// At most 3 requests run in parallel
+const results = await Promise.all(
+  ids.map(id => queue.add(() => api.get(`/items/${id}`)))
+);
+```
+
+### Options
+
+| Option        | Type     | Default | Description                          |
+| ------------- | -------- | ------- | ------------------------------------ |
+| `concurrency` | `number` | `6`     | Maximum concurrent in-flight requests |
+
+### Returned API
+
+| Member    | Type                                          | Description                        |
+| --------- | --------------------------------------------- | ---------------------------------- |
+| `add`     | `(fn: () => Promise) => Promise`              | Enqueue a request                  |
+| `pending` | `number` (getter)                             | Currently running requests         |
+| `size`    | `number` (getter)                             | Requests waiting in queue          |
+| `clear`   | `() => void`                                  | Reject all pending (queued) items  |
+
+## onRetry callback
+
+The `RetryConfig` now accepts an optional `onRetry` callback invoked
+before each retry attempt:
+
+```ts
+import { createHttp } from '@bquery/bquery/reactive';
+
+const api = createHttp({
+  retry: {
+    count: 3,
+    delay: 1000,
+    onRetry: (error, attempt) => {
+      console.log(`Retry #${attempt}:`, error.message);
+    },
+  },
+});
+```
