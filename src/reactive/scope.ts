@@ -73,8 +73,7 @@ const scopeStack: ScopeInternal[] = [];
 const isPromiseLike = (value: unknown): value is PromiseLike<unknown> =>
   (typeof value === 'object' || typeof value === 'function') &&
   value !== null &&
-  'then' in value &&
-  typeof value.then === 'function';
+  typeof (value as { then?: unknown }).then === 'function';
 
 /**
  * Returns the currently active scope, or `undefined` if none.

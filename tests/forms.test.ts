@@ -1046,7 +1046,7 @@ describe('forms/useFormField', () => {
     const field = useFormField(readonlyValue as unknown as string);
 
     expect(field.value).not.toBe(readonlyValue);
-    expect(field.value.value).toBe(readonlyValue);
+    expect(field.value.value).toBe('Ada');
 
     expect(() => field.reset()).not.toThrow();
   });

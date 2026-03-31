@@ -6,6 +6,7 @@
 
 import { debounce } from '../core/utils/function';
 import { isPromise } from '../core/utils/type-guards';
+import { Computed } from '../reactive/computed';
 import { Signal } from '../reactive/core';
 import { computed, effect, signal } from '../reactive/index';
 import type {
@@ -60,7 +61,10 @@ export const useFormField = <T>(
   initialValue: T | Signal<T>,
   options: UseFormFieldOptions<T> = {}
 ): UseFormFieldReturn<T> => {
-  const value = isSignal(initialValue) ? initialValue : signal(initialValue);
+  const startingValue = isComputedValue<T>(initialValue)
+    ? initialValue.value
+    : (initialValue as T);
+  const value: Signal<T> = isSignal(initialValue) ? initialValue : signal(startingValue);
   const initial = value.peek();
   const error = signal(options.initialError ?? '');
   const isTouched = signal(false);
@@ -183,4 +187,12 @@ export const useFormField = <T>(
  */
 const isSignal = <T>(value: T | Signal<T>): value is Signal<T> => {
   return value instanceof Signal;
+};
+
+/**
+ * Determines whether a value is a computed reactive source.
+ * @internal
+ */
+const isComputedValue = <T>(value: unknown): value is Computed<T> => {
+  return value instanceof Computed;
 };
