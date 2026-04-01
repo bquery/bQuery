@@ -593,8 +593,14 @@ export const useResourceList = <T = unknown>(
 
     try {
       const mutationUrl = `${baseUrl()}${urlSuffix}`;
-      // Only forward transport-level options, not list-typed defaults
-      const { defaultValue: _, transform: _t, ...transportOpts } = fetchOptions;
+      // Only forward transport-level options, not list-typed async-data defaults/callbacks
+      const {
+        defaultValue: _defaultValue,
+        transform: _transform,
+        onSuccess: _onSuccess,
+        onError: _onError,
+        ...transportOpts
+      } = fetchOptions;
       const mutationState = useFetch<TResult>(mutationUrl, {
         ...(transportOpts as Omit<UseFetchOptions<TResult>, 'method' | 'body'>),
         method,
@@ -658,10 +664,15 @@ export const useResourceList = <T = unknown>(
           : undefined
       );
 
-      // If not optimistic, add the server-returned item to the list
-      if (!optimistic && result !== undefined && !disposed) {
+      if (result !== undefined && !disposed) {
         const current = fetchState.data.peek() ?? [];
-        fetchState.data.value = [...current, result];
+        if (optimistic) {
+          fetchState.data.value = current.map((item) =>
+            item === optimisticItem ? result : item
+          );
+        } else {
+          fetchState.data.value = [...current, result];
+        }
       }
 
       return result;

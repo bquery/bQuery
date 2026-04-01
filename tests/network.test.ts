@@ -4,6 +4,7 @@ import {
   createRequestQueue,
   createRestClient,
   deduplicateRequest,
+  type EventSourceStatus,
   useResource,
   useResourceList,
   useSubmit,
@@ -469,13 +470,9 @@ describe('useWebSocket', () => {
         connectCount++;
       }
 
-      // Override: open normally then close immediately on next tick
+      // Override: fail during connect without ever reaching OPEN
       _simulateOpen(): void {
         if (this.readyState === MockWebSocket.CONNECTING) {
-          this.readyState = MockWebSocket.OPEN;
-          const event = new Event('open');
-          this.onopen?.(event);
-          // Immediately close unexpectedly
           setTimeout(() => {
             this.readyState = MockWebSocket.CLOSED;
             const closeEvent = new Event('close') as CloseEvent;
@@ -589,6 +586,11 @@ describe('useEventSource', () => {
     };
 
     expect(validOptions.autoReconnect).toEqual({ delay: 10, maxAttempts: 2 });
+  });
+
+  it('uses the narrower EventSource status type', () => {
+    const status: EventSourceStatus = 'CONNECTING';
+    expect(status).toBe('CONNECTING');
   });
 
   it('connects immediately and sets OPEN status', async () => {
@@ -1207,6 +1209,29 @@ describe('useWebSocket — new extensions', () => {
     ws.dispose();
   });
 
+  it('resets reconnect attempt counters after a successful auto-reconnect', async () => {
+    const ws = useWebSocket('ws://localhost/test', {
+      autoReconnect: { delay: 20, maxAttempts: 2 },
+    });
+
+    await new Promise((r) => setTimeout(r, 10));
+    lastMockWS!._simulateClose(1006, 'server restart');
+
+    await new Promise((r) => setTimeout(r, 40));
+    if (lastMockWS!.readyState !== MockWebSocket.OPEN) {
+      lastMockWS!._simulateOpen();
+    }
+    await new Promise((r) => setTimeout(r, 10));
+
+    expect(ws.reconnectAttempts.value).toBe(0);
+
+    lastMockWS!._simulateClose(1006, 'server restart again');
+    await new Promise((r) => setTimeout(r, 10));
+    expect(ws.reconnectAttempts.value).toBe(0);
+
+    ws.dispose();
+  });
+
   it('measures latency via heartbeat RTT', async () => {
     const ws = useWebSocket('ws://localhost/test', {
       heartbeat: { interval: 30, pongTimeout: 5000, responseMessage: 'pong' },
@@ -1531,6 +1556,30 @@ describe('useResourceList', () => {
     list.dispose();
   });
 
+  it('reconciles optimistic add placeholders with the server response', async () => {
+    const list = useResourceList<{ id?: number; name: string }>('http://api.test/items', {
+      immediate: false,
+      optimistic: true,
+      fetcher: asMockFetch(async (_input, init) => {
+        if (init?.method === 'POST') {
+          return new Response(JSON.stringify({ id: 3, name: 'Optimistic' }), { status: 201 });
+        }
+        return new Response(JSON.stringify([]), { status: 200 });
+      }),
+    });
+
+    list.data.value = [{ id: 1, name: 'A' }];
+
+    await list.actions.add({ name: 'Optimistic' });
+    await new Promise((r) => setTimeout(r, 50));
+
+    expect(list.data.value).toEqual([
+      { id: 1, name: 'A' },
+      { id: 3, name: 'Optimistic' },
+    ]);
+    list.dispose();
+  });
+
   it('supports optimistic remove with rollback on error', async () => {
     const list = useResourceList<{ id: number; name: string }>('http://api.test/items', {
       immediate: false,
@@ -1607,6 +1656,36 @@ describe('useResourceList', () => {
     await new Promise((r) => setTimeout(r, 50));
     expect(errorAction).toBe('remove');
 
+    list.dispose();
+  });
+
+  it('does not call list-level fetch callbacks for mutation responses', async () => {
+    let successCalls = 0;
+    let errorCalls = 0;
+
+    const list = useResourceList<{ id: number; name: string }>('http://api.test/items', {
+      immediate: false,
+      onSuccess: () => {
+        successCalls++;
+      },
+      onError: () => {
+        errorCalls++;
+      },
+      fetcher: asMockFetch(async (_input, init) => {
+        if (init?.method === 'POST') {
+          return new Response(JSON.stringify({ id: 2, name: 'B' }), { status: 201 });
+        }
+        return new Response(JSON.stringify([]), { status: 200 });
+      }),
+    });
+
+    list.data.value = [{ id: 1, name: 'A' }];
+
+    await list.actions.add({ name: 'B' });
+    await new Promise((r) => setTimeout(r, 20));
+
+    expect(successCalls).toBe(0);
+    expect(errorCalls).toBe(0);
     list.dispose();
   });
 

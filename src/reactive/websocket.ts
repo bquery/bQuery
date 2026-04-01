@@ -14,6 +14,8 @@ import { Signal, signal } from './core';
 
 /** Connection status for a WebSocket. */
 export type WebSocketStatus = 'CONNECTING' | 'OPEN' | 'CLOSING' | 'CLOSED';
+/** Connection status for an EventSource. */
+export type EventSourceStatus = 'CONNECTING' | 'OPEN' | 'CLOSED';
 
 /** Configuration for automatic reconnection. */
 export interface WebSocketReconnectConfig {
@@ -357,12 +359,8 @@ export const useWebSocket = <TSend = string, TReceive = string>(
       status.value = 'OPEN';
       const wasReconnecting = isAutoReconnecting;
       const reconnectCount = internalReconnectCount;
-      if (!isAutoReconnecting) {
-        // Only reset counters on user-initiated connections (not auto-reconnects,
-        // so maxAttempts tracking remains accurate across rapid open/close cycles)
-        internalReconnectCount = 0;
-        reconnectAttempts.value = 0;
-      }
+      internalReconnectCount = 0;
+      reconnectAttempts.value = 0;
       isAutoReconnecting = false;
       flushQueue();
       startHeartbeat();
@@ -630,7 +628,7 @@ export interface UseEventSourceOptions<TData = unknown> {
 /** Return value of `useEventSource()`. */
 export interface UseEventSourceReturn<TData = unknown> {
   /** Current connection status (`CONNECTING`, `OPEN`, `CLOSED`). */
-  status: { readonly value: WebSocketStatus; peek(): WebSocketStatus };
+  status: { readonly value: EventSourceStatus; peek(): EventSourceStatus };
   /** Last received data (deserialized). */
   data: Signal<TData | undefined>;
   /** Last event name that delivered data. */
@@ -699,7 +697,7 @@ export const useEventSource = <TData = unknown>(
       }
     });
 
-  const status = signal<WebSocketStatus>('CLOSED');
+  const status = signal<EventSourceStatus>('CLOSED');
   const data = signal<TData | undefined>(undefined);
   const eventName = signal<string | undefined>(undefined);
   const error = signal<Event | null>(null);

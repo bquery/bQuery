@@ -170,6 +170,24 @@ describe('createHttp', () => {
     expect(res.headers.get('x-custom')).toBe('value');
     expect(res.config).toBeDefined();
   });
+
+  it('throws PARSE errors for invalid JSON without retrying as a network failure', async () => {
+    let callCount = 0;
+
+    const api = createHttp({
+      retry: 2,
+      fetcher: asMockFetch(async () => {
+        callCount++;
+        return new Response('not json', { status: 200, statusText: 'OK' });
+      }),
+    });
+
+    await expect(api.get('/broken-json')).rejects.toMatchObject({
+      name: 'HttpError',
+      code: 'PARSE',
+    });
+    expect(callCount).toBe(1);
+  });
 });
 
 // ---------------------------------------------------------------------------

@@ -69,6 +69,7 @@ export type { ReadonlySignal, ReadonlySignalHandle } from './readonly';
 export type {
   ChannelMessage,
   ChannelSubscription,
+  EventSourceStatus,
   UseEventSourceOptions,
   UseEventSourceReturn,
   UseWebSocketChannelOptions,

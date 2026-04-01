@@ -58,8 +58,6 @@ export interface HttpRequestConfig extends Omit<RequestInit, 'body' | 'headers' 
   signal?: AbortSignal;
   /** Retry configuration. Pass a number for simple retry count, or a `RetryConfig` object. */
   retry?: number | RetryConfig;
-  /** Called repeatedly during request body upload (requires streaming body). */
-  onUploadProgress?: (event: HttpProgressEvent) => void;
   /** Called repeatedly as response body chunks arrive. */
   onDownloadProgress?: (event: HttpProgressEvent) => void;
 }
@@ -201,6 +199,7 @@ export interface HttpClient {
 const DEFAULT_VALIDATE_STATUS = (status: number): boolean => status >= 200 && status < 300;
 
 const DEFAULT_RETRY_ON = (error: HttpError): boolean => {
+  if (error.code === 'PARSE') return false;
   if (error.code === 'TIMEOUT' || error.code === 'NETWORK') return true;
   const status = error.response?.status;
   return status !== undefined && status >= 500;
@@ -303,7 +302,8 @@ const buildUrl = (url: string, baseUrl?: string): URL => {
 /** @internal */
 const parseResponseBody = async <T>(
   response: Response,
-  parseAs: BqueryFetchParseAs
+  parseAs: BqueryFetchParseAs,
+  config: HttpRequestConfig
 ): Promise<T> => {
   if (parseAs === 'response') return response as T;
   if (parseAs === 'text') return (await response.text()) as T;
@@ -318,8 +318,17 @@ const parseResponseBody = async <T>(
     return JSON.parse(text) as T;
   } catch (parseError) {
     const detail = response.url ? ` for ${response.url}` : '';
-    throw new Error(
-      `Failed to parse JSON response${detail} (status ${response.status}): ${parseError instanceof Error ? parseError.message : String(parseError)}`
+    throw new HttpError(
+      `Failed to parse JSON response${detail} (status ${response.status}): ${parseError instanceof Error ? parseError.message : String(parseError)}`,
+      config,
+      'PARSE',
+      {
+        data: text,
+        status: response.status,
+        statusText: response.statusText,
+        headers: response.headers,
+        config,
+      }
     );
   }
 };
@@ -430,7 +439,22 @@ const executeRequest = async <T>(config: HttpRequestConfig): Promise<HttpRespons
       response = wrapDownloadStream(response, config.onDownloadProgress);
     }
 
-    const data = await parseResponseBody<T>(response, parseAs);
+    if (!validateStatus(response.status)) {
+      throw new HttpError(
+        `Request failed with status ${response.status}`,
+        config,
+        'ERR_BAD_RESPONSE',
+        {
+          data: undefined,
+          status: response.status,
+          statusText: response.statusText,
+          headers: response.headers,
+          config,
+        }
+      );
+    }
+
+    const data = await parseResponseBody<T>(response, parseAs, config);
 
     const httpResponse: HttpResponse<T> = {
       data,
@@ -439,15 +463,6 @@ const executeRequest = async <T>(config: HttpRequestConfig): Promise<HttpRespons
       headers: response.headers,
       config,
     };
-
-    if (!validateStatus(response.status)) {
-      throw new HttpError(
-        `Request failed with status ${response.status}`,
-        config,
-        'ERR_BAD_RESPONSE',
-        httpResponse as HttpResponse
-      );
-    }
 
     return httpResponse;
   } catch (error) {

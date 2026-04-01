@@ -62,6 +62,7 @@ export type {
   LinkedSignal,
   MaybeSignal,
   Observer,
+  EventSourceStatus,
   PaginatedState,
   PollingState,
   ReadonlySignal,
