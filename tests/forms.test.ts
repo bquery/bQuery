@@ -1034,11 +1034,11 @@ describe('forms/createForm', () => {
           name: { initialValue: '' },
         },
       });
-      const errors = { name: 'Required' } as Record<string, string>;
-
-      Object.defineProperty(errors, '__proto__', { value: 'ignored', enumerable: true });
-      Object.defineProperty(errors, 'constructor', { value: 'ignored', enumerable: true });
-      Object.defineProperty(errors, 'prototype', { value: 'ignored', enumerable: true });
+      const errors = Object.create(null) as Record<string, string>;
+      errors.name = 'Required';
+      errors.__proto__ = 'ignored' as unknown as string;
+      errors.constructor = 'ignored' as unknown as string;
+      errors.prototype = 'ignored' as unknown as string;
 
       expect(() => form.setErrors(errors)).not.toThrow();
       expect(form.fields.name.error.value).toBe('Required');
