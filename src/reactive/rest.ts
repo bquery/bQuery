@@ -203,20 +203,24 @@ export const useResource = <T = unknown>(
     fetch: () => fetchState.execute(),
     create: (body) =>
       executeMutation('create', 'POST', body),
-    update: (body) =>
-      executeMutation(
+    update: (body) => {
+      const base = fetchState.data.peek();
+      return executeMutation(
         'update',
         'PUT',
         body,
-        optimistic ? ({ ...fetchState.data.peek(), ...body } as T) : undefined
-      ),
-    patch: (body) =>
-      executeMutation(
+        optimistic ? ({ ...(base ?? {}), ...body } as T) : undefined
+      );
+    },
+    patch: (body) => {
+      const base = fetchState.data.peek();
+      return executeMutation(
         'patch',
         'PATCH',
         body,
-        optimistic ? ({ ...fetchState.data.peek(), ...body } as T) : undefined
-      ),
+        optimistic ? ({ ...(base ?? {}), ...body } as T) : undefined
+      );
+    },
     remove: async () => {
       await executeMutation('remove', 'DELETE');
       if (!disposed) {

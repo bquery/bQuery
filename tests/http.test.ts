@@ -976,6 +976,22 @@ describe('usePolling', () => {
       }
     }
   });
+
+  it('throws for non-positive or non-finite polling intervals', () => {
+    expect(() =>
+      usePolling('/api/data', {
+        interval: 0,
+        fetcher: asMockFetch(async () => new Response(JSON.stringify({ ok: true }), { status: 200 })),
+      })
+    ).toThrow('Polling interval must be a finite number greater than or equal to 1');
+
+    expect(() =>
+      usePolling('/api/data', {
+        interval: Number.POSITIVE_INFINITY,
+        fetcher: asMockFetch(async () => new Response(JSON.stringify({ ok: true }), { status: 200 })),
+      })
+    ).toThrow('Polling interval must be a finite number greater than or equal to 1');
+  });
 });
 
 // ---------------------------------------------------------------------------

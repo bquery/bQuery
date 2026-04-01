@@ -896,6 +896,28 @@ describe('useResource', () => {
     resource.dispose();
   });
 
+  it('supports optimistic update and patch before initial data is loaded', async () => {
+    const methods: string[] = [];
+    const resource = useResource<{ id?: number; name?: string }>('/api/users/1', {
+      immediate: false,
+      optimistic: true,
+      fetcher: asMockFetch(async (_input, init) => {
+        methods.push(init?.method ?? '');
+        return new Response(JSON.stringify({ id: 1, name: init?.method }), { status: 200 });
+      }),
+    });
+
+    const patchResult = await resource.actions.patch({ name: 'Patched' });
+    resource.clear();
+    const updateResult = await resource.actions.update({ name: 'Updated' });
+
+    expect(methods).toEqual(['PATCH', 'PUT']);
+    expect(patchResult).toEqual({ id: 1, name: 'PATCH' });
+    expect(updateResult).toEqual({ id: 1, name: 'PUT' });
+
+    resource.dispose();
+  });
+
   it('calls mutation success/error callbacks', async () => {
     const callbacks: string[] = [];
 

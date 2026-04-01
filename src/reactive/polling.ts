@@ -75,6 +75,10 @@ export const usePolling = <TResponse = unknown, TData = TResponse>(
     ...fetchOptions
   } = options;
 
+  if (!Number.isFinite(interval) || interval < 1) {
+    throw new Error('Polling interval must be a finite number greater than or equal to 1');
+  }
+
   const manuallyPaused = signal(false);
   const documentHidden = signal(false);
   const browserOffline = signal(false);

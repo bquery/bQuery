@@ -327,8 +327,18 @@ export const useWebSocket = <TSend = string, TReceive = string>(
 
   // --- Queue ---
   const flushQueue = (): void => {
-    while (sendQueue.length > 0 && ws?.readyState === WebSocket.OPEN) {
-      ws.send(sendQueue.shift()!);
+    if (!ws || ws.readyState !== WebSocket.OPEN) {
+      return;
+    }
+
+    let index = 0;
+    while (index < sendQueue.length && ws.readyState === WebSocket.OPEN) {
+      ws.send(sendQueue[index]);
+      index++;
+    }
+
+    if (index > 0) {
+      sendQueue.splice(0, index);
     }
   };
 
