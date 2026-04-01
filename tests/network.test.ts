@@ -1204,7 +1204,9 @@ describe('useWebSocket — new extensions', () => {
   });
 
   it('resets reconnect attempt counters after a successful auto-reconnect', async () => {
-    const originalWebSocket = (globalThis as unknown as { WebSocket: typeof MockWebSocket }).WebSocket;
+    const originalWebSocketConstructor = (globalThis as unknown as {
+      WebSocket: typeof MockWebSocket;
+    }).WebSocket;
     class ControlledReconnectWebSocket extends MockWebSocket {
       autoOpen = false;
 
@@ -1220,7 +1222,8 @@ describe('useWebSocket — new extensions', () => {
       }
     }
 
-    (globalThis as unknown as { WebSocket: unknown }).WebSocket = ControlledReconnectWebSocket;
+    (globalThis as unknown as { WebSocket: typeof MockWebSocket }).WebSocket =
+      ControlledReconnectWebSocket;
 
     const ws = useWebSocket('ws://localhost/test', {
       autoReconnect: { delay: 20, maxAttempts: 2 },
@@ -1247,7 +1250,8 @@ describe('useWebSocket — new extensions', () => {
     expect(ws.reconnectAttempts.value).toBe(0);
 
     ws.dispose();
-    (globalThis as unknown as { WebSocket: unknown }).WebSocket = originalWebSocket;
+    (globalThis as unknown as { WebSocket: typeof MockWebSocket }).WebSocket =
+      originalWebSocketConstructor;
   });
 
   it('measures latency via heartbeat RTT', async () => {
