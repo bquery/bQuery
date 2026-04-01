@@ -6,6 +6,32 @@ The forms module provides reactive form state, sync/async validation, cross-fiel
 import { createForm, required, email, minLength } from '@bquery/bquery/forms';
 ```
 
+## Standalone fields with `useFormField()`
+
+Use `useFormField()` when you want the same reactive field primitives as `createForm()`,
+but without creating a whole form object.
+
+```ts
+import { useFormField, required } from '@bquery/bquery/forms';
+
+const emailField = useFormField('', {
+  validators: [required()],
+  validateOn: 'blur',
+});
+
+emailField.value.value = 'ada@example.com';
+emailField.touch(); // runs blur-triggered validation
+console.log(emailField.isValid.value);
+```
+
+`useFormField()` supports:
+
+- `validateOn: 'manual' | 'change' | 'blur' | 'both'`
+- `debounceMs` for automatic validation
+- external writable signals when you want to reuse existing reactive state
+- `validate()` for immediate validation
+- `destroy()` to cancel pending validation timers and automatic subscriptions for dynamic fields
+
 ## Basic usage
 
 ```ts
@@ -25,7 +51,7 @@ const form = createForm({
 
 ## Field state
 
-Each field exposes reactive primitives for value and validation state.
+`createForm()` fields expose reactive primitives for value, error, and dirty/touched state.
 
 ```ts
 console.log(form.fields.email.value.value);
@@ -44,6 +70,13 @@ Available helpers:
 - `isDirty`
 - `isPristine`
 
+Helpers available only on values returned by `useFormField()` (not on `createForm().fields.*`):
+
+- `isValid`
+- `isValidating`
+- `validate()`
+- `destroy()`
+
 ## Form state
 
 ```ts
@@ -59,6 +92,25 @@ Form methods:
 - `handleSubmit()`
 - `reset()`
 - `getValues()`
+- `setValues(values)` – bulk-set field values from a partial object
+- `setErrors(errors)` – bulk-set field error messages (e.g. from server responses)
+
+## Bulk-setting values and errors
+
+Use `setValues()` to programmatically update multiple fields at once,
+and `setErrors()` to apply server-side validation errors:
+
+```ts
+// Pre-fill from an API response
+const userData = await fetch('/api/user/1').then((r) => r.json());
+form.setValues({ name: userData.name, email: userData.email });
+
+// Apply server-side validation errors
+const result = await submitToServer(form.getValues());
+if (result.errors) {
+  form.setErrors(result.errors); // { name: 'Already taken', email: 'Invalid' }
+}
+```
 
 ## Cross-field validation
 
@@ -109,7 +161,28 @@ const usernameForm = createForm({
 - `pattern(regex)`
 - `email()`
 - `url()`
+- `matchField(ref)` – compare field value to a reference signal (e.g. password confirmation)
 - `custom(fn)`
 - `customAsync(fn)`
+
+## matchField validator
+
+The `matchField()` validator compares a field's value against a reference signal.
+This is the recommended approach for "confirm password" and similar patterns:
+
+```ts
+import { matchField } from '@bquery/bquery/forms';
+import { signal } from '@bquery/bquery/reactive';
+
+const password = signal('');
+const confirmPassword = signal('');
+const validateConfirmPassword = matchField(password, 'Passwords must match');
+
+validateConfirmPassword(confirmPassword.value); // true when the values match
+```
+
+::: tip
+`matchField()` accepts any object with a `.value` property, so it works with both signals and plain `{ value: T }` objects.
+:::
 
 Use forms when you want signal-based state without wiring every input manually.

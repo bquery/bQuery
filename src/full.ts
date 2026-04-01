@@ -45,34 +45,94 @@ export type { BQueryUtils } from './core/index';
 // Reactive Module: Signals, computed values, effects, batching
 // ============================================================================
 export {
-  Computed,
-  Signal,
   batch,
+  Computed,
   computed,
+  createHttp,
+  createRequestQueue,
+  createRestClient,
   createUseFetch,
+  deduplicateRequest,
   effect,
+  effectScope,
+  getCurrentScope,
+  http,
+  HttpError,
   isComputed,
   isSignal,
   linkedSignal,
+  onScopeDispose,
   persistedSignal,
   readonly,
+  Signal,
   signal,
-  useAsyncData,
-  useFetch,
+  toValue,
   untrack,
+  useAsyncData,
+  useEventSource,
+  useFetch,
+  useInfiniteFetch,
+  usePaginatedFetch,
+  usePolling,
+  useResource,
+  useResourceList,
+  useSubmit,
+  useWebSocket,
+  useWebSocketChannel,
   watch,
 } from './reactive/index';
 export type {
   AsyncDataState,
   AsyncDataStatus,
   AsyncWatchSource,
+  ChannelMessage,
+  ChannelSubscription,
   CleanupFn,
+  EffectScope,
+  EventSourceStatus,
   FetchInput,
+  HttpClient,
+  HttpProgressEvent,
+  HttpRequestConfig,
+  HttpResponse,
+  IdExtractor,
+  InfiniteState,
+  Interceptor,
+  InterceptorManager,
   LinkedSignal,
+  MaybeSignal,
   Observer,
+  PaginatedState,
+  PollingState,
   ReadonlySignal,
+  ReadonlySignalHandle,
+  RequestQueue,
+  RequestQueueOptions,
+  ResourceListActions,
+  RestClient,
+  RetryConfig,
   UseAsyncDataOptions,
+  UseEventSourceOptions,
+  UseEventSourceReturn,
   UseFetchOptions,
+  UseFetchRetryConfig,
+  UseInfiniteFetchOptions,
+  UsePaginatedFetchOptions,
+  UsePollingOptions,
+  UseResourceListOptions,
+  UseResourceListReturn,
+  UseResourceOptions,
+  UseResourceReturn,
+  UseSubmitOptions,
+  UseSubmitReturn,
+  UseWebSocketChannelOptions,
+  UseWebSocketChannelReturn,
+  UseWebSocketOptions,
+  UseWebSocketReturn,
+  WebSocketHeartbeatConfig,
+  WebSocketReconnectConfig,
+  WebSocketSerializer,
+  WebSocketStatus,
 } from './reactive/index';
 
 // ============================================================================
@@ -93,9 +153,9 @@ export type {
   AttributeChange,
   ComponentDefinition,
   ComponentRenderContext,
-  ComponentStateKey,
   ComponentSignalLike,
   ComponentSignals,
+  ComponentStateKey,
   DefaultComponentLibraryOptions,
   PropDefinition,
   RegisteredDefaultComponents,
@@ -194,8 +254,8 @@ export {
 export type {
   AnnounceOptions,
   AnnouncerHandle,
-  Bucket,
   BqueryConfig,
+  Bucket,
   CacheHandle,
   IndexedDBOptions,
   NotificationOptions,
@@ -217,6 +277,7 @@ export {
   interceptLinks,
   isActive,
   isActiveSignal,
+  isNavigating,
   link,
   navigate,
   registerBqLink,
@@ -238,23 +299,30 @@ export type {
 export {
   createPersistedStore,
   createStore,
+  defineStore,
   destroyStore,
   getStore,
   listStores,
   mapActions,
+  mapGetters,
   mapState,
   registerPlugin,
+  watchStore,
 } from './store/index';
 export type {
   ActionContext,
+  Actions,
+  Getters,
   OnActionCallback,
   PersistedStoreOptions,
   StateFactory,
   StorageBackend,
   Store,
   StoreDefinition,
+  StorePatch,
   StorePlugin,
   StoreSerializer,
+  StoreSubscriber,
 } from './store/index';
 
 // ============================================================================
@@ -271,6 +339,7 @@ export {
   custom,
   customAsync,
   email,
+  matchField,
   max,
   maxLength,
   min,
@@ -278,6 +347,7 @@ export {
   pattern,
   required,
   url,
+  useFormField,
 } from './forms/index';
 export type {
   AsyncValidator,
@@ -288,8 +358,11 @@ export type {
   FormErrors,
   FormField,
   FormFields,
+  FormFieldValidationMode,
   SubmitHandler,
   SyncValidator,
+  UseFormFieldOptions,
+  UseFormFieldReturn,
   ValidationResult,
   Validator,
 } from './forms/index';
@@ -345,36 +418,37 @@ export type {
 // ============================================================================
 // DnD Module: Drag-and-drop, drop zones, sortable lists
 // ============================================================================
-export { draggable } from './dnd/index';
-export { droppable } from './dnd/index';
-export { sortable } from './dnd/index';
+export { draggable, droppable, sortable } from './dnd/index';
 export type {
   BoundsRect,
   DragAxis,
   DragBounds,
   DragEventData,
-  DragPosition,
   DraggableHandle,
   DraggableOptions,
+  DragPosition,
   DropEventData,
   DroppableHandle,
   DroppableOptions,
-  SortEventData,
   SortableHandle,
   SortableOptions,
+  SortEventData,
 } from './dnd/index';
 
 // ============================================================================
 // Media Module: Reactive browser and device API signals
 // ============================================================================
-export { mediaQuery } from './media/index';
-export { breakpoints } from './media/index';
-export { useViewport } from './media/index';
-export { useNetworkStatus } from './media/index';
-export { useBattery } from './media/index';
-export { useGeolocation } from './media/index';
-export { useDeviceMotion, useDeviceOrientation } from './media/index';
-export { clipboard } from './media/index';
+export {
+  breakpoints,
+  clipboard,
+  mediaQuery,
+  useBattery,
+  useDeviceMotion,
+  useDeviceOrientation,
+  useGeolocation,
+  useNetworkStatus,
+  useViewport,
+} from './media/index';
 export type {
   BatteryState,
   BreakpointMap,
@@ -391,12 +465,12 @@ export type {
 // Plugin module
 // ---------------------------------------------------------------------------
 export {
-  use,
-  isInstalled,
-  getInstalledPlugins,
   getCustomDirective,
   getCustomDirectives,
+  getInstalledPlugins,
+  isInstalled,
   resetPlugins,
+  use,
 } from './plugin/index';
 export type {
   BQueryPlugin,
@@ -409,22 +483,22 @@ export type {
 // DevTools module
 // ---------------------------------------------------------------------------
 export {
+  clearTimeline,
   enableDevtools,
-  isDevtoolsEnabled,
-  trackSignal,
-  untrackSignal,
   generateSignalLabel,
+  getDevtoolsState,
+  getTimeline,
+  inspectComponents,
   inspectSignals,
   inspectStores,
-  inspectComponents,
-  recordEvent,
-  getTimeline,
-  clearTimeline,
-  getDevtoolsState,
+  isDevtoolsEnabled,
+  logComponents,
   logSignals,
   logStores,
-  logComponents,
   logTimeline,
+  recordEvent,
+  trackSignal,
+  untrackSignal,
 } from './devtools/index';
 export type {
   ComponentSnapshot,
@@ -440,11 +514,11 @@ export type {
 // Testing module
 // ---------------------------------------------------------------------------
 export {
-  renderComponent,
-  flushEffects,
-  mockSignal,
-  mockRouter,
   fireEvent,
+  flushEffects,
+  mockRouter,
+  mockSignal,
+  renderComponent,
   waitFor,
 } from './testing/index';
 export type {
@@ -462,19 +536,19 @@ export type {
 // SSR module
 // ---------------------------------------------------------------------------
 export {
-  renderToString,
-  hydrateMount,
-  serializeStoreState,
   deserializeStoreState,
+  hydrateMount,
   hydrateStore,
   hydrateStores,
+  renderToString,
+  serializeStoreState,
 } from './ssr/index';
 export type {
   DeserializedStoreState,
   HydrateMountOptions,
   HydrationOptions,
   RenderOptions,
-  SSRResult,
   SerializeOptions,
   SerializeResult,
+  SSRResult,
 } from './ssr/index';

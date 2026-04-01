@@ -797,9 +797,7 @@ describe('media/useDeviceOrientation', () => {
     const orientation = useDeviceOrientation();
 
     expect(Object.keys(orientation)).not.toContain('destroy');
-    expect(Object.getOwnPropertyDescriptor(orientation, 'destroy')?.enumerable ?? true).toBe(
-      false
-    );
+    expect(Object.getOwnPropertyDescriptor(orientation, 'destroy')?.enumerable ?? true).toBe(false);
   });
 });
 
@@ -821,9 +819,7 @@ describe('media/clipboard', () => {
         value: undefined,
         configurable: true,
       });
-      await expect(clipboard.read()).rejects.toThrow(
-        'bQuery media: Clipboard API is unavailable'
-      );
+      await expect(clipboard.read()).rejects.toThrow('bQuery media: Clipboard API is unavailable');
     } finally {
       Object.defineProperty(navigator, 'clipboard', {
         value: originalClipboard,

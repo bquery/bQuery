@@ -1012,10 +1012,7 @@ describe('a11y/prefersContrast', () => {
         addEventListener: (_type: string, handler: (event: MediaQueryListEvent) => void) => {
           registeredHandlers.set(query, handler);
         },
-        removeEventListener: (
-          _type: string,
-          _handler: (event: MediaQueryListEvent) => void
-        ) => {},
+        removeEventListener: (_type: string, _handler: (event: MediaQueryListEvent) => void) => {},
         addListener: () => {},
         removeListener: () => {},
         dispatchEvent: () => true,

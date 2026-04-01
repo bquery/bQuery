@@ -263,3 +263,32 @@ export const customAsync = <T = unknown>(
 ): AsyncValidator<T> => {
   return async (value: T) => ((await fn(value)) ? true : message);
 };
+
+/**
+ * Requires a field's value to match the current value of a reference signal.
+ *
+ * Typically used for "confirm password" or "confirm email" patterns where
+ * one field must have the same value as another.
+ *
+ * @param ref - A reactive signal whose current value is the comparison target
+ * @param message - Custom error message (default: `'Fields do not match'`)
+ * @returns A sync validator function
+ *
+ * @example
+ * ```ts
+ * import { signal } from '@bquery/bquery/reactive';
+ * import { matchField } from '@bquery/bquery/forms';
+ *
+ * const password = signal('secret');
+ * const confirmPassword = signal('');
+ * const validateConfirmPassword = matchField(password, 'Passwords must match');
+ *
+ * validateConfirmPassword(confirmPassword.value);
+ * ```
+ */
+export const matchField = <T>(
+  ref: { readonly value: T },
+  message = 'Fields do not match'
+): SyncValidator<T> => {
+  return (value: T) => (Object.is(value, ref.value) ? true : message);
+};

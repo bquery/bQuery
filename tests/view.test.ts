@@ -29,7 +29,7 @@ describe('View', () => {
 
   describe('custom directive resolver', () => {
     it('can unregister the custom directive resolver', () => {
-      registerCustomDirectiveResolver((name) => (name === 'tooltip' ? (() => {}) : undefined));
+      registerCustomDirectiveResolver((name) => (name === 'tooltip' ? () => {} : undefined));
 
       expect(getCustomDirective('tooltip')).toBeDefined();
 

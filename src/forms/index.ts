@@ -35,11 +35,13 @@
  */
 
 export { createForm } from './create-form';
+export { useFormField } from './use-field';
 
 export {
   custom,
   customAsync,
   email,
+  matchField,
   max,
   maxLength,
   min,
@@ -57,9 +59,12 @@ export type {
   FormConfig,
   FormErrors,
   FormField,
+  FormFieldValidationMode,
   FormFields,
   SubmitHandler,
   SyncValidator,
+  UseFormFieldOptions,
+  UseFormFieldReturn,
   ValidationResult,
   Validator,
 } from './types';

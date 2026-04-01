@@ -483,7 +483,7 @@ describe('dnd/droppable', () => {
     let pointerMoveOptions: AddEventListenerOptions | boolean | undefined;
 
     try {
-      document.addEventListener = (((
+      document.addEventListener = ((
         type: string,
         listener: EventListenerOrEventListenerObject,
         options?: AddEventListenerOptions | boolean
@@ -492,7 +492,7 @@ describe('dnd/droppable', () => {
           pointerMoveOptions = options;
         }
         return originalAddEventListener.call(document, type, listener, options);
-      }) as typeof document.addEventListener);
+      }) as typeof document.addEventListener;
 
       const handle = droppable(zone);
       handle.destroy();

@@ -8,7 +8,7 @@
 
 ### 1.1 Mission Statement
 
-bQuery.js bridges **vanilla JavaScript** and **build-step frameworks**. It offers modern features (reactivity, async data, components, motion, routing, stores, declarative views, forms, i18n, accessibility, media signals, plugins, testing, and SSR) with the simplicity and directness that made jQuery successful.
+bQuery.js bridges **vanilla JavaScript** and **build-step frameworks**. It offers modern features (reactivity, async data, HTTP clients, polling, pagination, realtime transports, REST helpers, components, motion, routing, stores, declarative views, forms, i18n, accessibility, media signals, plugins, testing, and SSR) with the simplicity and directness that made jQuery successful.
 
 ### 1.2 Core Principles
 
@@ -38,7 +38,7 @@ bQuery.js bridges **vanilla JavaScript** and **build-step frameworks**. It offer
 ```text
 bQuery.js
 ├── core/       (selectors, DOM ops, events, utils)
-├── reactive/   (signals, computed, effects, async data/fetch)
+├── reactive/   (signals, computed, effects, async data/fetch, HTTP, polling, pagination, realtime)
 ├── component/  (custom elements, props, lifecycle, shadow DOM, defaults)
 ├── storybook/  (template helpers for Storybook web-component stories)
 ├── motion/     (view transitions, FLIP, springs)
@@ -174,7 +174,15 @@ export function uid(): string;
 ### 3.2 Reactive Module (`@reactive`)
 
 ```ts
-import { signal, computed, effect, batch, useFetch } from '@bquery/bquery/reactive';
+import {
+  signal,
+  computed,
+  effect,
+  batch,
+  useFetch,
+  createHttp,
+  useEventSource,
+} from '@bquery/bquery/reactive';
 
 const count = signal(0);
 const doubled = computed(() => count.value * 2);
@@ -189,6 +197,8 @@ batch(() => {
 });
 
 const profile = useFetch('/api/profile');
+const api = createHttp({ baseUrl: 'https://api.example.com' });
+const events = useEventSource('/api/profile/events');
 ```
 
 #### 3.2.1 Reactive Contracts
@@ -196,6 +206,7 @@ const profile = useFetch('/api/profile');
 - `signal<T>` exposes **mutable state** via `.value`.
 - `computed<T>` is **pure and lazy**; no side-effects inside.
 - `effect` is **side-effect only**; no state writes unless wrapped in `batch`.
+- Transport helpers reuse the same signal-based lifecycle conventions (`data`, `error`, `status`, `pending`) as `useAsyncData()`.
 
 ---
 

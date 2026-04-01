@@ -1047,11 +1047,7 @@ describe('Store', () => {
     });
 
     it('should preserve listener registration order across multiple hooks', () => {
-      const store = createStore<
-        { count: number },
-        Record<string, never>,
-        { increment(): number }
-      >({
+      const store = createStore<{ count: number }, Record<string, never>, { increment(): number }>({
         id: 'on-action-order-verification',
         state: () => ({ count: 0 }),
         actions: {
@@ -1078,11 +1074,7 @@ describe('Store', () => {
     });
 
     it('should run sync after hooks only after the action returns', () => {
-      const store = createStore<
-        { count: number },
-        Record<string, never>,
-        { increment(): number }
-      >({
+      const store = createStore<{ count: number }, Record<string, never>, { increment(): number }>({
         id: 'on-action-after-timing',
         state: () => ({ count: 0 }),
         actions: {
@@ -1142,11 +1134,7 @@ describe('Store', () => {
     });
 
     it('should not change the sync action return value when a listener throws', () => {
-      const store = createStore<
-        { count: number },
-        Record<string, never>,
-        { increment(): number }
-      >({
+      const store = createStore<{ count: number }, Record<string, never>, { increment(): number }>({
         id: 'on-action-error-no-result-change',
         state: () => ({ count: 0 }),
         actions: {
@@ -1954,11 +1942,7 @@ describe('store/isDev', () => {
       const { createStore } = (await import(
         `../src/store/create-store.ts?late-dev-toggle=${Date.now()}`
       )) as typeof import('../src/store/create-store');
-      const store = createStore<
-        { count: number },
-        Record<string, never>,
-        { increment(): number }
-      >({
+      const store = createStore<{ count: number }, Record<string, never>, { increment(): number }>({
         id: `late-store-dev-toggle-${Date.now()}`,
         state: () => ({ count: 0 }),
         actions: {

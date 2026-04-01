@@ -5,17 +5,17 @@
 
 ## Identity
 
-| Field       | Value                                                                                                                                                                                 |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Name        | bQuery.js                                                                                                                                                                             |
-| Package     | `@bquery/bquery`                                                                                                                                                                      |
-| Version     | 1.7.0                                                                                                                                                                                 |
-| License     | MIT                                                                                                                                                                                   |
-| Language    | TypeScript (strict)                                                                                                                                                                   |
-| Runtime     | Browser (ESM, UMD, IIFE) — tests run via Bun                                                                                                                                          |
-| Repository  | <https://github.com/bQuery/bQuery>                                                                                                                                                    |
-| Homepage    | <https://bQuery.flausch-code.de>                                                                                                                                                      |
-| Description | jQuery-style DOM library with reactivity, async data, Web Components, motion, routing, stores, declarative views, and shared runtime config — zero-build capable, security-by-default |
+| Field       | Value                                                                                                                                                                                                                                                        |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Name        | bQuery.js                                                                                                                                                                                                                                                    |
+| Package     | `@bquery/bquery`                                                                                                                                                                                                                                             |
+| Version     | 1.8.0                                                                                                                                                                                                                                                        |
+| License     | MIT                                                                                                                                                                                                                                                          |
+| Language    | TypeScript (strict)                                                                                                                                                                                                                                          |
+| Runtime     | Browser (ESM, UMD, IIFE) — tests run via Bun                                                                                                                                                                                                                 |
+| Repository  | <https://github.com/bQuery/bQuery>                                                                                                                                                                                                                           |
+| Homepage    | <https://bQuery.flausch-code.de>                                                                                                                                                                                                                             |
+| Description | jQuery-style DOM library with reactivity, async data, HTTP clients, polling / pagination, realtime transports, REST helpers, Web Components, motion, routing, stores, declarative views, and shared runtime config — zero-build capable, security-by-default |
 
 ---
 
@@ -40,7 +40,7 @@ src/
 ├── index.ts            # Default entry — re-exports all modules
 ├── full.ts             # Full bundle with explicit named exports (CDN)
 ├── core/               # $, $$, BQueryElement, BQueryCollection, utils
-├── reactive/           # signal, computed, effect, batch, watch, async data/fetch
+├── reactive/           # signal, computed, effect, batch, watch, async data/fetch, HTTP, polling, pagination, realtime, REST
 ├── component/          # component(), defineComponent(), scoped reactivity, defaults
 ├── storybook/          # storyHtml(), when() helpers for Storybook stories
 ├── motion/             # animate, transition, flip, morph, spring, timeline, scroll
@@ -90,22 +90,37 @@ Each `src/<module>/index.ts` re-exports the module's public API.
 
 ### Reactive (`@bquery/bquery/reactive`)
 
-| Export                       | Kind      | Description                                                   |
-| ---------------------------- | --------- | ------------------------------------------------------------- |
-| `signal(init)`               | function  | Create a reactive signal                                      |
-| `computed(fn)`               | function  | Derived value that auto-tracks dependencies                   |
-| `effect(fn)`                 | function  | Side-effect that re-runs on dependency change                 |
-| `batch(fn)`                  | function  | Group multiple signal writes, notify once                     |
-| `watch(src, cb)`             | function  | Watch a signal with old/new values + cleanup                  |
-| `untrack(fn)`                | function  | Read signals without tracking                                 |
-| `linkedSignal(get, set)`     | function  | Writable computed (bidirectional)                             |
-| `persistedSignal(key, init)` | function  | Signal persisted to localStorage                              |
-| `useAsyncData(handler)`      | function  | Reactive async lifecycle wrapper with `status`, `error`, etc. |
-| `useFetch(input, options)`   | function  | Fetch composable with query/header/body helpers               |
-| `createUseFetch(defaults)`   | function  | Factory for preconfigured fetch composables                   |
-| `readonly(sig)`              | function  | Read-only wrapper around a signal                             |
-| `isSignal`, `isComputed`     | functions | Type guards                                                   |
-| `Signal`, `Computed`         | classes   | Signal and Computed value classes                             |
+| Export                                   | Kind      | Description                                                         |
+| ---------------------------------------- | --------- | ------------------------------------------------------------------- |
+| `signal(init)`                           | function  | Create a reactive signal                                            |
+| `computed(fn)`                           | function  | Derived value that auto-tracks dependencies                         |
+| `effect(fn)`                             | function  | Side-effect that re-runs on dependency change                       |
+| `batch(fn)`                              | function  | Group multiple signal writes, notify once                           |
+| `watch(src, cb)`                         | function  | Watch a signal with old/new values + cleanup                        |
+| `untrack(fn)`                            | function  | Read signals without tracking                                       |
+| `linkedSignal(get, set)`                 | function  | Writable computed (bidirectional)                                   |
+| `persistedSignal(key, init)`             | function  | Signal persisted to localStorage                                    |
+| `useAsyncData(handler)`                  | function  | Reactive async lifecycle wrapper with `status`, `error`, etc.       |
+| `useFetch(input, options)`               | function  | Fetch composable with query/header/body/timeout/retry/abort         |
+| `createUseFetch(defaults)`               | function  | Factory for preconfigured fetch composables                         |
+| `createHttp(defaults)`                   | function  | Imperative HTTP client with interceptors and method shortcuts       |
+| `http`                                   | instance  | Default HTTP client using global bQuery config                      |
+| `HttpError`                              | class     | Error subclass with code, config, response metadata                 |
+| `usePolling(input, options)`             | function  | Periodic data fetching with pause/resume/visibility                 |
+| `usePaginatedFetch(fn, opt)`             | function  | Page-based pagination with next/prev/goTo numeric page helpers      |
+| `useInfiniteFetch(fn, opt)`              | function  | Infinite scroll with accumulated pages and fetchNextPage            |
+| `useWebSocket(url, opt)`                 | function  | Reactive WebSocket with auto-reconnect, heartbeat, latency, history |
+| `useWebSocketChannel(url, wsOpt, chOpt)` | function  | Topic-based channel multiplexer over a single WebSocket             |
+| `useEventSource(url, opt)`               | function  | Reactive SSE composable with auto-reconnect                         |
+| `useResource(url, opt)`                  | function  | REST CRUD composable with optimistic updates                        |
+| `useResourceList(url, opt)`              | function  | Reactive list CRUD with optimistic add/remove/update                |
+| `useSubmit(url, opt)`                    | function  | Form submission composable with reactive state                      |
+| `createRestClient(url, cfg)`             | function  | Typed imperative REST client (list/get/create/update/patch/remove)  |
+| `createRequestQueue(opt)`                | function  | Request queue with configurable concurrency limit                   |
+| `deduplicateRequest(key, fn)`            | function  | Coalesce identical in-flight requests                               |
+| `readonly(sig)`                          | function  | Read-only wrapper around a signal                                   |
+| `isSignal`, `isComputed`                 | functions | Type guards                                                         |
+| `Signal`, `Computed`                     | classes   | Signal and Computed value classes                                   |
 
 ### Component (`@bquery/bquery/component`)
 
@@ -242,13 +257,13 @@ Each `src/<module>/index.ts` re-exports the module's public API.
 
 ### Media (`@bquery/bquery/media`)
 
-| Export                                    | Kind      | Description                                 |
-| ----------------------------------------- | --------- | ------------------------------------------- |
+| Export                                    | Kind      | Description                                                                                                   |
+| ----------------------------------------- | --------- | ------------------------------------------------------------------------------------------------------------- |
 | `mediaQuery`, `breakpoints`               | functions | Reactive media-query and breakpoint helpers (`breakpoints()` collections use `destroyAll()` for bulk cleanup) |
-| `useViewport`, `useNetworkStatus`         | functions | Reactive viewport and network state         |
-| `useBattery`, `useGeolocation`            | functions | Battery and geolocation wrappers            |
-| `useDeviceMotion`, `useDeviceOrientation` | functions | Device sensor wrappers                      |
-| `clipboard`                               | object    | Async clipboard read/write helpers          |
+| `useViewport`, `useNetworkStatus`         | functions | Reactive viewport and network state                                                                           |
+| `useBattery`, `useGeolocation`            | functions | Battery and geolocation wrappers                                                                              |
+| `useDeviceMotion`, `useDeviceOrientation` | functions | Device sensor wrappers                                                                                        |
+| `clipboard`                               | object    | Async clipboard read/write helpers                                                                            |
 
 ### Plugin (`@bquery/bquery/plugin`)
 
@@ -407,19 +422,21 @@ it('should add class', () => {
 
 ## Key Files
 
-| File                            | Purpose                                        |
-| ------------------------------- | ---------------------------------------------- |
-| `src/index.ts`                  | Default entry point — re-exports all modules   |
-| `src/full.ts`                   | Full bundle with explicit named exports (CDN)  |
-| `vite.config.ts`                | Library build config (21 entry points, ESM)    |
-| `vite.umd.config.ts`            | UMD bundle config for CDN/script tags          |
-| `tsconfig.json`                 | TypeScript config (strict, ES2020, Bundler)    |
-| `tsconfig.test.json`            | Test-specific TypeScript config                |
-| `eslint.config.js`              | ESLint flat config                             |
-| `.storybook/main.ts`            | Storybook builder/configuration                |
-| `tests/setup.ts`                | DOM polyfills for test environment (happy-dom) |
-| `src/security/sanitize-core.ts` | Core HTML sanitization logic                   |
-| `package.json`                  | Package config, scripts, export maps           |
+| File                            | Purpose                                                                                 |
+| ------------------------------- | --------------------------------------------------------------------------------------- |
+| `src/index.ts`                  | Default entry point — re-exports all modules                                            |
+| `src/full.ts`                   | Full bundle with explicit named exports (CDN); keep in sync with public runtime exports |
+| `vite.config.ts`                | Library build config (21 entry points, ESM)                                             |
+| `vite.umd.config.ts`            | UMD bundle config for CDN/script tags                                                   |
+| `tsconfig.json`                 | TypeScript config (strict, ES2020, Bundler)                                             |
+| `tsconfig.test.json`            | Test-specific TypeScript config                                                         |
+| `eslint.config.js`              | ESLint flat config                                                                      |
+| `.storybook/main.ts`            | Storybook builder/configuration                                                         |
+| `tests/setup.ts`                | DOM polyfills for test environment (happy-dom)                                          |
+| `tests/http.test.ts`            | HTTP client, retry, polling, and pagination coverage                                    |
+| `tests/network.test.ts`         | WebSocket, SSE, REST helpers, queues, and dedupe coverage                               |
+| `src/security/sanitize-core.ts` | Core HTML sanitization logic                                                            |
+| `package.json`                  | Package config, scripts, export maps                                                    |
 
 ---
 
@@ -431,6 +448,7 @@ it('should add class', () => {
 | Forgetting sanitization      | ALL new DOM-writing methods must call `sanitizeHtml()`                                                        |
 | Signal `.value` tracks       | Use `.peek()` to read without subscribing in computed/effect                                                  |
 | Disposed async state         | `useAsyncData()` / `useFetch()` return cached data after `dispose()` and should not be re-used for fresh work |
+| `src/full.ts` drift          | If a public runtime export changes, update `src/full.ts` so the `/full` bundle and CDN entry stay accurate    |
 | Testing with Node            | Use `bun test` only — Bun-specific APIs are used                                                              |
 | CSP with View module         | `mount()` uses `new Function()` → needs `'unsafe-eval'`                                                       |
 | Double renders in components | `attributeChangedCallback` only re-renders after initial mount                                                |

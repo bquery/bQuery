@@ -1,6 +1,6 @@
 # Getting Started
 
-bQuery.js is designed for zero-build usage and modern build setups alike. You can start with plain HTML or use Vite for a fast dev server.
+bQuery.js is designed for zero-build usage and modern build setups alike. You can start with plain HTML or use Vite for a fast dev server. Since `1.8.0`, the Reactive module also covers HTTP clients, polling, pagination, realtime transports, REST helpers, and request coordination utilities.
 
 ## Installation
 
@@ -84,8 +84,18 @@ import { $, $$, utils } from '@bquery/bquery/core';
 // Core utilities as named exports
 import { debounce, merge, uid } from '@bquery/bquery/core';
 
-// Reactive only (signals, computed, effects, async composables)
-import { signal, computed, effect, batch, useFetch, createUseFetch } from '@bquery/bquery/reactive';
+// Reactive only (signals, computed, effects, async, HTTP, realtime)
+import {
+  signal,
+  computed,
+  effect,
+  batch,
+  useFetch,
+  createHttp,
+  useWebSocket,
+  useEventSource,
+  useResource,
+} from '@bquery/bquery/reactive';
 
 // Components only (Web Components + default library)
 import { bool, component, html, registerDefaultComponents } from '@bquery/bquery/component';
@@ -127,27 +137,27 @@ import { renderToString, hydrateMount } from '@bquery/bquery/ssr';
 
 ## Modules at a glance
 
-| Module        | Description                                                                    |
-| ------------- | ------------------------------------------------------------------------------ |
-| **Core**      | Selectors, DOM manipulation, traversal, events, and typed utilities            |
-| **Reactive**  | Signals, computed values, effects, batching, and async composables             |
-| **Component** | Typed Web Components with scoped reactivity and Shadow DOM control             |
-| **Storybook** | Safe string-template helpers for stories and boolean attributes                |
-| **Motion**    | Transitions, morphing, parallax, typewriter, FLIP, scroll, and springs         |
-| **Security**  | Sanitization, Trusted Types, CSP helpers, and trusted fragments                |
-| **Platform**  | Storage, cache, cookies, page metadata, announcers, and shared config          |
-| **Router**    | SPA routing, redirects, constrained params, guards, and declarative links      |
-| **Store**     | Signal-based state, persistence, migrations, and action lifecycle hooks        |
-| **View**      | Declarative bindings, directives, and plugin-powered custom directives         |
-| **Forms**     | Reactive form state, validation, and submit orchestration                      |
-| **i18n**      | Reactive locale state, translation, pluralization, and Intl formatting         |
-| **A11y**      | Focus management, skip navigation, live regions, media preferences, and audits |
-| **DnD**       | Draggable elements, drop zones, and sortable lists                             |
-| **Media**     | Viewport, network, battery, geolocation, sensors, and clipboard wrappers       |
-| **Plugin**    | Global plugin registration for custom directives and components                |
-| **Devtools**  | Runtime inspection helpers for signals, stores, components, and timelines      |
-| **Testing**   | Component mounts, mock signals/router, event helpers, and async assertions     |
-| **SSR**       | HTML rendering, hydration, and serialized store-state handoff                  |
+| Module        | Description                                                                                         |
+| ------------- | --------------------------------------------------------------------------------------------------- |
+| **Core**      | Selectors, DOM manipulation, traversal, events, and typed utilities                                 |
+| **Reactive**  | Signals, computed values, effects, batching, HTTP clients, polling, streaming, and REST composables |
+| **Component** | Typed Web Components with scoped reactivity and Shadow DOM control                                  |
+| **Storybook** | Safe string-template helpers for stories and boolean attributes                                     |
+| **Motion**    | Transitions, morphing, parallax, typewriter, FLIP, scroll, and springs                              |
+| **Security**  | Sanitization, Trusted Types, CSP helpers, and trusted fragments                                     |
+| **Platform**  | Storage, cache, cookies, page metadata, announcers, and shared config                               |
+| **Router**    | SPA routing, redirects, constrained params, guards, and declarative links                           |
+| **Store**     | Signal-based state, persistence, migrations, and action lifecycle hooks                             |
+| **View**      | Declarative bindings, directives, and plugin-powered custom directives                              |
+| **Forms**     | Reactive form state, validation, and submit orchestration                                           |
+| **i18n**      | Reactive locale state, translation, pluralization, and Intl formatting                              |
+| **A11y**      | Focus management, skip navigation, live regions, media preferences, and audits                      |
+| **DnD**       | Draggable elements, drop zones, and sortable lists                                                  |
+| **Media**     | Viewport, network, battery, geolocation, sensors, and clipboard wrappers                            |
+| **Plugin**    | Global plugin registration for custom directives and components                                     |
+| **Devtools**  | Runtime inspection helpers for signals, stores, components, and timelines                           |
+| **Testing**   | Component mounts, mock signals/router, event helpers, and async assertions                          |
+| **SSR**       | HTML rendering, hydration, and serialized store-state handoff                                       |
 
 ## Quick Examples
 
@@ -205,6 +215,21 @@ if (user.pending.value) {
 }
 
 console.log(user.data.value, user.error.value);
+```
+
+### HTTP, resources & streaming
+
+```ts
+import { createHttp, useEventSource, useResource } from '@bquery/bquery/reactive';
+
+const api = createHttp({ baseUrl: 'https://api.example.com', retry: 2 });
+const profile = useResource<{ id: number; name: string }>('/users/1', {
+  baseUrl: 'https://api.example.com',
+});
+const events = useEventSource<{ status: string }>('/events/profile');
+
+const { data } = await api.get('/users');
+console.log(data, profile.pending.value, events.status.value);
 ```
 
 ### Web Components
