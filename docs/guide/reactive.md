@@ -713,9 +713,9 @@ ws.dispose();
 | `serialize`      | `(data) => string \| ...`             | `JSON.stringify`| Outgoing message serializer               |
 | `deserialize`    | `(event) => TReceive`                 | `JSON.parse` with raw-string fallback | Incoming message deserializer |
 
-### Reconnect config
-
 If the built-in deserializer receives a string that fails JSON parsing, it returns the original raw string instead of throwing.
+
+### Reconnect config
 
 | Field              | Type                                     | Default    |
 | ------------------ | ---------------------------------------- | ---------- |
