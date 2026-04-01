@@ -185,10 +185,12 @@ export const useInfiniteFetch = <TResponse = unknown, TData = TResponse[], TCurs
     transform: transformPages,
     initialCursor,
     immediate = true,
-    onSuccess: _onSuccess,
-    onError: _onError,
+    onSuccess: infiniteOnSuccess,
+    onError: infiniteOnError,
     ...fetchOptions
   } = options;
+  void infiniteOnSuccess;
+  void infiniteOnError;
 
   const pages = signal<TResponse[]>([]);
   const data = signal<TData | undefined>(options.defaultValue);
