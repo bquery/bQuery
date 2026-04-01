@@ -356,6 +356,8 @@ export const useWebSocket = <TSend = string, TReceive = string>(
 
     // Clean up any existing connection
     if (ws) {
+      stopHeartbeat();
+      pingSentAt = 0;
       ws.onopen = null;
       ws.onmessage = null;
       ws.onclose = null;

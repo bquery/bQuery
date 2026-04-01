@@ -744,6 +744,8 @@ If the built-in deserializer receives a string that fails JSON parsing, it retur
 | `history`           | `Signal<TReceive[]>`         | Rolling message history                  |
 | `isConnected`       | `computed boolean`           | Whether the socket is `OPEN`             |
 | `reconnectAttempts` | `Signal<number>`             | Current reconnect attempt count          |
+| `latency`           | `Signal<number>`             | Last measured round-trip time in ms      |
+| `lastDisconnectedAt`| `Signal<number>`             | Timestamp of the last unexpected disconnect |
 | `send`              | `(data: TSend) => void`      | Send a serialized message                |
 | `sendRaw`           | `(data) => void`             | Send raw data without serialization      |
 | `open`              | `() => void`                 | Open / reconnect manually                |
@@ -1037,15 +1039,15 @@ All `useFetch()` options (except `method` and `body`) plus:
 
 ## Request deduplication
 
-`deduplicateRequest()` coalesces identical in-flight requests so that
-concurrent callers share a single promise.
+`deduplicateRequest()` coalesces identical in-flight operations so that
+concurrent callers sharing the same key reuse a single promise.
 
 ```ts
 import { deduplicateRequest, createHttp } from '@bquery/bquery/reactive';
 
 const api = createHttp({ baseUrl: 'https://api.example.com' });
 
-// Both calls share one HTTP request
+// Both calls share one in-flight operation
 const [a, b] = await Promise.all([
   deduplicateRequest('/users', () => api.get('/users')),
   deduplicateRequest('/users', () => api.get('/users')),

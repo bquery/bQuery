@@ -1444,6 +1444,31 @@ describe('useWebSocket — new extensions', () => {
     ws.dispose();
     (globalThis as unknown as { WebSocket: unknown }).WebSocket = originalWebSocket;
   });
+
+  it('clears stale heartbeat timers before replacing an existing connection with open()', async () => {
+    const ws = useWebSocket('ws://localhost/test', {
+      autoReconnect: false,
+      heartbeat: { interval: 20, pongTimeout: 60, responseMessage: 'pong' },
+    });
+
+    await new Promise((r) => setTimeout(r, 10));
+    const originalSocket = lastMockWS;
+    expect(originalSocket).not.toBeNull();
+
+    await new Promise((r) => setTimeout(r, 35));
+    ws.open();
+    await new Promise((r) => setTimeout(r, 10));
+
+    const reopenedSocket = lastMockWS;
+    expect(reopenedSocket).not.toBe(originalSocket);
+
+    await new Promise((r) => setTimeout(r, 80));
+
+    expect(ws.status.value).toBe('OPEN');
+    expect(reopenedSocket?.readyState).toBe(MockWebSocket.OPEN);
+
+    ws.dispose();
+  });
 });
 
 // ---------------------------------------------------------------------------

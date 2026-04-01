@@ -837,18 +837,18 @@ export const useResourceList = <T = unknown>(
 // Request deduplication
 // ---------------------------------------------------------------------------
 
-/** @internal In-flight GET request cache for deduplication. */
+/** @internal In-flight request/operation cache for deduplication. */
 const inflightRequests = new Map<string, Promise<unknown>>();
 
 /**
- * Deduplicate identical in-flight GET requests.
+ * Deduplicate identical in-flight requests or operations keyed by `key`.
  *
- * If a request to the same URL + query is already in flight, reuse its promise
- * instead of starting a new one. Once the request completes, the entry is removed.
+ * If an operation with the same key is already in flight, reuse its promise
+ * instead of starting a new one. Once the operation completes, the entry is removed.
  *
- * @param key - Cache key (typically URL + serialized query)
- * @param execute - The request function to run if no duplicate is in flight
- * @returns The response promise (shared with any concurrent callers using the same key)
+ * @param key - Cache key for the in-flight operation (for HTTP, typically URL + serialized query)
+ * @param execute - The operation function to run if no duplicate is in flight
+ * @returns The shared result promise for callers using the same key concurrently
  *
  * @example
  * ```ts
@@ -856,7 +856,7 @@ const inflightRequests = new Map<string, Promise<unknown>>();
  *
  * const api = createHttp({ baseUrl: 'https://api.example.com' });
  *
- * // Both calls share the same in-flight request
+ * // Both calls share the same in-flight operation
  * const [a, b] = await Promise.all([
  *   deduplicateRequest('/users', () => api.get('/users')),
  *   deduplicateRequest('/users', () => api.get('/users')),
