@@ -304,6 +304,16 @@ describe('interceptors', () => {
     await expect(api.get('/missing')).rejects.toThrow();
     expect(interceptedError).toBeTruthy();
   });
+
+  it('falls back to the original HttpError when an error interceptor returns undefined', async () => {
+    const api = createHttp({
+      fetcher: asMockFetch(async () => new Response('missing', { status: 404, statusText: 'Not Found' })),
+    });
+
+    api.interceptors.response.use(undefined, () => undefined);
+
+    await expect(api.get('/missing')).rejects.toBeInstanceOf(HttpError);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -1080,6 +1090,24 @@ describe('useInfiniteFetch', () => {
     expect(state.pages.value).toHaveLength(3);
     expect(state.data.value).toHaveLength(6);
     expect(state.hasMore.value).toBe(false);
+
+    state.dispose();
+  });
+
+  it('reports hasMore before the first page is loaded', () => {
+    const state = useInfiniteFetch<{ items: string[]; nextCursor: number | null }, string[]>(
+      (cursor) => `/api/feed?cursor=${cursor ?? ''}`,
+      {
+        immediate: false,
+        getNextCursor: (page) =>
+          (page.nextCursor != null ? page.nextCursor : undefined) as number | undefined,
+        transform: (pages) => pages.flatMap((p) => p.items),
+        fetcher: createMockApi(),
+      }
+    );
+
+    expect(state.pages.value).toEqual([]);
+    expect(state.hasMore.value).toBe(true);
 
     state.dispose();
   });

@@ -17,7 +17,7 @@ export type WebSocketStatus = 'CONNECTING' | 'OPEN' | 'CLOSING' | 'CLOSED';
 
 /** Configuration for automatic reconnection. */
 export interface WebSocketReconnectConfig {
-  /** Maximum number of reconnection attempts. 0 = no limit (default: Infinity). */
+  /** Maximum number of reconnection attempts. Use `0` to disable reconnection (default: Infinity / unlimited). */
   maxAttempts?: number;
   /** Base delay in ms between reconnects (default: 1000). */
   delay?: number;

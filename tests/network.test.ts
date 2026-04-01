@@ -504,6 +504,32 @@ describe('useWebSocket', () => {
     (globalThis as unknown as { WebSocket: unknown }).WebSocket = OrigWS;
   });
 
+  it('treats maxAttempts 0 as disabling reconnection', async () => {
+    let connectCount = 0;
+
+    const OrigWS = (globalThis as unknown as { WebSocket: typeof MockWebSocket }).WebSocket;
+    (globalThis as unknown as { WebSocket: unknown }).WebSocket = class extends MockWebSocket {
+      constructor(url: string, protocols?: string | string[]) {
+        super(url, protocols);
+        connectCount++;
+      }
+    };
+
+    const ws = useWebSocket('ws://localhost:8080', {
+      autoReconnect: { maxAttempts: 0, delay: 20 },
+    });
+
+    await new Promise((r) => setTimeout(r, 10));
+    lastMockWS!._simulateClose(1006, 'unexpected');
+    await new Promise((r) => setTimeout(r, 80));
+
+    expect(connectCount).toBe(1);
+    expect(ws.reconnectAttempts.value).toBe(0);
+
+    ws.dispose();
+    (globalThis as unknown as { WebSocket: unknown }).WebSocket = OrigWS;
+  });
+
   it('disposes cleanly', async () => {
     const ws = useWebSocket('ws://localhost:8080');
 
@@ -1776,6 +1802,15 @@ describe('createRequestQueue', () => {
     const queue = createRequestQueue();
     expect(queue.pending).toBe(0);
     expect(queue.size).toBe(0);
+  });
+
+  it('throws for concurrency less than 1', () => {
+    expect(() => createRequestQueue({ concurrency: 0 })).toThrow(
+      'Request queue concurrency must be at least 1'
+    );
+    expect(() => createRequestQueue({ concurrency: -1 })).toThrow(
+      'Request queue concurrency must be at least 1'
+    );
   });
 });
 

@@ -107,7 +107,7 @@ Each `src/<module>/index.ts` re-exports the module's public API.
 | `http`                       | instance  | Default HTTP client using global bQuery config                |
 | `HttpError`                  | class     | Error subclass with code, config, response metadata           |
 | `usePolling(input, options)` | function  | Periodic data fetching with pause/resume/visibility           |
-| `usePaginatedFetch(fn, opt)` | function  | Cursor-based pagination with next/prev/goTo helpers           |
+| `usePaginatedFetch(fn, opt)` | function  | Page-based pagination with next/prev/goTo numeric page helpers |
 | `useInfiniteFetch(fn, opt)`  | function  | Infinite scroll with accumulated pages and fetchNextPage      |
 | `useWebSocket(url, opt)`     | function  | Reactive WebSocket with auto-reconnect, heartbeat, latency, history |
 | `useWebSocketChannel(url, wsOpt, chOpt)` | function | Topic-based channel multiplexer over a single WebSocket |

@@ -194,7 +194,7 @@ export const useInfiniteFetch = <TResponse = unknown, TData = TResponse[], TCurs
   const status = signal<AsyncDataStatus>('idle');
   const pending = computed(() => status.value === 'pending');
   const nextCursor = signal<TCursor | undefined>(initialCursor);
-  const hasMore = computed(() => nextCursor.value !== undefined);
+  const hasMore = computed(() => pages.value.length === 0 || nextCursor.value !== undefined);
 
   let disposed = false;
   let executionId = 0;

@@ -610,7 +610,9 @@ export const useFetch = <TResponse = unknown, TData = TResponse>(
       throw lastError!;
     } finally {
       if (timeoutId !== undefined) clearTimeout(timeoutId);
-      currentAbortController = null;
+      if (currentAbortController === abortController) {
+        currentAbortController = null;
+      }
     }
   }, options);
 

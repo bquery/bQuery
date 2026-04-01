@@ -609,11 +609,19 @@ export function createHttp(defaults: HttpRequestConfig = {}): HttpClient {
                 if (result && typeof result === 'object' && 'data' in result) {
                   return result as HttpResponse<T>;
                 }
-                finalError = result;
+                if (result !== undefined) {
+                  finalError = result;
+                }
               } catch (innerErr) {
-                finalError = innerErr;
+                if (innerErr !== undefined && innerErr !== null) {
+                  finalError = innerErr;
+                }
               }
             }
+          }
+
+          if (!(finalError instanceof Error)) {
+            finalError = httpError;
           }
 
           throw finalError;
@@ -723,6 +731,9 @@ export interface RequestQueue {
  */
 export function createRequestQueue(options: RequestQueueOptions = {}): RequestQueue {
   const { concurrency = 6 } = options;
+  if (!Number.isFinite(concurrency) || concurrency < 1) {
+    throw new Error('Request queue concurrency must be at least 1');
+  }
   const queue: Array<QueueEntry> = [];
   let running = 0;
 
