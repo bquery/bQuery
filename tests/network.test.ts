@@ -1223,32 +1223,35 @@ describe('useWebSocket — new extensions', () => {
 
     (globalThis as unknown as GlobalWithWebSocket).WebSocket = ControlledReconnectWebSocket;
 
-    const ws = useWebSocket('ws://localhost/test', {
-      autoReconnect: { delay: 20, maxAttempts: 2 },
-    });
+    try {
+      const ws = useWebSocket('ws://localhost/test', {
+        autoReconnect: { delay: 20, maxAttempts: 2 },
+      });
 
-    await new Promise((r) => setTimeout(r, 10));
-    (lastMockWS as ControlledReconnectWebSocket | null)?.openNow();
-    await new Promise((r) => setTimeout(r, 10));
-    lastMockWS!._simulateClose(1006, 'server restart');
+      await new Promise((r) => setTimeout(r, 10));
+      (lastMockWS as ControlledReconnectWebSocket | null)?.openNow();
+      await new Promise((r) => setTimeout(r, 10));
+      lastMockWS!._simulateClose(1006, 'server restart');
 
-    await new Promise((r) => setTimeout(r, 30));
-    expect(ws.reconnectAttempts.value).toBeGreaterThan(0);
+      await new Promise((r) => setTimeout(r, 30));
+      expect(ws.reconnectAttempts.value).toBeGreaterThan(0);
 
-    (lastMockWS as ControlledReconnectWebSocket | null)?.openNow();
-    await new Promise((r) => setTimeout(r, 10));
+      (lastMockWS as ControlledReconnectWebSocket | null)?.openNow();
+      await new Promise((r) => setTimeout(r, 10));
 
-    expect(ws.reconnectAttempts.value).toBe(0);
+      expect(ws.reconnectAttempts.value).toBe(0);
 
-    lastMockWS!._simulateClose(1006, 'server restart again');
-    await new Promise((r) => setTimeout(r, 30));
-    expect(ws.reconnectAttempts.value).toBeGreaterThan(0);
-    (lastMockWS as ControlledReconnectWebSocket | null)?.openNow();
-    await new Promise((r) => setTimeout(r, 10));
-    expect(ws.reconnectAttempts.value).toBe(0);
+      lastMockWS!._simulateClose(1006, 'server restart again');
+      await new Promise((r) => setTimeout(r, 30));
+      expect(ws.reconnectAttempts.value).toBeGreaterThan(0);
+      (lastMockWS as ControlledReconnectWebSocket | null)?.openNow();
+      await new Promise((r) => setTimeout(r, 10));
+      expect(ws.reconnectAttempts.value).toBe(0);
 
-    ws.dispose();
-    (globalThis as unknown as GlobalWithWebSocket).WebSocket = originalWebSocketConstructor;
+      ws.dispose();
+    } finally {
+      (globalThis as unknown as GlobalWithWebSocket).WebSocket = originalWebSocketConstructor;
+    }
   });
 
   it('measures latency via heartbeat RTT', async () => {

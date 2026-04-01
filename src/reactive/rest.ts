@@ -580,6 +580,7 @@ export const useResourceList = <T = unknown>(
     UseFetchOptions<TResult>,
     'method' | 'body' | 'defaultValue' | 'transform' | 'onSuccess' | 'onError'
   > => {
+    // Strip list-level async-data defaults/callbacks; mutations operate on item payloads instead.
     const {
       defaultValue: _defaultValue,
       transform: _transform,
@@ -679,7 +680,10 @@ export const useResourceList = <T = unknown>(
         if (optimistic) {
           const next = [...current];
           // Replace the optimistic placeholder when it is still present; otherwise append.
-          if (optimisticInsertionIndex < next.length) {
+          if (
+            optimisticInsertionIndex < next.length &&
+            next[optimisticInsertionIndex] === optimisticItem
+          ) {
             next[optimisticInsertionIndex] = result;
           } else {
             next.push(result);
