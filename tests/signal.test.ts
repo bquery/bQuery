@@ -14,11 +14,7 @@ import type { ReadonlySignal } from '../src/reactive/readonly';
 import { isComputed, isSignal } from '../src/reactive/type-guards';
 import { toValue } from '../src/reactive/to-value';
 import type { MaybeSignal } from '../src/reactive/to-value';
-import {
-  effectScope,
-  getCurrentScope,
-  onScopeDispose,
-} from '../src/reactive/scope';
+import { effectScope, getCurrentScope, onScopeDispose } from '../src/reactive/scope';
 import type { EffectScope } from '../src/reactive/scope';
 import { watch as watchFn } from '../src/reactive/watch';
 import { untrack as untrackedFn } from '../src/reactive/untrack';
@@ -1648,8 +1644,14 @@ describe('effectScope', () => {
     let runsB = 0;
 
     scope.run(() => {
-      effect(() => { void a.value; runsA++; });
-      effect(() => { void b.value; runsB++; });
+      effect(() => {
+        void a.value;
+        runsA++;
+      });
+      effect(() => {
+        void b.value;
+        runsB++;
+      });
     });
 
     expect(runsA).toBe(1);
@@ -1953,11 +1955,17 @@ describe('effectScope', () => {
     let runsB = 0;
 
     scope.run(() => {
-      effect(() => { void count.value; runsA++; });
+      effect(() => {
+        void count.value;
+        runsA++;
+      });
     });
 
     scope.run(() => {
-      effect(() => { void count.value; runsB++; });
+      effect(() => {
+        void count.value;
+        runsB++;
+      });
     });
 
     count.value = 1;
@@ -2003,9 +2011,14 @@ describe('effectScope', () => {
     scope.stop();
 
     // Can't run anymore
-    expect(() => scope.run(() => {
-      effect(() => { void count.value; runs++; });
-    })).toThrow();
+    expect(() =>
+      scope.run(() => {
+        effect(() => {
+          void count.value;
+          runs++;
+        });
+      })
+    ).toThrow();
 
     expect(runs).toBe(0);
   });

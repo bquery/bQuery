@@ -102,10 +102,7 @@ class MockWebSocket {
   }
 
   close(code = 1000, reason = ''): void {
-    if (
-      this.readyState === MockWebSocket.CLOSED ||
-      this.readyState === MockWebSocket.CLOSING
-    ) {
+    if (this.readyState === MockWebSocket.CLOSED || this.readyState === MockWebSocket.CLOSING) {
       return;
     }
     this.readyState = MockWebSocket.CLOSING;
@@ -266,7 +263,8 @@ const installEventSourceMock = (): void => {
 
 const uninstallEventSourceMock = (): void => {
   if (originalEventSource !== undefined) {
-    (globalThis as unknown as { EventSource: typeof EventSource }).EventSource = originalEventSource;
+    (globalThis as unknown as { EventSource: typeof EventSource }).EventSource =
+      originalEventSource;
   } else {
     delete (globalThis as unknown as { EventSource?: unknown }).EventSource;
   }
@@ -720,11 +718,15 @@ describe('useEventSource', () => {
 
   it('cancels a pending reconnect when reopened manually', async () => {
     let connectCount = 0;
-    const originalEventSourceCtor = (globalThis as unknown as {
-      EventSource?: typeof EventSource;
-    }).EventSource;
+    const originalEventSourceCtor = (
+      globalThis as unknown as {
+        EventSource?: typeof EventSource;
+      }
+    ).EventSource;
 
-    (globalThis as unknown as { EventSource: unknown }).EventSource = class extends MockEventSource {
+    (globalThis as unknown as { EventSource: unknown }).EventSource = class extends (
+      MockEventSource
+    ) {
       constructor(url: string, init?: EventSourceInit) {
         super(url, init);
         connectCount++;
@@ -769,8 +771,8 @@ describe('useResource', () => {
   it('fetches data on initialization', async () => {
     const resource = useResource<{ id: number; name: string }>('/api/users/1', {
       immediate: false,
-      fetcher: asMockFetch(async () =>
-        new Response(JSON.stringify({ id: 1, name: 'Ada' }), { status: 200 })
+      fetcher: asMockFetch(
+        async () => new Response(JSON.stringify({ id: 1, name: 'Ada' }), { status: 200 })
       ),
     });
 
@@ -1014,9 +1016,7 @@ describe('useResource', () => {
   it('clears data and status', async () => {
     const resource = useResource<{ id: number }>('/api/users/1', {
       immediate: false,
-      fetcher: asMockFetch(async () =>
-        new Response(JSON.stringify({ id: 1 }), { status: 200 })
-      ),
+      fetcher: asMockFetch(async () => new Response(JSON.stringify({ id: 1 }), { status: 200 })),
     });
 
     await resource.actions.fetch();
@@ -1075,8 +1075,8 @@ describe('useSubmit', () => {
 
   it('handles submission errors', async () => {
     const form = useSubmit('/api/users', {
-      fetcher: asMockFetch(async () =>
-        new Response('', { status: 500, statusText: 'Internal Server Error' })
+      fetcher: asMockFetch(
+        async () => new Response('', { status: 500, statusText: 'Internal Server Error' })
       ),
     });
 
@@ -1104,9 +1104,7 @@ describe('useSubmit', () => {
 
   it('clears state', async () => {
     const form = useSubmit<{ id: number }>('/api/users', {
-      fetcher: asMockFetch(async () =>
-        new Response(JSON.stringify({ id: 1 }), { status: 200 })
-      ),
+      fetcher: asMockFetch(async () => new Response(JSON.stringify({ id: 1 }), { status: 200 })),
     });
 
     await form.submit({ name: 'Test' });
@@ -1430,7 +1428,8 @@ describe('useWebSocket — new extensions', () => {
 
   it('cancels a pending reconnect when manually reopened', async () => {
     let connectCount = 0;
-    const originalWebSocket = (globalThis as unknown as { WebSocket: typeof MockWebSocket }).WebSocket;
+    const originalWebSocket = (globalThis as unknown as { WebSocket: typeof MockWebSocket })
+      .WebSocket;
     (globalThis as unknown as { WebSocket: unknown }).WebSocket = class extends MockWebSocket {
       constructor(url: string, protocols?: string | string[]) {
         super(url, protocols);
@@ -1767,10 +1766,9 @@ describe('useResourceList', () => {
         optimistic: true,
         fetcher: asMockFetch(async (_input, init) => {
           if (init?.method === 'PATCH') {
-            return new Response(
-              JSON.stringify({ id: 2, name: 'Patched', normalized: true }),
-              { status: 200 }
-            );
+            return new Response(JSON.stringify({ id: 2, name: 'Patched', normalized: true }), {
+              status: 200,
+            });
           }
           return new Response(JSON.stringify([]), { status: 200 });
         }),
@@ -1883,9 +1881,11 @@ describe('useResourceList', () => {
     const list = useResourceList<{ id: number; name: string }>('http://api.test/items', {
       immediate: false,
       fetcher: asMockFetch(
-        () => new Promise<Response>((resolve) => {
-          resolveFetch = () => resolve(new Response(JSON.stringify({ id: 3, name: 'C' }), { status: 201 }));
-        })
+        () =>
+          new Promise<Response>((resolve) => {
+            resolveFetch = () =>
+              resolve(new Response(JSON.stringify({ id: 3, name: 'C' }), { status: 201 }));
+          })
       ),
     });
 
@@ -1975,8 +1975,8 @@ describe('useResourceList', () => {
       onSuccess: () => {
         successCalls++;
       },
-      fetcher: asMockFetch(async () =>
-        new Response(JSON.stringify([{ id: 1, name: 'A' }]), { status: 200 })
+      fetcher: asMockFetch(
+        async () => new Response(JSON.stringify([{ id: 1, name: 'A' }]), { status: 200 })
       ),
     });
 
@@ -2130,7 +2130,13 @@ describe('createRequestQueue', () => {
     );
     const p2 = queue.add(
       async () =>
-        ({ data: 2, status: 200, statusText: 'OK', headers: new Headers(), config: {} }) as HttpResponse<number>
+        ({
+          data: 2,
+          status: 200,
+          statusText: 'OK',
+          headers: new Headers(),
+          config: {},
+        }) as HttpResponse<number>
     );
 
     await new Promise((r) => setTimeout(r, 10));
@@ -2162,7 +2168,13 @@ describe('createRequestQueue', () => {
 
     const p2 = queue.add(
       async () =>
-        ({ data: 2, status: 200, statusText: 'OK', headers: new Headers(), config: {} }) as HttpResponse<number>
+        ({
+          data: 2,
+          status: 200,
+          statusText: 'OK',
+          headers: new Headers(),
+          config: {},
+        }) as HttpResponse<number>
     );
 
     await new Promise((r) => setTimeout(r, 10));
@@ -2205,7 +2217,13 @@ describe('createRequestQueue', () => {
 
     const result = await queue.add(
       async () =>
-        ({ data: 1, status: 200, statusText: 'OK', headers: new Headers(), config: {} }) as HttpResponse<number>
+        ({
+          data: 1,
+          status: 200,
+          statusText: 'OK',
+          headers: new Headers(),
+          config: {},
+        }) as HttpResponse<number>
     );
 
     expect(result.data).toBe(1);

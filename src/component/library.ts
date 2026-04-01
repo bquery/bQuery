@@ -182,9 +182,7 @@ const canSkipTextareaRender = (
   const labelEl = shadowRoot.querySelector('.label');
   if ((labelEl?.textContent ?? '') !== newProps.label) return false;
 
-  const control = shadowRoot.querySelector(
-    'textarea.control'
-  ) as HTMLTextAreaElement | null;
+  const control = shadowRoot.querySelector('textarea.control') as HTMLTextAreaElement | null;
   if (!control) return false;
 
   if (control.placeholder !== newProps.placeholder) return false;

@@ -137,27 +137,27 @@ import { renderToString, hydrateMount } from '@bquery/bquery/ssr';
 
 ## Modules at a glance
 
-| Module        | Description                                                                    |
-| ------------- | ------------------------------------------------------------------------------ |
-| **Core**      | Selectors, DOM manipulation, traversal, events, and typed utilities            |
+| Module        | Description                                                                                         |
+| ------------- | --------------------------------------------------------------------------------------------------- |
+| **Core**      | Selectors, DOM manipulation, traversal, events, and typed utilities                                 |
 | **Reactive**  | Signals, computed values, effects, batching, HTTP clients, polling, streaming, and REST composables |
-| **Component** | Typed Web Components with scoped reactivity and Shadow DOM control             |
-| **Storybook** | Safe string-template helpers for stories and boolean attributes                |
-| **Motion**    | Transitions, morphing, parallax, typewriter, FLIP, scroll, and springs         |
-| **Security**  | Sanitization, Trusted Types, CSP helpers, and trusted fragments                |
-| **Platform**  | Storage, cache, cookies, page metadata, announcers, and shared config          |
-| **Router**    | SPA routing, redirects, constrained params, guards, and declarative links      |
-| **Store**     | Signal-based state, persistence, migrations, and action lifecycle hooks        |
-| **View**      | Declarative bindings, directives, and plugin-powered custom directives         |
-| **Forms**     | Reactive form state, validation, and submit orchestration                      |
-| **i18n**      | Reactive locale state, translation, pluralization, and Intl formatting         |
-| **A11y**      | Focus management, skip navigation, live regions, media preferences, and audits |
-| **DnD**       | Draggable elements, drop zones, and sortable lists                             |
-| **Media**     | Viewport, network, battery, geolocation, sensors, and clipboard wrappers       |
-| **Plugin**    | Global plugin registration for custom directives and components                |
-| **Devtools**  | Runtime inspection helpers for signals, stores, components, and timelines      |
-| **Testing**   | Component mounts, mock signals/router, event helpers, and async assertions     |
-| **SSR**       | HTML rendering, hydration, and serialized store-state handoff                  |
+| **Component** | Typed Web Components with scoped reactivity and Shadow DOM control                                  |
+| **Storybook** | Safe string-template helpers for stories and boolean attributes                                     |
+| **Motion**    | Transitions, morphing, parallax, typewriter, FLIP, scroll, and springs                              |
+| **Security**  | Sanitization, Trusted Types, CSP helpers, and trusted fragments                                     |
+| **Platform**  | Storage, cache, cookies, page metadata, announcers, and shared config                               |
+| **Router**    | SPA routing, redirects, constrained params, guards, and declarative links                           |
+| **Store**     | Signal-based state, persistence, migrations, and action lifecycle hooks                             |
+| **View**      | Declarative bindings, directives, and plugin-powered custom directives                              |
+| **Forms**     | Reactive form state, validation, and submit orchestration                                           |
+| **i18n**      | Reactive locale state, translation, pluralization, and Intl formatting                              |
+| **A11y**      | Focus management, skip navigation, live regions, media preferences, and audits                      |
+| **DnD**       | Draggable elements, drop zones, and sortable lists                                                  |
+| **Media**     | Viewport, network, battery, geolocation, sensors, and clipboard wrappers                            |
+| **Plugin**    | Global plugin registration for custom directives and components                                     |
+| **Devtools**  | Runtime inspection helpers for signals, stores, components, and timelines                           |
+| **Testing**   | Component mounts, mock signals/router, event helpers, and async assertions                          |
+| **SSR**       | HTML rendering, hydration, and serialized store-state handoff                                       |
 
 ## Quick Examples
 

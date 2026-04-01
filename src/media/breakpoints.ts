@@ -46,9 +46,7 @@ type BreakpointSignals<T extends BreakpointMap> = { [K in keyof T]: MediaSignalH
  * });
  * ```
  */
-export const breakpoints = <T extends BreakpointMap>(
-  bp: T
-): BreakpointSignals<T> => {
+export const breakpoints = <T extends BreakpointMap>(bp: T): BreakpointSignals<T> => {
   const signals = {} as { [K in keyof T]: MediaSignalHandle<boolean> };
   const destroyers: Array<() => void> = [];
 

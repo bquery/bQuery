@@ -168,27 +168,27 @@ import { storyHtml, when } from '@bquery/bquery/storybook';
 
 ## Modules at a glance
 
-| Module        | Description                                                                           |
-| ------------- | ------------------------------------------------------------------------------------- |
-| **Core**      | Selectors, DOM manipulation, events, traversal, and typed utilities                   |
+| Module        | Description                                                                                                      |
+| ------------- | ---------------------------------------------------------------------------------------------------------------- |
+| **Core**      | Selectors, DOM manipulation, events, traversal, and typed utilities                                              |
 | **Reactive**  | `signal`, `computed`, `effect`, async data, HTTP clients, polling, pagination, WebSocket / SSE, and REST helpers |
-| **Component** | Typed Web Components with scoped reactivity and configurable Shadow DOM               |
-| **Storybook** | Safe story template helpers with boolean-attribute shorthand                          |
-| **Motion**    | View transitions, FLIP, morphing, parallax, typewriter, springs, and timelines        |
-| **Security**  | HTML sanitization, Trusted Types, CSP helpers, and trusted fragment composition       |
-| **Platform**  | Storage, cache, cookies, page metadata, announcers, and shared runtime config         |
-| **Router**    | SPA routing, constrained params, redirects, guards, `useRoute()`, and `<bq-link>`     |
-| **Store**     | Signal-based state management, persistence, migrations, and action hooks              |
-| **View**      | Declarative DOM bindings, directives, and plugin-provided custom directives           |
-| **Forms**     | Reactive form state with sync/async validation and submit handling                    |
-| **i18n**      | Reactive locales, interpolation, pluralization, lazy loading, and Intl formatting     |
-| **A11y**      | Focus traps, live-region announcements, roving tabindex, skip links, and audits       |
-| **DnD**       | Draggable elements, droppable zones, and sortable lists                               |
-| **Media**     | Reactive browser/device signals for viewport, network, battery, geolocation, and more |
-| **Plugin**    | Global plugin registration for custom directives and Web Components                   |
-| **Devtools**  | Runtime inspection helpers for signals, stores, components, and timelines             |
-| **Testing**   | Component mounting, mock signals/router helpers, and async test utilities             |
-| **SSR**       | Server-side rendering, hydration, and store-state serialization                       |
+| **Component** | Typed Web Components with scoped reactivity and configurable Shadow DOM                                          |
+| **Storybook** | Safe story template helpers with boolean-attribute shorthand                                                     |
+| **Motion**    | View transitions, FLIP, morphing, parallax, typewriter, springs, and timelines                                   |
+| **Security**  | HTML sanitization, Trusted Types, CSP helpers, and trusted fragment composition                                  |
+| **Platform**  | Storage, cache, cookies, page metadata, announcers, and shared runtime config                                    |
+| **Router**    | SPA routing, constrained params, redirects, guards, `useRoute()`, and `<bq-link>`                                |
+| **Store**     | Signal-based state management, persistence, migrations, and action hooks                                         |
+| **View**      | Declarative DOM bindings, directives, and plugin-provided custom directives                                      |
+| **Forms**     | Reactive form state with sync/async validation and submit handling                                               |
+| **i18n**      | Reactive locales, interpolation, pluralization, lazy loading, and Intl formatting                                |
+| **A11y**      | Focus traps, live-region announcements, roving tabindex, skip links, and audits                                  |
+| **DnD**       | Draggable elements, droppable zones, and sortable lists                                                          |
+| **Media**     | Reactive browser/device signals for viewport, network, battery, geolocation, and more                            |
+| **Plugin**    | Global plugin registration for custom directives and Web Components                                              |
+| **Devtools**  | Runtime inspection helpers for signals, stores, components, and timelines                                        |
+| **Testing**   | Component mounting, mock signals/router helpers, and async test utilities                                        |
+| **SSR**       | Server-side rendering, hydration, and store-state serialization                                                  |
 
 Storybook authoring helpers are also available as a dedicated entry point via `@bquery/bquery/storybook`.
 

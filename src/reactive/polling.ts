@@ -8,16 +8,13 @@ import { computed } from './computed';
 import { effect } from './effect';
 import { signal } from './core';
 import { untrack } from './untrack';
-import {
-  useFetch,
-  type AsyncDataState,
-  type FetchInput,
-  type UseFetchOptions,
-} from './async-data';
+import { useFetch, type AsyncDataState, type FetchInput, type UseFetchOptions } from './async-data';
 
 /** Options for usePolling(). */
-export interface UsePollingOptions<TResponse = unknown, TData = TResponse>
-  extends UseFetchOptions<TResponse, TData> {
+export interface UsePollingOptions<TResponse = unknown, TData = TResponse> extends UseFetchOptions<
+  TResponse,
+  TData
+> {
   /** Polling interval in milliseconds. */
   interval: number;
   /** Whether polling is initially enabled (default: true). Can be a reactive getter. */
@@ -83,8 +80,7 @@ export const usePolling = <TResponse = unknown, TData = TResponse>(
   const documentHidden = signal(false);
   const browserOffline = signal(false);
 
-  const enabledGetter =
-    typeof enabledOption === 'function' ? enabledOption : () => enabledOption;
+  const enabledGetter = typeof enabledOption === 'function' ? enabledOption : () => enabledOption;
 
   const isActive = computed(
     () =>

@@ -24,8 +24,8 @@ const asMockFetch = (
 describe('createHttp', () => {
   it('makes a basic GET request', async () => {
     const api = createHttp({
-      fetcher: asMockFetch(async () =>
-        new Response(JSON.stringify({ id: 1, name: 'Ada' }), { status: 200 })
+      fetcher: asMockFetch(
+        async () => new Response(JSON.stringify({ id: 1, name: 'Ada' }), { status: 200 })
       ),
     });
 
@@ -154,12 +154,13 @@ describe('createHttp', () => {
 
   it('returns a full HttpResponse object', async () => {
     const api = createHttp({
-      fetcher: asMockFetch(async () =>
-        new Response(JSON.stringify({ id: 1 }), {
-          status: 200,
-          statusText: 'OK',
-          headers: { 'x-custom': 'value' },
-        })
+      fetcher: asMockFetch(
+        async () =>
+          new Response(JSON.stringify({ id: 1 }), {
+            status: 200,
+            statusText: 'OK',
+            headers: { 'x-custom': 'value' },
+          })
       ),
     });
 
@@ -206,7 +207,10 @@ describe('interceptors', () => {
     api.interceptors.request.use((config) => {
       return {
         ...config,
-        headers: { ...Object.fromEntries(new Headers(config.headers)), 'x-injected': 'intercepted' },
+        headers: {
+          ...Object.fromEntries(new Headers(config.headers)),
+          'x-injected': 'intercepted',
+        },
       };
     });
 
@@ -216,8 +220,8 @@ describe('interceptors', () => {
 
   it('runs response interceptors after each request', async () => {
     const api = createHttp({
-      fetcher: asMockFetch(async () =>
-        new Response(JSON.stringify({ raw: true }), { status: 200 })
+      fetcher: asMockFetch(
+        async () => new Response(JSON.stringify({ raw: true }), { status: 200 })
       ),
     });
 
@@ -235,9 +239,7 @@ describe('interceptors', () => {
     const calls: string[] = [];
 
     const api = createHttp({
-      fetcher: asMockFetch(async () =>
-        new Response(JSON.stringify({ ok: true }), { status: 200 })
-      ),
+      fetcher: asMockFetch(async () => new Response(JSON.stringify({ ok: true }), { status: 200 })),
     });
 
     const id = api.interceptors.request.use((config) => {
@@ -257,9 +259,7 @@ describe('interceptors', () => {
     const calls: string[] = [];
 
     const api = createHttp({
-      fetcher: asMockFetch(async () =>
-        new Response(JSON.stringify({ ok: true }), { status: 200 })
-      ),
+      fetcher: asMockFetch(async () => new Response(JSON.stringify({ ok: true }), { status: 200 })),
     });
 
     api.interceptors.request.use((config) => {
@@ -283,9 +283,7 @@ describe('interceptors', () => {
     const order: number[] = [];
 
     const api = createHttp({
-      fetcher: asMockFetch(async () =>
-        new Response(JSON.stringify({ ok: true }), { status: 200 })
-      ),
+      fetcher: asMockFetch(async () => new Response(JSON.stringify({ ok: true }), { status: 200 })),
     });
 
     api.interceptors.request.use((config) => {
@@ -309,8 +307,8 @@ describe('interceptors', () => {
     let interceptedError: unknown = null;
 
     const api = createHttp({
-      fetcher: asMockFetch(async () =>
-        new Response(JSON.stringify({ error: 'not found' }), { status: 404 })
+      fetcher: asMockFetch(
+        async () => new Response(JSON.stringify({ error: 'not found' }), { status: 404 })
       ),
     });
 
@@ -325,7 +323,9 @@ describe('interceptors', () => {
 
   it('falls back to the original HttpError when an error interceptor returns undefined', async () => {
     const api = createHttp({
-      fetcher: asMockFetch(async () => new Response('missing', { status: 404, statusText: 'Not Found' })),
+      fetcher: asMockFetch(
+        async () => new Response('missing', { status: 404, statusText: 'Not Found' })
+      ),
     });
 
     api.interceptors.response.use(undefined, () => undefined);
@@ -341,8 +341,12 @@ describe('interceptors', () => {
 describe('HttpError', () => {
   it('is thrown for non-2xx responses by default', async () => {
     const api = createHttp({
-      fetcher: asMockFetch(async () =>
-        new Response(JSON.stringify({ error: 'not found' }), { status: 404, statusText: 'Not Found' })
+      fetcher: asMockFetch(
+        async () =>
+          new Response(JSON.stringify({ error: 'not found' }), {
+            status: 404,
+            statusText: 'Not Found',
+          })
       ),
     });
 
@@ -361,8 +365,8 @@ describe('HttpError', () => {
   it('respects custom validateStatus', async () => {
     const api = createHttp({
       validateStatus: (status) => status < 500,
-      fetcher: asMockFetch(async () =>
-        new Response(JSON.stringify({ error: 'not found' }), { status: 404 })
+      fetcher: asMockFetch(
+        async () => new Response(JSON.stringify({ error: 'not found' }), { status: 404 })
       ),
     });
 
@@ -382,10 +386,14 @@ describe('http timeout', () => {
       fetcher: asMockFetch(async (_input, init) => {
         await new Promise<void>((resolve, reject) => {
           const timer = setTimeout(resolve, 500);
-          init?.signal?.addEventListener('abort', () => {
-            clearTimeout(timer);
-            reject(init.signal!.reason ?? new DOMException('aborted', 'AbortError'));
-          }, { once: true });
+          init?.signal?.addEventListener(
+            'abort',
+            () => {
+              clearTimeout(timer);
+              reject(init.signal!.reason ?? new DOMException('aborted', 'AbortError'));
+            },
+            { once: true }
+          );
         });
         return new Response(JSON.stringify({ ok: true }), { status: 200 });
       }),
@@ -824,8 +832,8 @@ describe('useFetch validateStatus', () => {
     const state = useFetch<{ error: string }>('/api/missing', {
       immediate: false,
       validateStatus: (status) => status < 500,
-      fetcher: asMockFetch(async () =>
-        new Response(JSON.stringify({ error: 'not found' }), { status: 404 })
+      fetcher: asMockFetch(
+        async () => new Response(JSON.stringify({ error: 'not found' }), { status: 404 })
       ),
     });
 
@@ -838,8 +846,8 @@ describe('useFetch validateStatus', () => {
     const state = useFetch<unknown>('/api/error', {
       immediate: false,
       validateStatus: (status) => status === 200,
-      fetcher: asMockFetch(async () =>
-        new Response(JSON.stringify({ error: 'server error' }), { status: 500 })
+      fetcher: asMockFetch(
+        async () => new Response(JSON.stringify({ error: 'server error' }), { status: 500 })
       ),
     });
 
@@ -912,9 +920,7 @@ describe('usePolling', () => {
       immediate: false,
       pauseOnHidden: false,
       pauseOnOffline: false,
-      fetcher: asMockFetch(async () =>
-        new Response(JSON.stringify({ ok: true }), { status: 200 })
-      ),
+      fetcher: asMockFetch(async () => new Response(JSON.stringify({ ok: true }), { status: 200 })),
     });
 
     expect(state.isActive.value).toBe(true);
@@ -1036,14 +1042,18 @@ describe('usePolling', () => {
     expect(() =>
       usePolling('/api/data', {
         interval: 0,
-        fetcher: asMockFetch(async () => new Response(JSON.stringify({ ok: true }), { status: 200 })),
+        fetcher: asMockFetch(
+          async () => new Response(JSON.stringify({ ok: true }), { status: 200 })
+        ),
       })
     ).toThrow('Polling interval must be a finite number of at least 1');
 
     expect(() =>
       usePolling('/api/data', {
         interval: Number.POSITIVE_INFINITY,
-        fetcher: asMockFetch(async () => new Response(JSON.stringify({ ok: true }), { status: 200 })),
+        fetcher: asMockFetch(
+          async () => new Response(JSON.stringify({ ok: true }), { status: 200 })
+        ),
       })
     ).toThrow('Polling interval must be a finite number of at least 1');
   });
@@ -1077,17 +1087,14 @@ describe('usePaginatedFetch', () => {
   });
 
   it('navigates to the next page', async () => {
-    const state = usePaginatedFetch<{ page: number }>(
-      (page) => `/api/items?page=${page}`,
-      {
-        immediate: false,
-        fetcher: asMockFetch(async (input) => {
-          const url = new URL(String(input), 'http://localhost');
-          const page = Number(url.searchParams.get('page'));
-          return new Response(JSON.stringify({ page }), { status: 200 });
-        }),
-      }
-    );
+    const state = usePaginatedFetch<{ page: number }>((page) => `/api/items?page=${page}`, {
+      immediate: false,
+      fetcher: asMockFetch(async (input) => {
+        const url = new URL(String(input), 'http://localhost');
+        const page = Number(url.searchParams.get('page'));
+        return new Response(JSON.stringify({ page }), { status: 200 });
+      }),
+    });
 
     await state.execute();
     expect(state.page.value).toBe(1);
@@ -1098,17 +1105,14 @@ describe('usePaginatedFetch', () => {
   });
 
   it('navigates to the previous page (minimum 1)', async () => {
-    const state = usePaginatedFetch<{ page: number }>(
-      (page) => `/api/items?page=${page}`,
-      {
-        immediate: false,
-        fetcher: asMockFetch(async (input) => {
-          const url = new URL(String(input), 'http://localhost');
-          const page = Number(url.searchParams.get('page'));
-          return new Response(JSON.stringify({ page }), { status: 200 });
-        }),
-      }
-    );
+    const state = usePaginatedFetch<{ page: number }>((page) => `/api/items?page=${page}`, {
+      immediate: false,
+      fetcher: asMockFetch(async (input) => {
+        const url = new URL(String(input), 'http://localhost');
+        const page = Number(url.searchParams.get('page'));
+        return new Response(JSON.stringify({ page }), { status: 200 });
+      }),
+    });
 
     await state.execute();
     await state.next();
@@ -1125,17 +1129,14 @@ describe('usePaginatedFetch', () => {
   });
 
   it('jumps to a specific page with goTo()', async () => {
-    const state = usePaginatedFetch<{ page: number }>(
-      (page) => `/api/items?page=${page}`,
-      {
-        immediate: false,
-        fetcher: asMockFetch(async (input) => {
-          const url = new URL(String(input), 'http://localhost');
-          const page = Number(url.searchParams.get('page'));
-          return new Response(JSON.stringify({ page }), { status: 200 });
-        }),
-      }
-    );
+    const state = usePaginatedFetch<{ page: number }>((page) => `/api/items?page=${page}`, {
+      immediate: false,
+      fetcher: asMockFetch(async (input) => {
+        const url = new URL(String(input), 'http://localhost');
+        const page = Number(url.searchParams.get('page'));
+        return new Response(JSON.stringify({ page }), { status: 200 });
+      }),
+    });
 
     await state.goTo(10);
     expect(state.page.value).toBe(10);
@@ -1143,17 +1144,14 @@ describe('usePaginatedFetch', () => {
   });
 
   it('exposes writable page signal', async () => {
-    const state = usePaginatedFetch<{ page: number }>(
-      (page) => `/api/items?page=${page}`,
-      {
-        immediate: false,
-        fetcher: asMockFetch(async (input) => {
-          const url = new URL(String(input), 'http://localhost');
-          const page = Number(url.searchParams.get('page'));
-          return new Response(JSON.stringify({ page }), { status: 200 });
-        }),
-      }
-    );
+    const state = usePaginatedFetch<{ page: number }>((page) => `/api/items?page=${page}`, {
+      immediate: false,
+      fetcher: asMockFetch(async (input) => {
+        const url = new URL(String(input), 'http://localhost');
+        const page = Number(url.searchParams.get('page'));
+        return new Response(JSON.stringify({ page }), { status: 200 });
+      }),
+    });
 
     expect(state.page.value).toBe(1);
     state.page.value = 5;
@@ -1162,18 +1160,15 @@ describe('usePaginatedFetch', () => {
 
   it('does not double-fetch when using pagination helpers', async () => {
     let fetchCount = 0;
-    const state = usePaginatedFetch<{ page: number }>(
-      (page) => `/api/items?page=${page}`,
-      {
-        immediate: false,
-        fetcher: asMockFetch(async (input) => {
-          fetchCount++;
-          const url = new URL(String(input), 'http://localhost');
-          const page = Number(url.searchParams.get('page'));
-          return new Response(JSON.stringify({ page }), { status: 200 });
-        }),
-      }
-    );
+    const state = usePaginatedFetch<{ page: number }>((page) => `/api/items?page=${page}`, {
+      immediate: false,
+      fetcher: asMockFetch(async (input) => {
+        fetchCount++;
+        const url = new URL(String(input), 'http://localhost');
+        const page = Number(url.searchParams.get('page'));
+        return new Response(JSON.stringify({ page }), { status: 200 });
+      }),
+    });
 
     await state.execute();
     expect(fetchCount).toBe(1);
@@ -1204,10 +1199,7 @@ describe('useInfiniteFetch', () => {
       const items = [`item-${pageNumber}-a`, `item-${pageNumber}-b`];
       const nextCursor = pageNumber < totalPages ? pageNumber : null;
 
-      return new Response(
-        JSON.stringify({ items, nextCursor, pageNumber }),
-        { status: 200 }
-      );
+      return new Response(JSON.stringify({ items, nextCursor, pageNumber }), { status: 200 });
     });
   };
 
@@ -1215,7 +1207,8 @@ describe('useInfiniteFetch', () => {
     const state = useInfiniteFetch<{ items: string[]; nextCursor: number | null }, string[]>(
       (cursor) => `/api/feed?cursor=${cursor ?? ''}`,
       {
-        getNextCursor: (page) => (page.nextCursor != null ? page.nextCursor : undefined) as number | undefined,
+        getNextCursor: (page) =>
+          (page.nextCursor != null ? page.nextCursor : undefined) as number | undefined,
         transform: (pages) => pages.flatMap((p) => p.items),
         fetcher: createMockApi(),
       }
@@ -1236,7 +1229,8 @@ describe('useInfiniteFetch', () => {
       (cursor) => `/api/feed?cursor=${cursor ?? ''}`,
       {
         immediate: false,
-        getNextCursor: (page) => (page.nextCursor != null ? page.nextCursor : undefined) as number | undefined,
+        getNextCursor: (page) =>
+          (page.nextCursor != null ? page.nextCursor : undefined) as number | undefined,
         transform: (pages) => pages.flatMap((p) => p.items),
         fetcher: createMockApi(),
       }
@@ -1305,7 +1299,8 @@ describe('useInfiniteFetch', () => {
       (cursor) => `/api/feed?cursor=${cursor ?? ''}`,
       {
         immediate: false,
-        getNextCursor: (page) => (page.nextCursor != null ? page.nextCursor : undefined) as number | undefined,
+        getNextCursor: (page) =>
+          (page.nextCursor != null ? page.nextCursor : undefined) as number | undefined,
         transform: (pages) => pages.flatMap((p) => p.items),
         fetcher: createMockApi(),
       }
@@ -1327,7 +1322,8 @@ describe('useInfiniteFetch', () => {
       (cursor) => `/api/feed?cursor=${cursor ?? ''}`,
       {
         immediate: false,
-        getNextCursor: (page) => (page.nextCursor != null ? page.nextCursor : undefined) as number | undefined,
+        getNextCursor: (page) =>
+          (page.nextCursor != null ? page.nextCursor : undefined) as number | undefined,
         transform: (pages) => pages.flatMap((p) => p.items),
         fetcher: createMockApi(),
       }
@@ -1345,17 +1341,14 @@ describe('useInfiniteFetch', () => {
   });
 
   it('handles errors', async () => {
-    const state = useInfiniteFetch<{ items: string[] }, string[]>(
-      () => '/api/fail',
-      {
-        immediate: false,
-        getNextCursor: () => undefined,
-        transform: (pages) => pages.flatMap((p) => p.items),
-        fetcher: asMockFetch(async () =>
-          new Response('error', { status: 500, statusText: 'Internal Server Error' })
-        ),
-      }
-    );
+    const state = useInfiniteFetch<{ items: string[] }, string[]>(() => '/api/fail', {
+      immediate: false,
+      getNextCursor: () => undefined,
+      transform: (pages) => pages.flatMap((p) => p.items),
+      fetcher: asMockFetch(
+        async () => new Response('error', { status: 500, statusText: 'Internal Server Error' })
+      ),
+    });
 
     await state.fetchNextPage();
     expect(state.status.value).toBe('error');
@@ -1370,7 +1363,8 @@ describe('useInfiniteFetch', () => {
       (cursor) => `/api/feed?cursor=${cursor ?? ''}`,
       {
         immediate: false,
-        getNextCursor: (page) => (page.nextCursor != null ? page.nextCursor : undefined) as number | undefined,
+        getNextCursor: (page) =>
+          (page.nextCursor != null ? page.nextCursor : undefined) as number | undefined,
         transform: (pages) => pages.flatMap((p) => p.items),
         onSuccess: (value) => successes.push(value),
         fetcher: createMockApi(),
@@ -1392,14 +1386,12 @@ describe('useInfiniteFetch', () => {
       (cursor) => `/api/feed?cursor=${cursor ?? ''}`,
       {
         immediate: false,
-        getNextCursor: (page) => (page.nextCursor != null ? page.nextCursor : undefined) as number | undefined,
+        getNextCursor: (page) =>
+          (page.nextCursor != null ? page.nextCursor : undefined) as number | undefined,
         transform: (pages) => pages.flatMap((p) => p.items),
         fetcher: asMockFetch(async () => {
           fetchCount++;
-          return new Response(
-            JSON.stringify({ items: ['a'], nextCursor: 1 }),
-            { status: 200 }
-          );
+          return new Response(JSON.stringify({ items: ['a'], nextCursor: 1 }), { status: 200 });
         }),
       }
     );

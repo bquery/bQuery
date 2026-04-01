@@ -1220,18 +1220,15 @@ describe('forms/useFormField', () => {
   it('ignores stale async validation results', async () => {
     const field = useFormField<string>('', {
       validators: [
-        customAsync(
-          async (value: string) => {
-            if (value === 'slow') {
-              await new Promise((resolve) => setTimeout(resolve, 20));
-              return false;
-            }
+        customAsync(async (value: string) => {
+          if (value === 'slow') {
+            await new Promise((resolve) => setTimeout(resolve, 20));
+            return false;
+          }
 
-            await new Promise((resolve) => setTimeout(resolve, 0));
-            return true;
-          },
-          'Taken'
-        ),
+          await new Promise((resolve) => setTimeout(resolve, 0));
+          return true;
+        }, 'Taken'),
       ],
       validateOn: 'change',
     });

@@ -7,17 +7,8 @@
 
 import { computed } from './computed';
 import { Signal, signal } from './core';
-import {
-  useFetch,
-  type AsyncDataStatus,
-  type UseFetchOptions,
-} from './async-data';
-import {
-  createHttp,
-  type HttpClient,
-  type HttpRequestConfig,
-  type HttpResponse,
-} from './http';
+import { useFetch, type AsyncDataStatus, type UseFetchOptions } from './async-data';
+import { createHttp, type HttpClient, type HttpRequestConfig, type HttpResponse } from './http';
 
 // ---------------------------------------------------------------------------
 // useResource — full CRUD composable
@@ -38,8 +29,10 @@ export interface ResourceActions<T> {
 }
 
 /** Options for `useResource()`. */
-export interface UseResourceOptions<T = unknown>
-  extends Omit<UseFetchOptions<T>, 'method' | 'body'> {
+export interface UseResourceOptions<T = unknown> extends Omit<
+  UseFetchOptions<T>,
+  'method' | 'body'
+> {
   /** Enable optimistic updates for mutating operations (default: false). */
   optimistic?: boolean;
   /** Called after any successful mutation (create / update / patch / remove). */
@@ -104,12 +97,7 @@ export const useResource = <T = unknown>(
   url: string | URL | (() => string | URL),
   options: UseResourceOptions<T> = {}
 ): UseResourceReturn<T> => {
-  const {
-    optimistic = false,
-    onMutationSuccess,
-    onMutationError,
-    ...fetchOptions
-  } = options;
+  const { optimistic = false, onMutationSuccess, onMutationError, ...fetchOptions } = options;
 
   // Internal fetch state for the GET
   const fetchState = useFetch<T>(url, {
@@ -126,7 +114,7 @@ export const useResource = <T = unknown>(
     return resolved instanceof URL ? resolved.toString() : resolved;
   };
 
-  const stripGetLifecycleOptions = <TResult,>(): Omit<
+  const stripGetLifecycleOptions = <TResult>(): Omit<
     UseFetchOptions<TResult>,
     'method' | 'body' | 'defaultValue' | 'transform' | 'onSuccess' | 'onError'
   > => {
@@ -218,8 +206,7 @@ export const useResource = <T = unknown>(
 
   const actions: ResourceActions<T> = {
     fetch: () => fetchState.execute(),
-    create: (body) =>
-      executeMutation('create', 'POST', body),
+    create: (body) => executeMutation('create', 'POST', body),
     update: (body) => {
       const base = fetchState.data.peek();
       return executeMutation(
@@ -271,8 +258,10 @@ export const useResource = <T = unknown>(
 // ---------------------------------------------------------------------------
 
 /** Options for `useSubmit()`. */
-export interface UseSubmitOptions<TResponse = unknown>
-  extends Omit<UseFetchOptions<TResponse>, 'body' | 'immediate'> {
+export interface UseSubmitOptions<TResponse = unknown> extends Omit<
+  UseFetchOptions<TResponse>,
+  'body' | 'immediate'
+> {
   /** HTTP method (default: `'POST'`). */
   method?: string;
 }
@@ -457,8 +446,7 @@ export const createRestClient = <T = unknown>(
   return {
     list: (config) => httpClient.get<T[]>(base, config),
     get: (id, config) => httpClient.get<T>(`${base}/${encodeURIComponent(String(id))}`, config),
-    create: (body, config) =>
-      httpClient.post<T>(base, body as HttpRequestConfig['body'], config),
+    create: (body, config) => httpClient.post<T>(base, body as HttpRequestConfig['body'], config),
     update: (id, body, config) =>
       httpClient.put<T>(
         `${base}/${encodeURIComponent(String(id))}`,
@@ -485,8 +473,10 @@ export const createRestClient = <T = unknown>(
 export type IdExtractor<T> = (item: T) => string | number;
 
 /** Options for `useResourceList()`. */
-export interface UseResourceListOptions<T = unknown>
-  extends Omit<UseFetchOptions<T[]>, 'method' | 'body'> {
+export interface UseResourceListOptions<T = unknown> extends Omit<
+  UseFetchOptions<T[]>,
+  'method' | 'body'
+> {
   /** Extract the unique ID from each item (default: `item.id`). */
   getId?: IdExtractor<T>;
   /** Enable optimistic list mutations (default: false). */
@@ -597,7 +587,7 @@ export const useResourceList = <T = unknown>(
     return base;
   };
 
-  const toMutationFetchOptions = <TResult,>(): Omit<
+  const toMutationFetchOptions = <TResult>(): Omit<
     UseFetchOptions<TResult>,
     'method' | 'body' | 'defaultValue' | 'transform' | 'onSuccess' | 'onError'
   > => {
@@ -742,9 +732,7 @@ export const useResourceList = <T = unknown>(
 
       if (result !== undefined && !disposed) {
         const current = fetchState.data.peek() ?? [];
-        fetchState.data.value = current.map((item) =>
-          getId(item) === id ? result : item
-        );
+        fetchState.data.value = current.map((item) => (getId(item) === id ? result : item));
       }
 
       return result;
@@ -774,9 +762,7 @@ export const useResourceList = <T = unknown>(
 
       if (result !== undefined && !disposed) {
         const current = fetchState.data.peek() ?? [];
-        fetchState.data.value = current.map((item) =>
-          getId(item) === id ? result : item
-        );
+        fetchState.data.value = current.map((item) => (getId(item) === id ? result : item));
       }
 
       return result;
@@ -792,9 +778,7 @@ export const useResourceList = <T = unknown>(
         undefined,
         optimistic && previousList
           ? () => {
-              fetchState.data.value = previousList.filter(
-                (item) => getId(item) !== id
-              );
+              fetchState.data.value = previousList.filter((item) => getId(item) !== id);
             }
           : undefined,
         optimistic
@@ -862,10 +846,7 @@ const inflightRequests = new Map<string, Promise<unknown>>();
  * ]);
  * ```
  */
-export function deduplicateRequest<T>(
-  key: string,
-  execute: () => Promise<T>
-): Promise<T> {
+export function deduplicateRequest<T>(key: string, execute: () => Promise<T>): Promise<T> {
   const existing = inflightRequests.get(key);
   if (existing) return existing as Promise<T>;
 

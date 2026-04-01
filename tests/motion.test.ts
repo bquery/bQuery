@@ -887,11 +887,9 @@ describe('motion/morphElement', () => {
     let completed = false;
 
     await expect(
-      morphElement(
-        { style: {} } as unknown as Element,
-        { style: {} } as unknown as Element,
-        { onComplete: () => (completed = true) }
-      )
+      morphElement({ style: {} } as unknown as Element, { style: {} } as unknown as Element, {
+        onComplete: () => (completed = true),
+      })
     ).resolves.toBeUndefined();
 
     expect(completed).toBe(true);

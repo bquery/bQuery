@@ -73,7 +73,9 @@ export const hydrateMount = (
   const { hydrate = true, ...mountOptions } = options;
 
   if (!hydrate) {
-    throw new Error('bQuery ssr: hydrateMount() requires { hydrate: true } when options are provided.');
+    throw new Error(
+      'bQuery ssr: hydrateMount() requires { hydrate: true } when options are provided.'
+    );
   }
 
   // Hydration uses the standard mount which processes existing DOM

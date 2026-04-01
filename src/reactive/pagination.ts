@@ -18,8 +18,10 @@ import {
 // ---------------------------------------------------------------------------
 
 /** Options for usePaginatedFetch(). */
-export interface UsePaginatedFetchOptions<TResponse = unknown, TData = TResponse>
-  extends UseFetchOptions<TResponse, TData> {
+export interface UsePaginatedFetchOptions<
+  TResponse = unknown,
+  TData = TResponse,
+> extends UseFetchOptions<TResponse, TData> {
   /** Initial page number (default: 1). */
   initialPage?: number;
 }
@@ -109,8 +111,11 @@ export const usePaginatedFetch = <TResponse = unknown, TData = TResponse>(
 // ---------------------------------------------------------------------------
 
 /** Options for useInfiniteFetch(). */
-export interface UseInfiniteFetchOptions<TResponse = unknown, TData = TResponse, TCursor = number>
-  extends Omit<UseFetchOptions<TResponse, TData>, 'transform'> {
+export interface UseInfiniteFetchOptions<
+  TResponse = unknown,
+  TData = TResponse,
+  TCursor = number,
+> extends Omit<UseFetchOptions<TResponse, TData>, 'transform'> {
   /** Extract the cursor for the next page from a response. */
   getNextCursor: (lastResponse: TResponse, allPages: TResponse[]) => TCursor | undefined;
   /** Transform all accumulated pages into the final data shape. */

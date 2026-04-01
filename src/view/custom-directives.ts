@@ -15,9 +15,7 @@ let customDirectiveResolver: CustomDirectiveResolver | null = null;
  * Pass `null` to unregister the current resolver and reset to the default behavior.
  * @internal
  */
-export const registerCustomDirectiveResolver = (
-  resolver: CustomDirectiveResolver | null
-): void => {
+export const registerCustomDirectiveResolver = (resolver: CustomDirectiveResolver | null): void => {
   customDirectiveResolver = resolver;
 };
 

@@ -174,7 +174,15 @@ export function uid(): string;
 ### 3.2 Reactive Module (`@reactive`)
 
 ```ts
-import { signal, computed, effect, batch, useFetch, createHttp, useEventSource } from '@bquery/bquery/reactive';
+import {
+  signal,
+  computed,
+  effect,
+  batch,
+  useFetch,
+  createHttp,
+  useEventSource,
+} from '@bquery/bquery/reactive';
 
 const count = signal(0);
 const doubled = computed(() => count.value * 2);

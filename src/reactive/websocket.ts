@@ -58,8 +58,10 @@ export interface WebSocketSerializer<TSend = unknown, TReceive = unknown> {
 }
 
 /** Full configuration accepted by `useWebSocket()`. */
-export interface UseWebSocketOptions<TSend = unknown, TReceive = unknown>
-  extends WebSocketSerializer<TSend, TReceive> {
+export interface UseWebSocketOptions<
+  TSend = unknown,
+  TReceive = unknown,
+> extends WebSocketSerializer<TSend, TReceive> {
   /** Sub-protocols to request during the WebSocket handshake. */
   protocols?: string | string[];
   /** Open the connection immediately (default: true). */
@@ -127,7 +129,9 @@ export interface UseWebSocketReturn<TSend = unknown, TReceive = unknown> {
 // ---------------------------------------------------------------------------
 
 /** @internal */
-function resolveReconnect(opt: UseWebSocketOptions['autoReconnect']): WebSocketReconnectConfig | false;
+function resolveReconnect(
+  opt: UseWebSocketOptions['autoReconnect']
+): WebSocketReconnectConfig | false;
 /** @internal */
 function resolveReconnect(
   opt: UseEventSourceOptions['autoReconnect']
@@ -212,7 +216,8 @@ export const useWebSocket = <TSend = string, TReceive = string>(
 
   const serialize = options.serialize ?? ((d: TSend) => JSON.stringify(d));
   const deserialize =
-    options.deserialize ?? ((event: MessageEvent) => {
+    options.deserialize ??
+    ((event: MessageEvent) => {
       const raw = event.data;
       if (typeof raw === 'string') {
         try {
@@ -571,8 +576,7 @@ export const useWebSocketChannel = <TSend = unknown, TReceive = unknown>(
   channelOptions: UseWebSocketChannelOptions<TSend, TReceive> = {}
 ): UseWebSocketChannelReturn<TSend, TReceive> => {
   const getChannel =
-    channelOptions.getChannel ??
-    ((msg: TReceive) => (msg as ChannelMessage).channel);
+    channelOptions.getChannel ?? ((msg: TReceive) => (msg as ChannelMessage).channel);
 
   const wrap =
     channelOptions.wrap ??
@@ -704,14 +708,7 @@ export const useEventSource = <TData = unknown>(
   url: string | URL | (() => string | URL),
   options: UseEventSourceOptions<TData> = {}
 ): UseEventSourceReturn<TData> => {
-  const {
-    immediate = true,
-    events = [],
-    eventSourceInit,
-    onOpen,
-    onMessage,
-    onError,
-  } = options;
+  const { immediate = true, events = [], eventSourceInit, onOpen, onMessage, onError } = options;
 
   const deserialize =
     options.deserialize ??
@@ -742,12 +739,14 @@ export const useEventSource = <TData = unknown>(
     return resolved instanceof URL ? resolved.toString() : resolved;
   };
 
-  const handleMessage = (name: string) => (event: MessageEvent): void => {
-    const deserialized = deserialize(event.data);
-    data.value = deserialized;
-    eventName.value = name;
-    onMessage?.(deserialized, event);
-  };
+  const handleMessage =
+    (name: string) =>
+    (event: MessageEvent): void => {
+      const deserialized = deserialize(event.data);
+      data.value = deserialized;
+      eventName.value = name;
+      onMessage?.(deserialized, event);
+    };
 
   const cancelReconnect = (): void => {
     if (reconnectTimer !== undefined) {

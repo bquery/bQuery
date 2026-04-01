@@ -893,7 +893,6 @@ describe('Router', () => {
       expect(currentRoute.value.path).toBe('/first');
     });
 
-
     it('should call afterEach hook after navigation', async () => {
       router = createRouter({
         routes: [
@@ -2093,15 +2092,11 @@ describe('Router', () => {
         createRouter({
           routes: [{ path: '/item/:slug((foo|bar)-\\1)', component: () => null }],
         })
-      ).toThrow(
-        'bQuery router: Route constraints cannot use backreferences: "(foo|bar)-\\1".'
-      );
+      ).toThrow('bQuery router: Route constraints cannot use backreferences: "(foo|bar)-\\1".');
     });
 
     it('should reject constraints that use named backreferences (\\k<name>)', () => {
-      expect(() =>
-        getRouteConstraintRegex('(?<word>[a-z]+)-\\k<word>')
-      ).toThrow(
+      expect(() => getRouteConstraintRegex('(?<word>[a-z]+)-\\k<word>')).toThrow(
         'bQuery router: Route constraints cannot use backreferences: "(?<word>[a-z]+)-\\k<word>".'
       );
     });

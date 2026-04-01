@@ -396,9 +396,7 @@ const DEFAULT_RETRY_ON = (error: Error): boolean => {
 };
 
 /** @internal */
-const normalizeRetryConfig = (
-  retry: UseFetchOptions['retry']
-): UseFetchRetryConfig | undefined => {
+const normalizeRetryConfig = (retry: UseFetchOptions['retry']): UseFetchRetryConfig | undefined => {
   if (retry == null) return undefined;
   if (typeof retry === 'number') return { count: retry };
   return retry;
@@ -426,9 +424,7 @@ const sleepWithSignal = (ms: number, abortSignal?: AbortSignal): Promise<void> =
       cleanedUp = true;
       clearTimeout(timer);
       abortSignal?.removeEventListener('abort', onAbort);
-      reject(
-        abortSignal?.reason ?? new DOMException('The operation was aborted.', 'AbortError')
-      );
+      reject(abortSignal?.reason ?? new DOMException('The operation was aborted.', 'AbortError'));
     };
 
     timer = setTimeout(() => {
@@ -607,8 +603,7 @@ export const useFetch = <TResponse = unknown, TData = TResponse>(
 
           return await parseResponse<TResponse>(response, parseAs);
         } catch (error) {
-          const normalizedError =
-            error instanceof Error ? error : new Error(String(error));
+          const normalizedError = error instanceof Error ? error : new Error(String(error));
 
           // Abort errors should not be retried
           if (

@@ -332,24 +332,24 @@ const api = createHttp({
 
 Every imperative method returns a structured `HttpResponse<T>`:
 
-| Field        | Type               | Description                       |
-| ------------ | ------------------ | --------------------------------- |
-| `data`       | `T`                | Parsed response body              |
-| `status`     | `number`           | HTTP status code                  |
-| `statusText` | `string`           | HTTP status text                  |
-| `headers`    | `Headers`          | Response headers                  |
-| `config`     | `HttpRequestConfig` | Resolved request configuration   |
+| Field        | Type                | Description                    |
+| ------------ | ------------------- | ------------------------------ |
+| `data`       | `T`                 | Parsed response body           |
+| `status`     | `number`            | HTTP status code               |
+| `statusText` | `string`            | HTTP status text               |
+| `headers`    | `Headers`           | Response headers               |
+| `config`     | `HttpRequestConfig` | Resolved request configuration |
 
 ### HttpError
 
 Failed requests throw `HttpError` with rich metadata:
 
-| Field      | Type               | Description                               |
-| ---------- | ------------------ | ----------------------------------------- |
-| `message`  | `string`           | Human-readable error message              |
-| `code`     | `string`           | `'TIMEOUT'`, `'ABORT'`, `'NETWORK'`, `'ERR_BAD_RESPONSE'` |
-| `config`   | `HttpRequestConfig` | Resolved request config                  |
-| `response` | `HttpResponse?`    | Response if server replied                |
+| Field      | Type                | Description                                               |
+| ---------- | ------------------- | --------------------------------------------------------- |
+| `message`  | `string`            | Human-readable error message                              |
+| `code`     | `string`            | `'TIMEOUT'`, `'ABORT'`, `'NETWORK'`, `'ERR_BAD_RESPONSE'` |
+| `config`   | `HttpRequestConfig` | Resolved request config                                   |
+| `response` | `HttpResponse?`     | Response if server replied                                |
 
 ## Polling
 
@@ -378,12 +378,12 @@ notifications.dispose();
 
 All `useFetch()` options plus:
 
-| Option           | Type                | Default | Description                        |
-| ---------------- | ------------------- | ------- | ---------------------------------- |
-| `interval`       | `number`            | —       | Polling interval in milliseconds   |
-| `enabled`        | `boolean \| () => boolean` | `true` | Enable/disable polling    |
-| `pauseOnHidden`  | `boolean`           | `true`  | Pause when document is hidden      |
-| `pauseOnOffline` | `boolean`           | `true`  | Pause when browser is offline      |
+| Option           | Type                       | Default | Description                      |
+| ---------------- | -------------------------- | ------- | -------------------------------- |
+| `interval`       | `number`                   | —       | Polling interval in milliseconds |
+| `enabled`        | `boolean \| () => boolean` | `true`  | Enable/disable polling           |
+| `pauseOnHidden`  | `boolean`                  | `true`  | Pause when document is hidden    |
+| `pauseOnOffline` | `boolean`                  | `true`  | Pause when browser is offline    |
 
 ## Paginated fetch
 
@@ -392,10 +392,9 @@ All `useFetch()` options plus:
 ```ts
 import { usePaginatedFetch } from '@bquery/bquery/reactive';
 
-const users = usePaginatedFetch<User[]>(
-  (page) => `/api/users?page=${page}`,
-  { baseUrl: 'https://api.example.com' }
-);
+const users = usePaginatedFetch<User[]>((page) => `/api/users?page=${page}`, {
+  baseUrl: 'https://api.example.com',
+});
 
 await users.next();
 await users.prev();
@@ -407,12 +406,12 @@ console.log(users.page.value); // 5
 
 All `AsyncDataState` fields plus:
 
-| Field  | Type                      | Description                          |
-| ------ | ------------------------- | ------------------------------------ |
-| `page` | `Signal<number>`          | Current page (writable)              |
-| `next`  | `() => Promise`          | Advance to the next page             |
-| `prev`  | `() => Promise`          | Go back one page (minimum 1)        |
-| `goTo`  | `(page) => Promise`      | Jump to a specific page              |
+| Field  | Type                | Description                  |
+| ------ | ------------------- | ---------------------------- |
+| `page` | `Signal<number>`    | Current page (writable)      |
+| `next` | `() => Promise`     | Advance to the next page     |
+| `prev` | `() => Promise`     | Go back one page (minimum 1) |
+| `goTo` | `(page) => Promise` | Jump to a specific page      |
 
 ## Infinite fetch
 
@@ -422,18 +421,14 @@ infinite scroll or "load more" UIs.
 ```ts
 import { useInfiniteFetch } from '@bquery/bquery/reactive';
 
-const feed = useInfiniteFetch<Post[], Post[]>(
-  (cursor) => `/api/posts?cursor=${cursor ?? ''}`,
-  {
-    getNextCursor: (page) =>
-      page.length > 0 ? page[page.length - 1].id : undefined,
-    transform: (pages) => pages.flat(),
-  }
-);
+const feed = useInfiniteFetch<Post[], Post[]>((cursor) => `/api/posts?cursor=${cursor ?? ''}`, {
+  getNextCursor: (page) => (page.length > 0 ? page[page.length - 1].id : undefined),
+  transform: (pages) => pages.flat(),
+});
 
 await feed.fetchNextPage();
-console.log(feed.data.value);     // All accumulated posts
-console.log(feed.hasMore.value);  // true if more pages available
+console.log(feed.data.value); // All accumulated posts
+console.log(feed.hasMore.value); // true if more pages available
 
 // Reset and start over
 await feed.refresh();
@@ -443,23 +438,23 @@ await feed.refresh();
 
 All `useFetch()` options (except `transform`) plus:
 
-| Option           | Type                                     | Description                             |
-| ---------------- | ---------------------------------------- | --------------------------------------- |
-| `getNextCursor`  | `(page, allPages) => cursor \| undefined` | Extract cursor for the next request    |
-| `transform`      | `(pages[]) => TData`                    | Transform accumulated pages             |
-| `initialCursor`  | `TCursor`                                | Starting cursor value                   |
+| Option          | Type                                      | Description                         |
+| --------------- | ----------------------------------------- | ----------------------------------- |
+| `getNextCursor` | `(page, allPages) => cursor \| undefined` | Extract cursor for the next request |
+| `transform`     | `(pages[]) => TData`                      | Transform accumulated pages         |
+| `initialCursor` | `TCursor`                                 | Starting cursor value               |
 
 ### Returned state
 
-| Field           | Type                                    | Description                            |
-| --------------- | --------------------------------------- | -------------------------------------- |
-| `data`          | `Signal<TData>`                         | Transformed accumulated data           |
-| `pages`         | `Signal<TResponse[]>`                   | Raw accumulated pages                  |
-| `hasMore`       | `computed boolean`                      | Whether more pages are available       |
-| `fetchNextPage` | `() => Promise`                         | Load the next page                     |
-| `refresh`       | `() => Promise`                         | Reset and re-fetch from initial cursor |
-| `clear`         | `() => void`                            | Clear all accumulated data             |
-| `dispose`       | `() => void`                            | Stop and clean up                      |
+| Field           | Type                  | Description                            |
+| --------------- | --------------------- | -------------------------------------- |
+| `data`          | `Signal<TData>`       | Transformed accumulated data           |
+| `pages`         | `Signal<TResponse[]>` | Raw accumulated pages                  |
+| `hasMore`       | `computed boolean`    | Whether more pages are available       |
+| `fetchNextPage` | `() => Promise`       | Load the next page                     |
+| `refresh`       | `() => Promise`       | Reset and re-fetch from initial cursor |
+| `clear`         | `() => void`          | Clear all accumulated data             |
+| `dispose`       | `() => void`          | Stop and clean up                      |
 
 ## Linked signals
 
@@ -644,8 +639,8 @@ const count = signal(5);
 const publicCount = readonly(count);
 const doubled = computed(() => count.value * 2);
 
-toValue(42);      // 42 (plain value returned as-is)
-toValue(count);   // 5  (reads signal.value)
+toValue(42); // 42 (plain value returned as-is)
+toValue(count); // 5  (reads signal.value)
 toValue(publicCount); // 5  (reads readonly signal.value)
 toValue(doubled); // 10 (reads computed.value)
 ```
@@ -661,8 +656,8 @@ function useTitle(title: MaybeSignal<string>) {
   document.title = toValue(title);
 }
 
-useTitle('Hello');               // plain string
-useTitle(signal('Hello'));       // reactive signal
+useTitle('Hello'); // plain string
+useTitle(signal('Hello')); // reactive signal
 useTitle(computed(() => 'Hi')); // computed value
 ```
 
@@ -703,54 +698,54 @@ ws.dispose();
 
 ### Options
 
-| Option           | Type                                  | Default        | Description                                |
-| ---------------- | ------------------------------------- | -------------- | ------------------------------------------ |
-| `protocols`      | `string \| string[]`                  | —              | Sub-protocols for the handshake            |
-| `immediate`      | `boolean`                             | `true`         | Connect immediately                        |
-| `autoReconnect`  | `boolean \| WebSocketReconnectConfig` | `true`         | Auto-reconnect on unexpected close         |
-| `heartbeat`      | `boolean \| WebSocketHeartbeatConfig` | `false`        | Keep-alive ping/pong                       |
-| `historySize`    | `number`                              | `0` (disabled) | Max messages to keep in history            |
-| `serialize`      | `(data) => string \| ...`             | `JSON.stringify`| Outgoing message serializer               |
-| `deserialize`    | `(event) => TReceive`                 | `JSON.parse` with raw-string fallback | Incoming message deserializer |
+| Option          | Type                                  | Default                               | Description                        |
+| --------------- | ------------------------------------- | ------------------------------------- | ---------------------------------- |
+| `protocols`     | `string \| string[]`                  | —                                     | Sub-protocols for the handshake    |
+| `immediate`     | `boolean`                             | `true`                                | Connect immediately                |
+| `autoReconnect` | `boolean \| WebSocketReconnectConfig` | `true`                                | Auto-reconnect on unexpected close |
+| `heartbeat`     | `boolean \| WebSocketHeartbeatConfig` | `false`                               | Keep-alive ping/pong               |
+| `historySize`   | `number`                              | `0` (disabled)                        | Max messages to keep in history    |
+| `serialize`     | `(data) => string \| ...`             | `JSON.stringify`                      | Outgoing message serializer        |
+| `deserialize`   | `(event) => TReceive`                 | `JSON.parse` with raw-string fallback | Incoming message deserializer      |
 
 If the built-in deserializer receives a string that fails JSON parsing, it returns the original raw string instead of throwing.
 
 ### Reconnect config
 
-| Field              | Type                                     | Default    |
-| ------------------ | ---------------------------------------- | ---------- |
-| `maxAttempts`      | `number`                                 | `Infinity` |
-| `delay`            | `number`                                 | `1000`     |
-| `maxDelay`         | `number`                                 | `30000`    |
-| `factor`           | `number`                                 | `2`        |
-| `shouldReconnect`  | `(event, attempts) => boolean`           | —          |
+| Field             | Type                           | Default    |
+| ----------------- | ------------------------------ | ---------- |
+| `maxAttempts`     | `number`                       | `Infinity` |
+| `delay`           | `number`                       | `1000`     |
+| `maxDelay`        | `number`                       | `30000`    |
+| `factor`          | `number`                       | `2`        |
+| `shouldReconnect` | `(event, attempts) => boolean` | —          |
 
 ### Heartbeat config
 
-| Field              | Type                          | Default  |
-| ------------------ | ----------------------------- | -------- |
-| `message`          | `string \| ArrayBuffer \| ...`| `'ping'` |
-| `interval`         | `number`                      | `30000`  |
-| `pongTimeout`      | `number`                      | `10000`  |
-| `responseMessage`  | `string`                      | —        |
+| Field             | Type                           | Default  |
+| ----------------- | ------------------------------ | -------- |
+| `message`         | `string \| ArrayBuffer \| ...` | `'ping'` |
+| `interval`        | `number`                       | `30000`  |
+| `pongTimeout`     | `number`                       | `10000`  |
+| `responseMessage` | `string`                       | —        |
 
 ### Returned state
 
-| Field               | Type                         | Description                              |
-| ------------------- | ---------------------------- | ---------------------------------------- |
-| `status`            | `readonly Signal`            | `'CONNECTING' \| 'OPEN' \| 'CLOSING' \| 'CLOSED'` |
-| `data`              | `Signal<TReceive>`           | Last received message (deserialized)     |
-| `error`             | `Signal<Event \| null>`      | Last error event                         |
-| `history`           | `Signal<TReceive[]>`         | Rolling message history                  |
-| `isConnected`       | `computed boolean`           | Whether the socket is `OPEN`             |
-| `reconnectAttempts` | `Signal<number>`             | Current reconnect attempt count          |
-| `latency`           | `Signal<number>`             | Last measured round-trip time in ms      |
-| `lastDisconnectedAt`| `Signal<number>`             | Timestamp of the last unexpected disconnect |
-| `send`              | `(data: TSend) => void`      | Send a serialized message                |
-| `sendRaw`           | `(data) => void`             | Send raw data without serialization      |
-| `open`              | `() => void`                 | Open / reconnect manually                |
-| `close`             | `(code?, reason?) => void`   | Gracefully close                         |
-| `dispose`           | `() => void`                 | Tear down all resources                  |
+| Field                | Type                       | Description                                       |
+| -------------------- | -------------------------- | ------------------------------------------------- |
+| `status`             | `readonly Signal`          | `'CONNECTING' \| 'OPEN' \| 'CLOSING' \| 'CLOSED'` |
+| `data`               | `Signal<TReceive>`         | Last received message (deserialized)              |
+| `error`              | `Signal<Event \| null>`    | Last error event                                  |
+| `history`            | `Signal<TReceive[]>`       | Rolling message history                           |
+| `isConnected`        | `computed boolean`         | Whether the socket is `OPEN`                      |
+| `reconnectAttempts`  | `Signal<number>`           | Current reconnect attempt count                   |
+| `latency`            | `Signal<number>`           | Last measured round-trip time in ms               |
+| `lastDisconnectedAt` | `Signal<number>`           | Timestamp of the last unexpected disconnect       |
+| `send`               | `(data: TSend) => void`    | Send a serialized message                         |
+| `sendRaw`            | `(data) => void`           | Send raw data without serialization               |
+| `open`               | `() => void`               | Open / reconnect manually                         |
+| `close`              | `(code?, reason?) => void` | Gracefully close                                  |
+| `dispose`            | `() => void`               | Tear down all resources                           |
 
 ## Server-Sent Events (SSE)
 
@@ -777,26 +772,26 @@ sse.dispose();
 
 ### Options
 
-| Option            | Type                                  | Default        | Description                          |
-| ----------------- | ------------------------------------- | -------------- | ------------------------------------ |
-| `immediate`       | `boolean`                             | `true`         | Connect immediately                  |
+| Option            | Type                                    | Default      | Description                                                        |
+| ----------------- | --------------------------------------- | ------------ | ------------------------------------------------------------------ |
+| `immediate`       | `boolean`                               | `true`       | Connect immediately                                                |
 | `autoReconnect`   | `boolean \| EventSourceReconnectConfig` | `true`       | Auto-reconnect on error with configurable delay and attempt limits |
-| `events`          | `string[]`                            | `[]`           | Named events to listen for           |
-| `deserialize`     | `(data: string) => TData`            | `JSON.parse`   | Custom deserializer                  |
-| `eventSourceInit` | `EventSourceInit`                     | —              | Native EventSource init (e.g. `withCredentials`) |
+| `events`          | `string[]`                              | `[]`         | Named events to listen for                                         |
+| `deserialize`     | `(data: string) => TData`               | `JSON.parse` | Custom deserializer                                                |
+| `eventSourceInit` | `EventSourceInit`                       | —            | Native EventSource init (e.g. `withCredentials`)                   |
 
 ### Returned state
 
-| Field         | Type                    | Description                       |
-| ------------- | ----------------------- | --------------------------------- |
-| `status`      | `readonly Signal`       | Connection status                 |
-| `data`        | `Signal<TData>`         | Last received data                |
-| `eventName`   | `Signal<string>`        | Last event name                   |
-| `error`       | `Signal<Event \| null>` | Last error event                  |
-| `isConnected` | `computed boolean`      | Whether the EventSource is open   |
-| `open`        | `() => void`            | Open / reconnect                  |
-| `close`       | `() => void`            | Close the connection              |
-| `dispose`     | `() => void`            | Tear down all resources           |
+| Field         | Type                    | Description                     |
+| ------------- | ----------------------- | ------------------------------- |
+| `status`      | `readonly Signal`       | Connection status               |
+| `data`        | `Signal<TData>`         | Last received data              |
+| `eventName`   | `Signal<string>`        | Last event name                 |
+| `error`       | `Signal<Event \| null>` | Last error event                |
+| `isConnected` | `computed boolean`      | Whether the EventSource is open |
+| `open`        | `() => void`            | Open / reconnect                |
+| `close`       | `() => void`            | Close the connection            |
+| `dispose`     | `() => void`            | Tear down all resources         |
 
 ## REST resource composable
 
@@ -830,25 +825,25 @@ effect(() => {
 
 All `useFetch()` options (except `method` and `body`) plus:
 
-| Option              | Type                          | Default | Description                               |
-| ------------------- | ----------------------------- | ------- | ----------------------------------------- |
-| `optimistic`        | `boolean`                     | `false` | Apply updates optimistically with rollback |
-| `onMutationSuccess` | `(data, action) => void`      | —       | Called after successful mutations          |
-| `onMutationError`   | `(error, action) => void`     | —       | Called after failed mutations              |
+| Option              | Type                      | Default | Description                                |
+| ------------------- | ------------------------- | ------- | ------------------------------------------ |
+| `optimistic`        | `boolean`                 | `false` | Apply updates optimistically with rollback |
+| `onMutationSuccess` | `(data, action) => void`  | —       | Called after successful mutations          |
+| `onMutationError`   | `(error, action) => void` | —       | Called after failed mutations              |
 
 ### Returned state
 
-| Field        | Type                      | Description                          |
-| ------------ | ------------------------- | ------------------------------------ |
-| `data`       | `Signal<T>`               | Resource data                        |
-| `error`      | `Signal<Error \| null>`   | Last error                           |
-| `status`     | `Signal<AsyncDataStatus>` | Lifecycle status                     |
-| `pending`    | `computed boolean`        | Whether the initial fetch is pending |
-| `isMutating` | `computed boolean`        | Whether any mutation is in progress  |
+| Field        | Type                      | Description                                     |
+| ------------ | ------------------------- | ----------------------------------------------- |
+| `data`       | `Signal<T>`               | Resource data                                   |
+| `error`      | `Signal<Error \| null>`   | Last error                                      |
+| `status`     | `Signal<AsyncDataStatus>` | Lifecycle status                                |
+| `pending`    | `computed boolean`        | Whether the initial fetch is pending            |
+| `isMutating` | `computed boolean`        | Whether any mutation is in progress             |
 | `actions`    | `ResourceActions<T>`      | CRUD methods (fetch/create/update/patch/remove) |
-| `refresh`    | `() => Promise`           | Re-fetch the resource                |
-| `clear`      | `() => void`              | Clear data and status                |
-| `dispose`    | `() => void`              | Stop all reactive state              |
+| `refresh`    | `() => Promise`           | Re-fetch the resource                           |
+| `clear`      | `() => void`              | Clear data and status                           |
+| `dispose`    | `() => void`              | Stop all reactive state                         |
 
 ## Form submission
 
@@ -864,21 +859,21 @@ const form = useSubmit<{ id: number }>('/api/users', {
 
 const result = await form.submit({ name: 'Ada', email: 'ada@example.com' });
 console.log(form.status.value); // 'success'
-console.log(form.data.value);   // { id: 42 }
+console.log(form.data.value); // { id: 42 }
 
 form.clear(); // Reset state
 ```
 
 ### Returned state
 
-| Field     | Type                      | Description               |
-| --------- | ------------------------- | ------------------------- |
-| `data`    | `Signal<TResponse>`       | Last response data        |
-| `error`   | `Signal<Error \| null>`   | Last error                |
-| `status`  | `Signal<AsyncDataStatus>` | Current status            |
+| Field     | Type                      | Description                   |
+| --------- | ------------------------- | ----------------------------- |
+| `data`    | `Signal<TResponse>`       | Last response data            |
+| `error`   | `Signal<Error \| null>`   | Last error                    |
+| `status`  | `Signal<AsyncDataStatus>` | Current status                |
 | `pending` | `computed boolean`        | Whether submission is pending |
-| `submit`  | `(body) => Promise`       | Submit data               |
-| `clear`   | `() => void`              | Reset state               |
+| `submit`  | `(body) => Promise`       | Submit data                   |
+| `clear`   | `() => void`              | Reset state                   |
 
 ## Imperative REST client
 
@@ -908,21 +903,24 @@ await users.remove(1);
 
 // Access interceptors via the underlying http client
 users.http.interceptors.request.use((config) => {
-  config.headers = { ...Object.fromEntries(new Headers(config.headers)), 'x-request-id': crypto.randomUUID() };
+  config.headers = {
+    ...Object.fromEntries(new Headers(config.headers)),
+    'x-request-id': crypto.randomUUID(),
+  };
   return config;
 });
 ```
 
 ### Methods
 
-| Method     | HTTP    | URL Pattern      | Description         |
-| ---------- | ------- | ---------------- | ------------------- |
-| `list()`   | `GET`   | `{baseUrl}`      | Fetch all items     |
-| `get(id)`  | `GET`   | `{baseUrl}/{id}` | Fetch a single item |
-| `create(body)` | `POST` | `{baseUrl}`  | Create a new item   |
-| `update(id, body)` | `PUT` | `{baseUrl}/{id}` | Full replace |
-| `patch(id, body)` | `PATCH` | `{baseUrl}/{id}` | Partial update |
-| `remove(id)` | `DELETE` | `{baseUrl}/{id}` | Delete an item  |
+| Method             | HTTP     | URL Pattern      | Description         |
+| ------------------ | -------- | ---------------- | ------------------- |
+| `list()`           | `GET`    | `{baseUrl}`      | Fetch all items     |
+| `get(id)`          | `GET`    | `{baseUrl}/{id}` | Fetch a single item |
+| `create(body)`     | `POST`   | `{baseUrl}`      | Create a new item   |
+| `update(id, body)` | `PUT`    | `{baseUrl}/{id}` | Full replace        |
+| `patch(id, body)`  | `PATCH`  | `{baseUrl}/{id}` | Partial update      |
+| `remove(id)`       | `DELETE` | `{baseUrl}/{id}` | Delete an item      |
 
 ## WebSocket channels
 
@@ -951,10 +949,10 @@ chat.ws.dispose();
 
 ### Channel options
 
-| Option        | Type                              | Default                     | Description                     |
-| ------------- | --------------------------------- | --------------------------- | ------------------------------- |
-| `getChannel`  | `(msg: TReceive) => string?`     | reads `msg.channel`         | Extract channel from message    |
-| `wrap`        | `(ch, data) => TReceive`         | `{ channel: ch, data }`    | Wrap payload for sending        |
+| Option       | Type                         | Default                 | Description                  |
+| ------------ | ---------------------------- | ----------------------- | ---------------------------- |
+| `getChannel` | `(msg: TReceive) => string?` | reads `msg.channel`     | Extract channel from message |
+| `wrap`       | `(ch, data) => TReceive`     | `{ channel: ch, data }` | Wrap payload for sending     |
 
 ### Default message format
 
@@ -981,14 +979,14 @@ effect(() => {
 });
 ```
 
-| Signal                | Type            | Description                                                    |
-| --------------------- | --------------- | -------------------------------------------------------------- |
-| `latency`             | `Signal<number>`| Round-trip time in ms measured from heartbeat ping/pong         |
-| `lastDisconnectedAt`  | `Signal<number>`| Timestamp of last unexpected disconnection (0 if never)        |
+| Signal               | Type             | Description                                             |
+| -------------------- | ---------------- | ------------------------------------------------------- |
+| `latency`            | `Signal<number>` | Round-trip time in ms measured from heartbeat ping/pong |
+| `lastDisconnectedAt` | `Signal<number>` | Timestamp of last unexpected disconnection (0 if never) |
 
-| Callback     | Signature                      | Description                                  |
-| ------------ | ------------------------------ | -------------------------------------------- |
-| `onReconnect`| `(attempts: number) => void`   | Called after a successful auto-reconnection   |
+| Callback      | Signature                    | Description                                 |
+| ------------- | ---------------------------- | ------------------------------------------- |
+| `onReconnect` | `(attempts: number) => void` | Called after a successful auto-reconnection |
 
 ## Resource list composable
 
@@ -997,7 +995,11 @@ effect(() => {
 ```ts
 import { useResourceList } from '@bquery/bquery/reactive';
 
-interface Todo { id: number; title: string; done: boolean }
+interface Todo {
+  id: number;
+  title: string;
+  done: boolean;
+}
 
 const todos = useResourceList<Todo>('/api/todos', {
   baseUrl: 'https://api.example.com',
@@ -1016,26 +1018,26 @@ effect(() => console.log('Todos:', todos.data.value));
 
 All `useFetch()` options (except `method` and `body`) plus:
 
-| Option              | Type                             | Default           | Description                           |
-| ------------------- | -------------------------------- | ----------------- | ------------------------------------- |
-| `getId`             | `(item: T) => string \| number` | `item.id`         | Extract unique ID from each item      |
-| `optimistic`        | `boolean`                        | `false`           | Apply list mutations optimistically   |
-| `onMutationSuccess` | `(action: string) => void`       | —                 | Called after successful mutations      |
-| `onMutationError`   | `(error, action) => void`        | —                 | Called after failed mutations          |
+| Option              | Type                            | Default   | Description                         |
+| ------------------- | ------------------------------- | --------- | ----------------------------------- |
+| `getId`             | `(item: T) => string \| number` | `item.id` | Extract unique ID from each item    |
+| `optimistic`        | `boolean`                       | `false`   | Apply list mutations optimistically |
+| `onMutationSuccess` | `(action: string) => void`      | —         | Called after successful mutations   |
+| `onMutationError`   | `(error, action) => void`       | —         | Called after failed mutations       |
 
 ### Returned state
 
-| Field        | Type                       | Description                          |
-| ------------ | -------------------------- | ------------------------------------ |
-| `data`       | `Signal<T[]>`              | Reactive list data                   |
-| `error`      | `Signal<Error \| null>`    | Last error                           |
-| `status`     | `Signal<AsyncDataStatus>`  | Lifecycle status                     |
-| `pending`    | `computed boolean`         | Whether the list fetch is pending    |
-| `isMutating` | `computed boolean`         | Whether any mutation is in progress  |
-| `actions`    | `ResourceListActions<T>`   | CRUD methods (fetch/add/update/patch/remove) |
-| `refresh`    | `() => Promise`            | Re-fetch the list                    |
-| `clear`      | `() => void`               | Clear data and status                |
-| `dispose`    | `() => void`               | Stop all reactive state              |
+| Field        | Type                      | Description                                  |
+| ------------ | ------------------------- | -------------------------------------------- |
+| `data`       | `Signal<T[]>`             | Reactive list data                           |
+| `error`      | `Signal<Error \| null>`   | Last error                                   |
+| `status`     | `Signal<AsyncDataStatus>` | Lifecycle status                             |
+| `pending`    | `computed boolean`        | Whether the list fetch is pending            |
+| `isMutating` | `computed boolean`        | Whether any mutation is in progress          |
+| `actions`    | `ResourceListActions<T>`  | CRUD methods (fetch/add/update/patch/remove) |
+| `refresh`    | `() => Promise`           | Re-fetch the list                            |
+| `clear`      | `() => void`              | Clear data and status                        |
+| `dispose`    | `() => void`              | Stop all reactive state                      |
 
 ## Request deduplication
 
@@ -1065,25 +1067,23 @@ const api = createHttp({ baseUrl: 'https://api.example.com' });
 const queue = createRequestQueue({ concurrency: 3 });
 
 // At most 3 requests run in parallel
-const results = await Promise.all(
-  ids.map(id => queue.add(() => api.get(`/items/${id}`)))
-);
+const results = await Promise.all(ids.map((id) => queue.add(() => api.get(`/items/${id}`))));
 ```
 
 ### Options
 
-| Option        | Type     | Default | Description                          |
-| ------------- | -------- | ------- | ------------------------------------ |
+| Option        | Type     | Default | Description                           |
+| ------------- | -------- | ------- | ------------------------------------- |
 | `concurrency` | `number` | `6`     | Maximum concurrent in-flight requests |
 
 ### Returned API
 
-| Member    | Type                                          | Description                        |
-| --------- | --------------------------------------------- | ---------------------------------- |
-| `add`     | `(fn: () => Promise) => Promise`              | Enqueue a request                  |
-| `pending` | `number` (getter)                             | Currently running requests         |
-| `size`    | `number` (getter)                             | Requests waiting in queue          |
-| `clear`   | `() => void`                                  | Reject all pending (queued) items  |
+| Member    | Type                             | Description                       |
+| --------- | -------------------------------- | --------------------------------- |
+| `add`     | `(fn: () => Promise) => Promise` | Enqueue a request                 |
+| `pending` | `number` (getter)                | Currently running requests        |
+| `size`    | `number` (getter)                | Requests waiting in queue         |
+| `clear`   | `() => void`                     | Reject all pending (queued) items |
 
 ## onRetry callback
 

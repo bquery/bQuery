@@ -11,12 +11,7 @@ import { Signal } from '../reactive/core';
 import { computed, effect, signal } from '../reactive/index';
 import type { MaybeSignal } from '../reactive/index';
 import { isReadonlySignal } from '../reactive/readonly';
-import type {
-  UseFormFieldOptions,
-  UseFormFieldReturn,
-  ValidationResult,
-  Validator,
-} from './types';
+import type { UseFormFieldOptions, UseFormFieldReturn, ValidationResult, Validator } from './types';
 
 /**
  * Determines whether a validator returned a valid result.

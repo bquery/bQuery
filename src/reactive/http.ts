@@ -470,8 +470,7 @@ const executeRequest = async <T>(config: HttpRequestConfig): Promise<HttpRespons
 
     if (error instanceof DOMException) {
       if (error.name === 'AbortError' || error.name === 'TimeoutError') {
-        const isTimeout =
-          error.name === 'TimeoutError' || error.message === 'Request timeout';
+        const isTimeout = error.name === 'TimeoutError' || error.message === 'Request timeout';
         throw new HttpError(
           isTimeout ? `Request timeout of ${config.timeout}ms exceeded` : 'Request aborted',
           config,
@@ -480,11 +479,7 @@ const executeRequest = async <T>(config: HttpRequestConfig): Promise<HttpRespons
       }
     }
 
-    throw new HttpError(
-      error instanceof Error ? error.message : String(error),
-      config,
-      'NETWORK'
-    );
+    throw new HttpError(error instanceof Error ? error.message : String(error), config, 'NETWORK');
   } finally {
     if (timeoutId !== undefined) clearTimeout(timeoutId);
     if (config.signal && externalAbortHandler) {
@@ -526,11 +521,10 @@ export function createHttp(defaults: HttpRequestConfig = {}): HttpClient {
   const responseInterceptors = createInterceptorManager<HttpResponse>();
 
   const mergeConfig = (perCall: HttpRequestConfig): HttpRequestConfig => {
-    const mergedQuery = merge(
-      {},
-      defaults.query ?? {},
-      perCall.query ?? {}
-    ) as Record<string, unknown>;
+    const mergedQuery = merge({}, defaults.query ?? {}, perCall.query ?? {}) as Record<
+      string,
+      unknown
+    >;
 
     return {
       ...defaults,

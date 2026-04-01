@@ -139,9 +139,7 @@ class EffectScopeImpl implements ScopeInternal {
       throw new Error('bQuery reactive: Cannot run in a stopped effectScope');
     }
     if (isAsyncFunction(fn)) {
-      throw new Error(
-        'bQuery reactive: effectScope.run() only supports synchronous callbacks'
-      );
+      throw new Error('bQuery reactive: effectScope.run() only supports synchronous callbacks');
     }
 
     scopeStack.push(this);
@@ -149,9 +147,7 @@ class EffectScopeImpl implements ScopeInternal {
       const result = fn();
       if (isPromiseLike(result)) {
         this.stop();
-        throw new Error(
-          'bQuery reactive: effectScope.run() only supports synchronous callbacks'
-        );
+        throw new Error('bQuery reactive: effectScope.run() only supports synchronous callbacks');
       }
       return result;
     } finally {

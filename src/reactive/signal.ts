@@ -15,7 +15,13 @@ export { useInfiniteFetch, usePaginatedFetch } from './pagination';
 export { persistedSignal } from './persisted';
 export { usePolling } from './polling';
 export { readonly } from './readonly';
-export { createRestClient, deduplicateRequest, useResource, useResourceList, useSubmit } from './rest';
+export {
+  createRestClient,
+  deduplicateRequest,
+  useResource,
+  useResourceList,
+  useSubmit,
+} from './rest';
 export { effectScope, getCurrentScope, onScopeDispose } from './scope';
 export { isComputed, isSignal } from './type-guards';
 export { toValue } from './to-value';

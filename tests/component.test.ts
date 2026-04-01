@@ -1901,7 +1901,9 @@ describe('component/registerDefaultComponents', () => {
     textarea.setAttribute('label', 'Notes');
     document.body.appendChild(textarea);
 
-    const originalControl = textarea.shadowRoot?.querySelector('textarea') as HTMLTextAreaElement | null;
+    const originalControl = textarea.shadowRoot?.querySelector(
+      'textarea'
+    ) as HTMLTextAreaElement | null;
     const labelEl = textarea.shadowRoot?.querySelector('.label');
     expect(originalControl).not.toBeNull();
     expect(labelEl).not.toBeNull();
@@ -1909,7 +1911,9 @@ describe('component/registerDefaultComponents', () => {
 
     textarea.setAttribute('value', 'Updated notes');
 
-    const nextControl = textarea.shadowRoot?.querySelector('textarea') as HTMLTextAreaElement | null;
+    const nextControl = textarea.shadowRoot?.querySelector(
+      'textarea'
+    ) as HTMLTextAreaElement | null;
     expect(textarea.shadowRoot?.querySelector('.label')?.textContent).toBe('Notes');
     expect(nextControl).not.toBeNull();
     expect(nextControl).not.toBe(originalControl);
