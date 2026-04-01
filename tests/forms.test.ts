@@ -960,9 +960,9 @@ describe('forms/createForm', () => {
       });
       const values = { name: 'Ada' } as Record<string, unknown>;
 
-      Object.defineProperty(values, '__proto__', { value: 'ignored', enumerable: true });
-      Object.defineProperty(values, 'constructor', { value: 'ignored', enumerable: true });
-      Object.defineProperty(values, 'prototype', { value: 'ignored', enumerable: true });
+      Object.defineProperty(values, '__proto__', { value: {}, enumerable: true });
+      Object.defineProperty(values, 'constructor', { value: {}, enumerable: true });
+      Object.defineProperty(values, 'prototype', { value: {}, enumerable: true });
 
       expect(() => form.setValues(values)).not.toThrow();
       expect(form.fields.name.value.value).toBe('Ada');
