@@ -97,7 +97,7 @@ const io = useIntersectionObserver(el, { threshold: 0.5 });
 
 effect(() => {
   if (io.value.isIntersecting) {
-    console.log('Element is at least 50 % visible');
+    console.log('Element is at least 50% visible');
   }
 });
 

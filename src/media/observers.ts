@@ -44,7 +44,7 @@ import type {
  *
  * effect(() => {
  *   if (io.value.isIntersecting) {
- *     console.log('Element is 50 % visible');
+ *     console.log('Element is 50% visible');
  *   }
  * });
  *
