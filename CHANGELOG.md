@@ -8,6 +8,8 @@ and this project adheres to Semantic Versioning.
 
 - [Changelog](#changelog)
   - [Releases](#releases)
+  - [\[1.8.2\] - 2026-04-01](#182---2026-04-01)
+    - [Changed (1.8.2)](#changed-182)
   - [\[1.8.1\] - 2026-04-01](#181---2026-04-01)
     - [Fixed (1.8.1)](#fixed-181)
   - [\[1.8.0\] - 2026-04-01](#180---2026-04-01)
@@ -54,6 +56,13 @@ and this project adheres to Semantic Versioning.
     - [Fixed (1.0.1)](#fixed-101)
   - [\[1.0.0\] - 2026-01-21](#100---2026-01-21)
     - [Added (1.0.0)](#added-100)
+
+## [1.8.2] - 2026-04-01
+
+### Changed (1.8.2)
+
+- **Tooling / Package metadata**: Raised the declared engine requirements to `Node.js >=24.0.0` and `Bun >=1.3.11`, and aligned `mise.toml` with Bun `1.3.11` so local development and publish validation use the same supported toolchain.
+- **README / npm**: Switched the package logo in `README.md` to an absolute GitHub-hosted URL so npmjs can render the package README without relying on a local asset path that is not shipped in the published tarball.
 
 ## [1.8.1] - 2026-04-01
 
