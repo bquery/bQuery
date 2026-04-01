@@ -209,7 +209,7 @@ export const useResource = <T = unknown>(
         'update',
         'PUT',
         body,
-        optimistic ? ({ ...(base ?? {}), ...body } as T) : undefined
+        optimistic && base !== undefined ? ({ ...base, ...body } as T) : undefined
       );
     },
     patch: (body) => {
@@ -218,7 +218,7 @@ export const useResource = <T = unknown>(
         'patch',
         'PATCH',
         body,
-        optimistic ? ({ ...(base ?? {}), ...body } as T) : undefined
+        optimistic && base !== undefined ? ({ ...base, ...body } as T) : undefined
       );
     },
     remove: async () => {
