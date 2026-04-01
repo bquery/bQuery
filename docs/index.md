@@ -4,7 +4,7 @@ title: bQuery.js
 hero:
   name: bQuery.js
   text: The jQuery for the modern Web Platform.
-  tagline: Zero build. Secure by default. DOM-first reactivity with modern primitives.
+  tagline: Zero build. Secure by default. DOM-first reactivity, transport, and modern primitives.
   image:
     src: /assets/bquerry-logo.svg
     alt: bQuery Logo
@@ -19,7 +19,9 @@ features:
   - title: Zero Build
     details: Works directly in the browser via CDN or ES modules. Vite is optional, not required.
   - title: Async Data Primitives
-    details: Signal-based useAsyncData/useFetch composables for loading, errors, and request state.
+    details: Signal-based async data, fetch, HTTP client, polling, pagination, and request-state workflows without framework ceremony.
+  - title: Realtime & REST
+    details: Typed WebSocket/SSE composables, channel multiplexing, REST helpers, optimistic resources, and reactive submissions.
   - title: Secure by Default
     details: Sanitized DOM operations and Trusted Types compatibility.
   - title: Foundation Components
@@ -38,4 +40,4 @@ features:
 
 ## Why bQuery
 
-bQuery.js bridges vanilla JavaScript and build-step frameworks. It keeps the directness of jQuery while adding reactivity, async data composables, native components, motion, forms, i18n, accessibility, media signals, drag-and-drop, plugins, devtools, testing, and SSR in a modular, progressive way.
+bQuery.js bridges vanilla JavaScript and build-step frameworks. It keeps the directness of jQuery while adding reactivity, async data composables, HTTP clients, polling, pagination, WebSocket/SSE transports, REST helpers, native components, motion, forms, i18n, accessibility, media signals, drag-and-drop, plugins, devtools, testing, and SSR in a modular, progressive way.

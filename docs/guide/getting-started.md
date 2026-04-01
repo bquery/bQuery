@@ -1,6 +1,6 @@
 # Getting Started
 
-bQuery.js is designed for zero-build usage and modern build setups alike. You can start with plain HTML or use Vite for a fast dev server.
+bQuery.js is designed for zero-build usage and modern build setups alike. You can start with plain HTML or use Vite for a fast dev server. Since `1.8.0`, the Reactive module also covers HTTP clients, polling, pagination, realtime transports, REST helpers, and request coordination utilities.
 
 ## Installation
 
@@ -84,8 +84,18 @@ import { $, $$, utils } from '@bquery/bquery/core';
 // Core utilities as named exports
 import { debounce, merge, uid } from '@bquery/bquery/core';
 
-// Reactive only (signals, computed, effects, async composables)
-import { signal, computed, effect, batch, useFetch, createUseFetch } from '@bquery/bquery/reactive';
+// Reactive only (signals, computed, effects, async, HTTP, realtime)
+import {
+  signal,
+  computed,
+  effect,
+  batch,
+  useFetch,
+  createHttp,
+  useWebSocket,
+  useEventSource,
+  useResource,
+} from '@bquery/bquery/reactive';
 
 // Components only (Web Components + default library)
 import { bool, component, html, registerDefaultComponents } from '@bquery/bquery/component';
@@ -130,7 +140,7 @@ import { renderToString, hydrateMount } from '@bquery/bquery/ssr';
 | Module        | Description                                                                    |
 | ------------- | ------------------------------------------------------------------------------ |
 | **Core**      | Selectors, DOM manipulation, traversal, events, and typed utilities            |
-| **Reactive**  | Signals, computed values, effects, batching, and async composables             |
+| **Reactive**  | Signals, computed values, effects, batching, HTTP clients, polling, streaming, and REST composables |
 | **Component** | Typed Web Components with scoped reactivity and Shadow DOM control             |
 | **Storybook** | Safe string-template helpers for stories and boolean attributes                |
 | **Motion**    | Transitions, morphing, parallax, typewriter, FLIP, scroll, and springs         |
@@ -205,6 +215,21 @@ if (user.pending.value) {
 }
 
 console.log(user.data.value, user.error.value);
+```
+
+### HTTP, resources & streaming
+
+```ts
+import { createHttp, useEventSource, useResource } from '@bquery/bquery/reactive';
+
+const api = createHttp({ baseUrl: 'https://api.example.com', retry: 2 });
+const profile = useResource<{ id: number; name: string }>('/users/1', {
+  baseUrl: 'https://api.example.com',
+});
+const events = useEventSource<{ status: string }>('/events/profile');
+
+const { data } = await api.get('/users');
+console.log(data, profile.pending.value, events.status.value);
 ```
 
 ### Web Components

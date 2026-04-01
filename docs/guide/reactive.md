@@ -1,6 +1,6 @@
 # Reactive
 
-The reactive module provides fine‑grained reactivity with minimal primitives.
+The reactive module provides fine‑grained reactivity with minimal primitives plus a transport-ready data layer. Since `1.8.0`, it also includes imperative HTTP clients, polling and pagination helpers, WebSocket/SSE composables, REST resource helpers, request deduplication, and concurrency queues.
 
 ```ts
 import {

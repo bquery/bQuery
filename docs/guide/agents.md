@@ -6,7 +6,7 @@ This page describes how to use bQuery for agent frontends — for example chat U
 
 - **Fast UI iteration** without a required build step
 - **Safe DOM writes** via default sanitization
-- **Reactive state** for streaming responses
+- **Reactive state and transport composables** for streaming responses
 - **Modular architecture** (only import what you need)
 
 ## Architecture recommendation
@@ -119,6 +119,43 @@ function onToken(token: string) {
   reply.value += token;
 }
 ```
+
+### Streaming responses with built-in transport composables
+
+Instead of manually wiring `fetch()` plus ad-hoc listeners, you can drive the
+request and stream lifecycle with bQuery's reactive networking helpers.
+
+```ts
+import { effect, signal, useEventSource, useSubmit } from '@bquery/bquery/reactive';
+
+const reply = signal('');
+const activeJobId = signal<string | null>(null);
+
+const submitPrompt = useSubmit<{ jobId: string }>('/api/agent/jobs');
+const stream = useEventSource<{ token?: string; done?: boolean }>(
+  () => `/api/agent/jobs/${activeJobId.value ?? 'pending'}/events`,
+  { immediate: false }
+);
+
+effect(() => {
+  const event = stream.data.value;
+  if (event?.token) {
+    reply.value += event.token;
+  }
+});
+
+async function sendPrompt(prompt: string) {
+  const result = await submitPrompt.submit({ prompt });
+  if (!result?.jobId) return;
+
+  reply.value = '';
+  activeJobId.value = result.jobId;
+  stream.open();
+}
+```
+
+This keeps submission state, streaming state, retries, and cleanup in the
+reactive layer instead of scattering them across DOM handlers.
 
 ## Patterns for agent UIs
 

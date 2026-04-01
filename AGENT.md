@@ -9,13 +9,13 @@
 | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Name        | bQuery.js                                                                                                                                                                             |
 | Package     | `@bquery/bquery`                                                                                                                                                                      |
-| Version     | 1.7.0                                                                                                                                                                                 |
+| Version     | 1.8.0                                                                                                                                                                                 |
 | License     | MIT                                                                                                                                                                                   |
 | Language    | TypeScript (strict)                                                                                                                                                                   |
 | Runtime     | Browser (ESM, UMD, IIFE) — tests run via Bun                                                                                                                                          |
 | Repository  | <https://github.com/bQuery/bQuery>                                                                                                                                                    |
 | Homepage    | <https://bQuery.flausch-code.de>                                                                                                                                                      |
-| Description | jQuery-style DOM library with reactivity, async data, Web Components, motion, routing, stores, declarative views, and shared runtime config — zero-build capable, security-by-default |
+| Description | jQuery-style DOM library with reactivity, async data, HTTP clients, polling / pagination, realtime transports, REST helpers, Web Components, motion, routing, stores, declarative views, and shared runtime config — zero-build capable, security-by-default |
 
 ---
 
@@ -40,7 +40,7 @@ src/
 ├── index.ts            # Default entry — re-exports all modules
 ├── full.ts             # Full bundle with explicit named exports (CDN)
 ├── core/               # $, $$, BQueryElement, BQueryCollection, utils
-├── reactive/           # signal, computed, effect, batch, watch, async data/fetch, HTTP client, polling, pagination
+├── reactive/           # signal, computed, effect, batch, watch, async data/fetch, HTTP, polling, pagination, realtime, REST
 ├── component/          # component(), defineComponent(), scoped reactivity, defaults
 ├── storybook/          # storyHtml(), when() helpers for Storybook stories
 ├── motion/             # animate, transition, flip, morph, spring, timeline, scroll
@@ -425,7 +425,7 @@ it('should add class', () => {
 | File                            | Purpose                                        |
 | ------------------------------- | ---------------------------------------------- |
 | `src/index.ts`                  | Default entry point — re-exports all modules   |
-| `src/full.ts`                   | Full bundle with explicit named exports (CDN)  |
+| `src/full.ts`                   | Full bundle with explicit named exports (CDN); keep in sync with public runtime exports |
 | `vite.config.ts`                | Library build config (21 entry points, ESM)    |
 | `vite.umd.config.ts`            | UMD bundle config for CDN/script tags          |
 | `tsconfig.json`                 | TypeScript config (strict, ES2020, Bundler)    |
@@ -433,6 +433,8 @@ it('should add class', () => {
 | `eslint.config.js`              | ESLint flat config                             |
 | `.storybook/main.ts`            | Storybook builder/configuration                |
 | `tests/setup.ts`                | DOM polyfills for test environment (happy-dom) |
+| `tests/http.test.ts`            | HTTP client, retry, polling, and pagination coverage |
+| `tests/network.test.ts`         | WebSocket, SSE, REST helpers, queues, and dedupe coverage |
 | `src/security/sanitize-core.ts` | Core HTML sanitization logic                   |
 | `package.json`                  | Package config, scripts, export maps           |
 
@@ -446,6 +448,7 @@ it('should add class', () => {
 | Forgetting sanitization      | ALL new DOM-writing methods must call `sanitizeHtml()`                                                        |
 | Signal `.value` tracks       | Use `.peek()` to read without subscribing in computed/effect                                                  |
 | Disposed async state         | `useAsyncData()` / `useFetch()` return cached data after `dispose()` and should not be re-used for fresh work |
+| `src/full.ts` drift          | If a public runtime export changes, update `src/full.ts` so the `/full` bundle and CDN entry stay accurate   |
 | Testing with Node            | Use `bun test` only — Bun-specific APIs are used                                                              |
 | CSP with View module         | `mount()` uses `new Function()` → needs `'unsafe-eval'`                                                       |
 | Double renders in components | `attributeChangedCallback` only re-renders after initial mount                                                |

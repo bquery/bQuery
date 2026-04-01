@@ -9,6 +9,7 @@ You are working on bQuery.js, a TypeScript-first, zero-build DOM library.
 - Security: ALL DOM HTML writes MUST use `sanitizeHtml()` from `src/security/sanitize.ts` (re-exported via `src/security/index.ts`).
 - Chaining: Mutating methods on `BQueryElement` / `BQueryCollection` return `this`.
 - No runtime dependencies. Zero `dependencies` in package.json.
+- Keep `src/full.ts` aligned with `src/*/index.ts` whenever public runtime exports change.
 - `$()` throws if element not found → use `$$()` for optional queries.
 - Signal `.value` tracks dependencies → use `.peek()` to avoid tracking.
 - `useSignal()`, `useComputed()`, and `useEffect()` from `@bquery/bquery/component` must be called from component lifecycle hooks, not from `render()`.
@@ -17,7 +18,17 @@ You are working on bQuery.js, a TypeScript-first, zero-build DOM library.
 
 ```ts
 import { $, $$ } from '@bquery/bquery/core';
-import { signal, computed, effect, batch } from '@bquery/bquery/reactive';
+import {
+  signal,
+  computed,
+  effect,
+  batch,
+  createHttp,
+  useWebSocket,
+  useEventSource,
+  useResource,
+  useSubmit,
+} from '@bquery/bquery/reactive';
 import { component, html } from '@bquery/bquery/component';
 import { storyHtml, when } from '@bquery/bquery/storybook';
 import { animate, transition, spring } from '@bquery/bquery/motion';

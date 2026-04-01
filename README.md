@@ -20,12 +20,14 @@
 
 **The jQuery for the modern Web Platform.**
 
-bQuery.js is a slim, TypeScript-first library that combines jQuery's direct DOM workflow with modern features like reactivity, async data composables, Web Components, motion utilities, routing, stores, declarative views, accessibility helpers, forms, i18n, media signals, drag-and-drop, plugins, devtools, testing utilities, and SSR — without a mandatory build step.
+bQuery.js is a slim, TypeScript-first library that combines jQuery's direct DOM workflow with modern features like reactivity, async data composables, HTTP clients, polling and pagination helpers, realtime transports, REST workflows, Web Components, motion utilities, routing, stores, declarative views, accessibility helpers, forms, i18n, media signals, drag-and-drop, plugins, devtools, testing utilities, and SSR — without a mandatory build step.
+
+> **New in 1.8.0:** the Reactive module now also covers transport-ready workflows such as `createHttp()`, `usePolling()`, `usePaginatedFetch()`, `useInfiniteFetch()`, `useWebSocket()`, `useEventSource()`, `useResource()`, `useSubmit()`, `createRequestQueue()`, and `deduplicateRequest()`.
 
 ## Highlights
 
 - **Zero-build capable**: runs directly in the browser; build tools are optional.
-- **Async data built-in**: fetch and async state composables integrate directly with signals.
+- **Transport-ready reactive data**: fetch composables, HTTP clients, polling, pagination, WebSocket / SSE, REST helpers, and request coordination plug directly into signals.
 - **Security-focused**: DOM writes are sanitized by default; Trusted Types supported.
 - **Modular**: the core stays small; extra modules are opt-in.
 - **TypeScript-first**: clear types and strong IDE support.
@@ -108,6 +110,20 @@ import {
   useAsyncData,
   useFetch,
   createUseFetch,
+  createHttp,
+  http,
+  usePolling,
+  usePaginatedFetch,
+  useInfiniteFetch,
+  useWebSocket,
+  useWebSocketChannel,
+  useEventSource,
+  useResource,
+  useResourceList,
+  useSubmit,
+  createRestClient,
+  createRequestQueue,
+  deduplicateRequest,
 } from '@bquery/bquery/reactive';
 
 // Components only
@@ -155,7 +171,7 @@ import { storyHtml, when } from '@bquery/bquery/storybook';
 | Module        | Description                                                                           |
 | ------------- | ------------------------------------------------------------------------------------- |
 | **Core**      | Selectors, DOM manipulation, events, traversal, and typed utilities                   |
-| **Reactive**  | `signal`, `computed`, `effect`, batching, async data, and fetch composables           |
+| **Reactive**  | `signal`, `computed`, `effect`, async data, HTTP clients, polling, pagination, WebSocket / SSE, and REST helpers |
 | **Component** | Typed Web Components with scoped reactivity and configurable Shadow DOM               |
 | **Storybook** | Safe story template helpers with boolean-attribute shorthand                          |
 | **Motion**    | View transitions, FLIP, morphing, parallax, typewriter, springs, and timelines        |
@@ -270,6 +286,34 @@ const useApiFetch = createUseFetch({
 const settings = useApiFetch<{ theme: string }>('/settings');
 
 console.log(user.pending.value, user.data.value, settings.error.value);
+```
+
+### Reactive – HTTP, streaming & request coordination
+
+```ts
+import {
+  createHttp,
+  createRequestQueue,
+  deduplicateRequest,
+  useEventSource,
+  useWebSocket,
+} from '@bquery/bquery/reactive';
+
+const api = createHttp({
+  baseUrl: 'https://api.example.com',
+  retry: {
+    count: 2,
+    onRetry: (error, attempt) => console.warn(`Retry #${attempt}`, error.message),
+  },
+});
+
+const queue = createRequestQueue({ concurrency: 4 });
+const ws = useWebSocket<{ type: string; payload: unknown }>('wss://api.example.com/live');
+const sse = useEventSource<{ token: string }>('/api/stream');
+
+const users = await deduplicateRequest('/users', () => queue.add(() => api.get('/users')));
+
+console.log(users.data, ws.status.value, sse.eventName.value);
 ```
 
 ### Components – Web Components

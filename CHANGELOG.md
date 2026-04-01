@@ -8,6 +8,10 @@ and this project adheres to Semantic Versioning.
 
 - [Changelog](#changelog)
   - [Releases](#releases)
+  - [\[1.8.0\] - 2026-04-01](#180---2026-04-01)
+    - [Added (1.8.0)](#added-180)
+    - [Changed (1.8.0)](#changed-180)
+    - [Fixed (1.8.0)](#fixed-180)
   - [\[1.7.0\] - 2026-03-27](#170---2026-03-27)
     - [Added (1.7.0)](#added-170)
     - [Changed (1.7.0)](#changed-170)
@@ -48,6 +52,28 @@ and this project adheres to Semantic Versioning.
     - [Fixed (1.0.1)](#fixed-101)
   - [\[1.0.0\] - 2026-01-21](#100---2026-01-21)
     - [Added (1.0.0)](#added-100)
+
+## [1.8.0] - 2026-04-01
+
+### Added (1.8.0)
+
+- **Reactive / HTTP**: Added `createHttp()`, the default `http` client, and `HttpError` with interceptors, structured responses, timeout / abort handling, retry configuration, and `onRetry` hooks.
+- **Reactive / Data workflows**: Added `usePolling()`, `usePaginatedFetch()`, and `useInfiniteFetch()` for interval-driven, page-based, and cursor-based fetching patterns.
+- **Reactive / Realtime**: Added `useWebSocket()`, `useWebSocketChannel()`, and `useEventSource()` for typed streaming state, heartbeat / reconnect handling, SSE, and channel-based messaging.
+- **Reactive / REST**: Added `useResource()`, `useResourceList()`, `useSubmit()`, and `createRestClient()` for CRUD flows, optimistic mutations, collection syncing, and reactive form submissions.
+- **Reactive / Coordination**: Added `createRequestQueue()` and `deduplicateRequest()` to cap concurrency and coalesce identical in-flight requests.
+
+### Changed (1.8.0)
+
+- **Docs**: README, getting-started, reactive, and agent-facing guides now document the network-ready reactive layer, including polling, pagination, realtime transports, REST helpers, and request coordination utilities.
+- **Bundle exports**: The package version, `src/full.ts`, and agent context files now reflect the expanded Reactive / Store public surface so the full bundle, CDN entry, and AI tooling stay aligned with the module barrels.
+- **Guidance**: Agent instruction files now explicitly call out the need to keep `src/full.ts` synchronized when public runtime exports change.
+
+### Fixed (1.8.0)
+
+- **Reactive / HTTP**: Retry handling now refuses to replay non-replayable `ReadableStream` bodies and consumed `Request` objects, treats parse failures separately from transport failures, and reports timeout / abort conditions more consistently across `useFetch()` and `createHttp()`.
+- **Reactive / Realtime**: WebSocket and EventSource reconnect scheduling, heartbeat timers, latency tracking, and manual reopen flows now clean up more defensively and avoid stale reconnect / timeout state.
+- **Reactive / REST**: `useResource()` and `useResourceList()` now reconcile optimistic mutations more predictably with server responses, preserve rollback behavior on failures, and keep mutation callbacks isolated from list-fetch callbacks.
 
 ## [1.7.0] - 2026-03-27
 

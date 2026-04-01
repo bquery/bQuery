@@ -2,7 +2,7 @@
 
 ## Quick orientation
 
-bQuery.js is a TypeScript-first, zero-build-capable DOM library with jQuery-style chaining and modern platform features. The package is modular, tree-shakeable, has zero runtime dependencies, and currently ships **20 public entry points**.
+bQuery.js is a TypeScript-first, zero-build-capable DOM library with jQuery-style chaining and modern platform features. The package is modular, tree-shakeable, has zero runtime dependencies, and currently ships **21 public entry points**.
 
 Start here before making assumptions:
 
@@ -32,6 +32,8 @@ If you change a public API, keep the relevant docs and agent context in sync:
 - `.cursorrules`
 - `.clinerules`
 
+Also sync `src/full.ts` whenever public runtime exports change so the `/full` / CDN bundle matches the module barrels.
+
 ## Build, test, and validation
 
 Use Bun for repository workflows:
@@ -52,7 +54,7 @@ For code changes, prefer validating with the smallest relevant command first, th
 Public modules live under `src/<module>/index.ts`. Important module groups:
 
 - `core` — `$`, `$$`, DOM wrappers, traversal, manipulation, events, utilities
-- `reactive` — signals, computed values, effects, batching, async/reactive helpers
+- `reactive` — signals, computed values, effects, batching, async helpers, HTTP, polling/pagination, realtime transport, REST helpers
 - `component` — Web Components helpers, typed props, lifecycle hooks, shadow DOM helpers
 - `motion` — transitions, FLIP, springs, timelines, parallax, typewriter, reduced motion
 - `security` — sanitization, Trusted Types, CSP helpers
@@ -124,7 +126,7 @@ Use these instead of re-explaining everything from scratch:
 ## Practical workflow for agents
 
 1. Read the relevant module barrel and nearby implementation.
-2. Confirm public surface in `package.json` exports when needed.
+2. Confirm public surface in `package.json` exports and `src/full.ts` when needed.
 3. Update tests with the change, especially for API or security-sensitive behavior.
 4. Sync docs and context files for public-facing changes.
 5. Prefer small, targeted edits over broad refactors.
