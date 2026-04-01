@@ -126,7 +126,7 @@ export const useResource = <T = unknown>(
     return resolved instanceof URL ? resolved.toString() : resolved;
   };
 
-  const toMutationFetchOptions = <TResult,>(): Omit<
+  const toMutationOnlyOptions = <TResult,>(): Omit<
     UseFetchOptions<TResult>,
     'method' | 'body' | 'defaultValue' | 'transform' | 'onSuccess' | 'onError'
   > => {
@@ -135,9 +135,9 @@ export const useResource = <T = unknown>(
       transform: _transform,
       onSuccess: _onSuccess,
       onError: _onError,
-      ...transportOpts
+      ...remainingOpts
     } = fetchOptions;
-    return transportOpts as Omit<
+    return remainingOpts as Omit<
       UseFetchOptions<TResult>,
       'method' | 'body' | 'defaultValue' | 'transform' | 'onSuccess' | 'onError'
     >;
@@ -163,7 +163,7 @@ export const useResource = <T = unknown>(
 
     try {
       const mutationState = useFetch<T>(resolveUrl(), {
-        ...toMutationFetchOptions<T>(),
+        ...toMutationOnlyOptions<T>(),
         method,
         body: body ?? undefined,
         immediate: false,
