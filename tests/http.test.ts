@@ -1112,6 +1112,28 @@ describe('useInfiniteFetch', () => {
     state.dispose();
   });
 
+  it('sets hasMore to false after loading a single final page', async () => {
+    const state = useInfiniteFetch<{ items: string[]; nextCursor: number | null }, string[]>(
+      (cursor) => `/api/feed?cursor=${cursor ?? ''}`,
+      {
+        immediate: false,
+        getNextCursor: (page) =>
+          (page.nextCursor != null ? page.nextCursor : undefined) as number | undefined,
+        transform: (pages) => pages.flatMap((p) => p.items),
+        fetcher: createMockApi(1),
+      }
+    );
+
+    expect(state.hasMore.value).toBe(true);
+
+    await state.fetchNextPage();
+
+    expect(state.pages.value).toHaveLength(1);
+    expect(state.hasMore.value).toBe(false);
+
+    state.dispose();
+  });
+
   it('resets all pages on refresh()', async () => {
     const state = useInfiniteFetch<{ items: string[]; nextCursor: number | null }, string[]>(
       (cursor) => `/api/feed?cursor=${cursor ?? ''}`,

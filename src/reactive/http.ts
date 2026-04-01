@@ -731,8 +731,8 @@ export interface RequestQueue {
  */
 export function createRequestQueue(options: RequestQueueOptions = {}): RequestQueue {
   const { concurrency = 6 } = options;
-  if (!Number.isFinite(concurrency) || concurrency < 1) {
-    throw new Error('Request queue concurrency must be at least 1');
+  if (!Number.isInteger(concurrency) || concurrency < 1) {
+    throw new Error('Request queue concurrency must be a positive integer');
   }
   const queue: Array<QueueEntry> = [];
   let running = 0;

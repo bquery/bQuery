@@ -1806,10 +1806,13 @@ describe('createRequestQueue', () => {
 
   it('throws for concurrency less than 1', () => {
     expect(() => createRequestQueue({ concurrency: 0 })).toThrow(
-      'Request queue concurrency must be at least 1'
+      'Request queue concurrency must be a positive integer'
     );
     expect(() => createRequestQueue({ concurrency: -1 })).toThrow(
-      'Request queue concurrency must be at least 1'
+      'Request queue concurrency must be a positive integer'
+    );
+    expect(() => createRequestQueue({ concurrency: 1.5 })).toThrow(
+      'Request queue concurrency must be a positive integer'
     );
   });
 });
