@@ -33,6 +33,11 @@ const asMockFetch = (
 
 type MockWSListener = (event: unknown) => void;
 type GlobalWithWebSocket = { WebSocket: typeof MockWebSocket };
+const getGlobalWebSocket = (): typeof MockWebSocket =>
+  (globalThis as unknown as GlobalWithWebSocket).WebSocket;
+const setGlobalWebSocket = (WebSocketCtor: typeof MockWebSocket): void => {
+  (globalThis as unknown as GlobalWithWebSocket).WebSocket = WebSocketCtor;
+};
 
 class MockWebSocket {
   static readonly CONNECTING = 0;
@@ -1205,7 +1210,7 @@ describe('useWebSocket — new extensions', () => {
   });
 
   it('resets reconnect attempt counters after a successful auto-reconnect', async () => {
-    const originalWebSocketConstructor = (globalThis as unknown as GlobalWithWebSocket).WebSocket;
+    const originalWebSocketConstructor = getGlobalWebSocket();
     class ControlledReconnectWebSocket extends MockWebSocket {
       autoOpen = false;
 
@@ -1221,22 +1226,24 @@ describe('useWebSocket — new extensions', () => {
       }
     }
 
-    (globalThis as unknown as GlobalWithWebSocket).WebSocket = ControlledReconnectWebSocket;
+    setGlobalWebSocket(ControlledReconnectWebSocket);
 
     try {
       const ws = useWebSocket('ws://localhost/test', {
         autoReconnect: { delay: 20, maxAttempts: 2 },
       });
+      const currentControlledSocket = (): ControlledReconnectWebSocket | null =>
+        lastMockWS as ControlledReconnectWebSocket | null;
 
       await new Promise((r) => setTimeout(r, 10));
-      (lastMockWS as ControlledReconnectWebSocket | null)?.openNow();
+      currentControlledSocket()?.openNow();
       await new Promise((r) => setTimeout(r, 10));
       lastMockWS!._simulateClose(1006, 'server restart');
 
       await new Promise((r) => setTimeout(r, 30));
       expect(ws.reconnectAttempts.value).toBeGreaterThan(0);
 
-      (lastMockWS as ControlledReconnectWebSocket | null)?.openNow();
+      currentControlledSocket()?.openNow();
       await new Promise((r) => setTimeout(r, 10));
 
       expect(ws.reconnectAttempts.value).toBe(0);
@@ -1244,13 +1251,13 @@ describe('useWebSocket — new extensions', () => {
       lastMockWS!._simulateClose(1006, 'server restart again');
       await new Promise((r) => setTimeout(r, 30));
       expect(ws.reconnectAttempts.value).toBeGreaterThan(0);
-      (lastMockWS as ControlledReconnectWebSocket | null)?.openNow();
+      currentControlledSocket()?.openNow();
       await new Promise((r) => setTimeout(r, 10));
       expect(ws.reconnectAttempts.value).toBe(0);
 
       ws.dispose();
     } finally {
-      (globalThis as unknown as GlobalWithWebSocket).WebSocket = originalWebSocketConstructor;
+      setGlobalWebSocket(originalWebSocketConstructor);
     }
   });
 
