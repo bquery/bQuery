@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/bquerry-logo.svg" alt="bQuery.js Logo" width="120" />
+  <img src="https://raw.githubusercontent.com/bQuery/bQuery/main/assets/bquerry-logo.svg" alt="bQuery.js Logo" width="120" />
 </p>
 
 <h1 align="center">bQuery.js</h1>
