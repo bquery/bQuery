@@ -5,6 +5,7 @@ import type { BindingContext, DirectiveHandler } from './types';
 
 export type DirectiveHandlers = {
   text: DirectiveHandler;
+  error: DirectiveHandler;
   html: DirectiveHandler;
   if: DirectiveHandler;
   show: DirectiveHandler;
@@ -46,6 +47,8 @@ export const processElement = (
     // Handle other directives
     if (directive === 'text') {
       handlers.text(el, value, context, cleanups);
+    } else if (directive === 'error') {
+      handlers.error(el, value, context, cleanups);
     } else if (directive === 'html') {
       handlers.html(el, value, context, cleanups);
     } else if (directive === 'if') {

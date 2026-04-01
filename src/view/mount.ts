@@ -3,6 +3,7 @@ import {
   createForHandler,
   handleBind,
   handleClass,
+  handleError,
   handleHtml,
   handleIf,
   handleModel,
@@ -80,6 +81,7 @@ export const mount = (
 
   const handlers: DirectiveHandlers = {
     text: handleText,
+    error: handleError,
     html: handleHtml(sanitize),
     if: handleIf,
     show: handleShow,

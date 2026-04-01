@@ -116,6 +116,28 @@ Two-way binding for inputs:
 </select>
 ```
 
+### bq-error
+
+Render validation or error messages from a form field, signal, computed value, or plain expression.
+
+```html
+<!-- Bind a field object -->
+<p bq-error="form.fields.email"></p>
+
+<!-- Bind the error signal directly -->
+<p bq-error="form.fields.email.error"></p>
+
+<!-- Bind any reactive string source -->
+<p bq-error="serverError"></p>
+```
+
+`bq-error` sets `textContent`, hides the element when the message is empty, and adds accessible defaults with `role="alert"` and `aria-live="polite"` unless you already provided those attributes.
+
+```ts
+const serverError = signal('');
+mount('#app', { form, serverError });
+```
+
 ### bq-bind:attr
 
 Bind any attribute:

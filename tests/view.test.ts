@@ -3,6 +3,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, spyOn, type Mock } from 'bun:test';
+import { createForm, required } from '../src/forms/index';
 import { computed, signal } from '../src/reactive/index';
 import { parseObjectExpression } from '../src/view/evaluate';
 import { clearExpressionCache, createTemplate, mount, type View } from '../src/view/index';
@@ -175,6 +176,84 @@ describe('View', () => {
 
       visible.value = false;
       expect(div.style.display).toBe('none');
+    });
+  });
+
+  describe('bq-error', () => {
+    it('should render and toggle a signal-backed error message', () => {
+      container.innerHTML = '<p bq-error="errorMessage"></p>';
+      const errorMessage = signal('');
+
+      view = mount(container, { errorMessage });
+
+      const message = container.querySelector('p') as HTMLParagraphElement;
+      expect(message.hidden).toBe(true);
+      expect(message.textContent).toBe('');
+      expect(message.getAttribute('role')).toBe('alert');
+      expect(message.getAttribute('aria-live')).toBe('polite');
+      expect(message.getAttribute('aria-hidden')).toBe('true');
+
+      errorMessage.value = 'Email is required';
+      expect(message.hidden).toBe(false);
+      expect(message.textContent).toBe('Email is required');
+      expect(message.getAttribute('aria-hidden')).toBe('false');
+
+      errorMessage.value = '';
+      expect(message.hidden).toBe(true);
+      expect(message.textContent).toBe('');
+      expect(message.getAttribute('aria-hidden')).toBe('true');
+    });
+
+    it('should support form field objects by reading their error signal', async () => {
+      container.innerHTML = '<p bq-error="form.fields.email"></p>';
+      const form = createForm({
+        fields: {
+          email: { initialValue: '', validators: [required('Email required')] },
+        },
+      });
+
+      view = mount(container, { form });
+
+      const message = container.querySelector('p') as HTMLParagraphElement;
+      expect(message.hidden).toBe(true);
+
+      await form.validateField('email');
+      expect(message.hidden).toBe(false);
+      expect(message.textContent).toBe('Email required');
+
+      form.fields.email.value.value = 'ada@example.com';
+      await form.validateField('email');
+      expect(message.hidden).toBe(true);
+      expect(message.textContent).toBe('');
+    });
+
+    it('should support computed error expressions', () => {
+      container.innerHTML = '<p bq-error="validationMessage"></p>';
+      const isValid = signal(false);
+      const validationMessage = computed(() => (isValid.value ? '' : 'Invalid value'));
+
+      view = mount(container, { validationMessage });
+
+      const message = container.querySelector('p') as HTMLParagraphElement;
+      expect(message.textContent).toBe('Invalid value');
+      expect(message.hidden).toBe(false);
+
+      isValid.value = true;
+      expect(message.textContent).toBe('');
+      expect(message.hidden).toBe(true);
+    });
+
+    it('should preserve existing role and aria-live attributes', () => {
+      container.innerHTML =
+        '<p bq-error="errorMessage" role="status" aria-live="assertive"></p>';
+      const errorMessage = signal('Server error');
+
+      view = mount(container, { errorMessage });
+
+      const message = container.querySelector('p') as HTMLParagraphElement;
+      expect(message.getAttribute('role')).toBe('status');
+      expect(message.getAttribute('aria-live')).toBe('assertive');
+      expect(message.textContent).toBe('Server error');
     });
   });
 
@@ -854,11 +933,13 @@ describe('View', () => {
 
   describe('custom prefix', () => {
     it('should support custom directive prefix', () => {
-      container.innerHTML = '<p x-text="message"></p>';
+      container.innerHTML = '<p x-text="message"></p><span x-error="errorMessage"></span>';
+      const errorMessage = signal('Needs attention');
 
-      view = mount(container, { message: 'Custom prefix' }, { prefix: 'x' });
+      view = mount(container, { message: 'Custom prefix', errorMessage }, { prefix: 'x' });
 
       expect(container.querySelector('p')?.textContent).toBe('Custom prefix');
+      expect(container.querySelector('span')?.textContent).toBe('Needs attention');
     });
   });
 
