@@ -187,8 +187,8 @@ export const useInfiniteFetch = <TResponse = unknown, TData = TResponse[], TCurs
     immediate = true,
     // Keep these callbacks on the infinite-fetch layer instead of forwarding
     // them into the inner per-page useFetch() instance.
-    onSuccess: _infiniteOnSuccess,
-    onError: _infiniteOnError,
+    onSuccess: infiniteOnSuccess,
+    onError: infiniteOnError,
     ...fetchOptions
   } = options;
 
@@ -233,12 +233,12 @@ export const useInfiniteFetch = <TResponse = unknown, TData = TResponse[], TCurs
       if (disposed || currentExecution !== executionId) return data.peek();
 
       // Check if the inner fetch encountered an error
-      if (pageError) {
-        error.value = pageError;
-        status.value = 'error';
-        options.onError?.(pageError);
-        return data.peek();
-      }
+        if (pageError) {
+          error.value = pageError;
+          status.value = 'error';
+          infiniteOnError?.(pageError);
+          return data.peek();
+        }
 
       if (pageData !== undefined) {
         const typedPageData = pageData as TResponse;
@@ -251,7 +251,7 @@ export const useInfiniteFetch = <TResponse = unknown, TData = TResponse[], TCurs
         const transformed = applyTransform(newPages);
         data.value = transformed;
         status.value = 'success';
-        options.onSuccess?.(transformed);
+        infiniteOnSuccess?.(transformed);
         return transformed;
       }
 
@@ -263,7 +263,7 @@ export const useInfiniteFetch = <TResponse = unknown, TData = TResponse[], TCurs
       const normalizedError = caught instanceof Error ? caught : new Error(String(caught));
       error.value = normalizedError;
       status.value = 'error';
-      options.onError?.(normalizedError);
+      infiniteOnError?.(normalizedError);
       return data.peek();
     }
   };
