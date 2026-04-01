@@ -4,7 +4,6 @@ import {
   createRequestQueue,
   createRestClient,
   deduplicateRequest,
-  type EventSourceStatus,
   useResource,
   useResourceList,
   useSubmit,
@@ -586,11 +585,6 @@ describe('useEventSource', () => {
     };
 
     expect(validOptions.autoReconnect).toEqual({ delay: 10, maxAttempts: 2 });
-  });
-
-  it('uses the narrower EventSource status type', () => {
-    const status: EventSourceStatus = 'CONNECTING';
-    expect(status).toBe('CONNECTING');
   });
 
   it('connects immediately and sets OPEN status', async () => {

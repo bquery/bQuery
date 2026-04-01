@@ -646,6 +646,7 @@ export const useResourceList = <T = unknown>(
     add: async (body) => {
       const previousList = fetchState.data.peek();
       const optimisticItem = body as T;
+      const optimisticIndex = previousList?.length ?? 0;
 
       const result = await runMutation<T>(
         'add',
@@ -667,9 +668,13 @@ export const useResourceList = <T = unknown>(
       if (result !== undefined && !disposed) {
         const current = fetchState.data.peek() ?? [];
         if (optimistic) {
-          fetchState.data.value = current.map((item) =>
-            item === optimisticItem ? result : item
-          );
+          const next = [...current];
+          if (optimisticIndex < next.length) {
+            next[optimisticIndex] = result;
+          } else {
+            next.push(result);
+          }
+          fetchState.data.value = next;
         } else {
           fetchState.data.value = [...current, result];
         }
