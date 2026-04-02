@@ -1267,6 +1267,31 @@ describe('media/useResizeObserver', () => {
 // ─── useMutationObserver ─────────────────────────────────────────────────────
 
 describe('media/useMutationObserver', () => {
+  const waitForMutationObserver = () =>
+    new Promise((resolve) => setTimeout(resolve, 50));
+
+  const createMutationProbe = (target: Node, options: MutationObserverInit) => {
+    const MutationObserverCtor = globalThis.MutationObserver;
+    let count = 0;
+    const observer = MutationObserverCtor
+      ? new MutationObserverCtor((mutations) => {
+          count += mutations.length;
+        })
+      : undefined;
+
+    observer?.observe(target, options);
+
+    return {
+      supported: Boolean(observer),
+      get count(): number {
+        return count;
+      },
+      disconnect(): void {
+        observer?.disconnect();
+      },
+    };
+  };
+
   it('returns a signal with default state when no target is given', () => {
     const mo = useMutationObserver();
     expect(mo.value).toEqual({
@@ -1562,78 +1587,64 @@ describe('media/useMutationObserver', () => {
     const el = document.createElement('div');
     document.body.appendChild(el);
     const mo = useMutationObserver(el, { attributes: true });
-    const MutationObserverCtor = globalThis.MutationObserver;
-    let probeCount = 0;
-    const probe = MutationObserverCtor
-      ? new MutationObserverCtor((mutations) => {
-          probeCount += mutations.length;
-        })
-      : undefined;
-    probe?.observe(el, { attributes: true });
-    expect(mo.value.count).toBe(0);
+    const probe = createMutationProbe(el, { attributes: true });
 
-    // Trigger an attribute mutation
-    el.setAttribute('data-test', 'hello');
+    try {
+      expect(mo.value.count).toBe(0);
 
-    // MutationObserver callbacks are microtask-based, wait for them
-    await new Promise((resolve) => setTimeout(resolve, 50));
+      // Trigger an attribute mutation
+      el.setAttribute('data-test', 'hello');
 
-    if (!probe || probeCount === 0) {
-      expect(typeof mo.value.count).toBe('number');
+      // MutationObserver callbacks are microtask-based, wait for them
+      await waitForMutationObserver();
+
+      if (!probe.supported || probe.count === 0) {
+        expect(typeof mo.value.count).toBe('number');
+        expect(Array.isArray(mo.value.mutations)).toBe(true);
+        return;
+      }
+
+      expect(mo.value.count).toBeGreaterThan(0);
       expect(Array.isArray(mo.value.mutations)).toBe(true);
-      probe?.disconnect();
+      expect(mo.value.mutations.some((mutation) => mutation.type === 'attributes')).toBe(
+        true,
+      );
+    } finally {
+      probe.disconnect();
       mo.destroy();
       el.remove();
-      return;
     }
-
-    expect(mo.value.count).toBeGreaterThan(0);
-    expect(Array.isArray(mo.value.mutations)).toBe(true);
-    expect(mo.value.mutations.some((mutation) => mutation.type === 'attributes')).toBe(
-      true,
-    );
-
-    probe?.disconnect();
-    mo.destroy();
-    el.remove();
   });
 
   it('updates signal when child list mutation occurs', async () => {
     const el = document.createElement('div');
     document.body.appendChild(el);
     const mo = useMutationObserver(el, { childList: true, attributes: false });
-    const MutationObserverCtor = globalThis.MutationObserver;
-    let probeCount = 0;
-    const probe = MutationObserverCtor
-      ? new MutationObserverCtor((mutations) => {
-          probeCount += mutations.length;
-        })
-      : undefined;
-    probe?.observe(el, { childList: true });
-    expect(mo.value.count).toBe(0);
+    const probe = createMutationProbe(el, { childList: true });
 
-    // Trigger a childList mutation
-    const child = document.createElement('span');
-    el.appendChild(child);
+    try {
+      expect(mo.value.count).toBe(0);
 
-    await new Promise((resolve) => setTimeout(resolve, 50));
+      // Trigger a childList mutation
+      const child = document.createElement('span');
+      el.appendChild(child);
 
-    if (!probe || probeCount === 0) {
-      expect(typeof mo.value.count).toBe('number');
+      await waitForMutationObserver();
+
+      if (!probe.supported || probe.count === 0) {
+        expect(typeof mo.value.count).toBe('number');
+        expect(Array.isArray(mo.value.mutations)).toBe(true);
+        return;
+      }
+
+      expect(mo.value.count).toBeGreaterThan(0);
       expect(Array.isArray(mo.value.mutations)).toBe(true);
-      probe?.disconnect();
+      expect(mo.value.mutations.some((mutation) => mutation.type === 'childList')).toBe(true);
+    } finally {
+      probe.disconnect();
       mo.destroy();
       el.remove();
-      return;
     }
-
-    expect(mo.value.count).toBeGreaterThan(0);
-    expect(Array.isArray(mo.value.mutations)).toBe(true);
-    expect(mo.value.mutations.some((mutation) => mutation.type === 'childList')).toBe(true);
-
-    probe?.disconnect();
-    mo.destroy();
-    el.remove();
   });
 
   it('defaults to attributes: true when no options given', () => {
