@@ -17,7 +17,7 @@ const normalizeAriaAttribute = (name: string): string => {
   return `aria-${toKebabCase(withoutPrefix).replace(/^-/, '')}`;
 };
 
-const shouldRemoveAttribute = (value: unknown): boolean => value == null || value === false || value === '';
+const shouldRemoveAttribute = (value: unknown): boolean => value == null || value === '';
 
 /**
  * Handles bq-aria directive - reactive ARIA attribute binding.

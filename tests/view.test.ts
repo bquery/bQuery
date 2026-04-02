@@ -282,7 +282,7 @@ describe('View', () => {
       view = mount(container, { isOpen, buttonLabel });
 
       const button = container.querySelector('button')!;
-      expect(button.hasAttribute('aria-expanded')).toBe(false);
+      expect(button.getAttribute('aria-expanded')).toBe('false');
       expect(button.getAttribute('aria-label')).toBe('Open menu');
 
       isOpen.value = true;
@@ -303,7 +303,7 @@ describe('View', () => {
 
       const div = container.querySelector('div')!;
       expect(div.getAttribute('aria-current')).toBe('page');
-      expect(div.hasAttribute('aria-hidden')).toBe(false);
+      expect(div.getAttribute('aria-hidden')).toBe('false');
       expect(div.getAttribute('aria-level')).toBe('2');
 
       ariaState.value = {
@@ -355,7 +355,7 @@ describe('View', () => {
       expect(div.getAttribute('aria-expanded')).toBe('true');
     });
 
-    it('should remove attributes for null, false, and empty string values', () => {
+    it('should preserve explicit false values and remove nullish or empty values', () => {
       container.innerHTML = '<button bq-aria="{ pressed: isPressed, controls: controlsId }"></button>';
       const isPressed = signal(true);
       const controlsId = signal('panel-id');
@@ -368,7 +368,7 @@ describe('View', () => {
 
       isPressed.value = false;
       controlsId.value = '';
-      expect(button.hasAttribute('aria-pressed')).toBe(false);
+      expect(button.getAttribute('aria-pressed')).toBe('false');
       expect(button.hasAttribute('aria-controls')).toBe(false);
     });
   });

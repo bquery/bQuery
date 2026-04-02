@@ -186,15 +186,18 @@ export const useIntersectionObserver = (
 // ─── useResizeObserver ──────────────────────────────────────────────────────
 
 /**
- * Returns a reactive signal tracking the content-box size of observed elements.
+ * Returns a reactive signal tracking the size of observed elements.
+ *
+ * By default it uses the `content-box`, but you can configure the observed box
+ * via the underlying `ResizeObserver` options (e.g. `{ box: 'border-box' }`).
  *
  * The returned handle exposes `observe()` / `unobserve()` methods. If an
  * initial `target` is provided it is observed immediately.
  *
  * @param target  - Optional element or array of elements to observe immediately.
  * @param options - ResizeObserver options (e.g. `{ box: 'border-box' }`).
- * @returns A readonly reactive signal with `{ width, height, entry }`, plus
- * `observe`, `unobserve`, and `destroy` methods.
+ * @returns A readonly reactive signal with `{ width, height, entry }` derived
+ * from the configured box, plus `observe`, `unobserve`, and `destroy` methods.
  *
  * @example
  * ```ts

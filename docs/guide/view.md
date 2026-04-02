@@ -152,7 +152,7 @@ Bind ARIA attributes from an object literal or an expression that returns an obj
 <nav bq-aria="navAria"></nav>
 ```
 
-`bq-aria` automatically prefixes keys with `aria-`, removes attributes for `null`, `undefined`, `false`, or empty strings, and keeps previously applied ARIA attributes in sync when the object shape changes.
+`bq-aria` automatically prefixes keys with `aria-`, removes attributes for `null`, `undefined`, or empty strings, serializes booleans as `"true"` / `"false"`, and keeps previously applied ARIA attributes in sync when the object shape changes.
 
 ```ts
 const navAria = signal({
