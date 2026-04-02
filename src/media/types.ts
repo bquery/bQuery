@@ -198,11 +198,24 @@ export interface IntersectionObserverOptions {
 
 /**
  * State tracked by {@link useIntersectionObserver}.
+ *
+ * Reflects the most recent {@link IntersectionObserverEntry} reported by the
+ * underlying `IntersectionObserver` callback, not an aggregate across all
+ * observed targets.
  */
 export interface IntersectionObserverState {
-  /** Whether any observed element is currently intersecting. */
+  /**
+   * Whether the most recently reported entry is intersecting.
+   *
+   * This is equivalent to `entry?.isIntersecting ?? false` and does not
+   * represent an aggregate across all observed targets.
+   */
   isIntersecting: boolean;
-  /** The latest intersection ratio (0–1). */
+  /**
+   * The intersection ratio (0–1) from the most recent entry.
+   *
+   * This is equivalent to `entry?.intersectionRatio ?? 0`.
+   */
   intersectionRatio: number;
   /** The most recent `IntersectionObserverEntry`, or `null` before the first callback. */
   entry: IntersectionObserverEntry | null;
@@ -236,9 +249,9 @@ export interface ResizeObserverOptions {
  * State tracked by {@link useResizeObserver}.
  */
 export interface ResizeObserverState {
-  /** Content width of the observed element in pixels. */
+  /** Observed box width of the element in pixels (based on the configured `box`). */
   width: number;
-  /** Content height of the observed element in pixels. */
+  /** Observed box height of the element in pixels (based on the configured `box`). */
   height: number;
   /** The most recent `ResizeObserverEntry`, or `null` before the first callback. */
   entry: ResizeObserverEntry | null;

@@ -329,6 +329,10 @@ export const useMutationObserver = (
     ...(options?.attributeFilter ? { attributeFilter: options.attributeFilter } : {}),
   };
 
+  if (!resolvedOptions.attributes && !resolvedOptions.childList && !resolvedOptions.characterData) {
+    resolvedOptions.attributes = true;
+  }
+
   if (typeof window !== 'undefined' && typeof MutationObserver !== 'undefined') {
     observer = new MutationObserver((mutations: MutationRecord[]) => {
       if (destroyed) return;

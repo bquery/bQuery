@@ -1260,6 +1260,42 @@ describe('media/useMutationObserver', () => {
     el.remove();
   });
 
+  it('falls back to attributes observation when all primary options are false', () => {
+    const originalMutationObserver = globalThis.MutationObserver;
+    let observedOptions: MutationObserverInit | undefined;
+
+    class MockMutationObserver {
+      observe(_target: Node, options: MutationObserverInit): void {
+        observedOptions = options;
+      }
+
+      disconnect(): void {}
+
+      takeRecords(): MutationRecord[] {
+        return [];
+      }
+    }
+
+    globalThis.MutationObserver = MockMutationObserver as unknown as typeof MutationObserver;
+
+    try {
+      const el = document.createElement('div');
+      const mo = useMutationObserver(el, {
+        attributes: false,
+        childList: false,
+        characterData: false,
+      });
+
+      expect(observedOptions).toBeDefined();
+      expect(observedOptions?.attributes).toBe(true);
+      expect(observedOptions?.childList).toBe(false);
+      expect(observedOptions?.characterData).toBe(false);
+      mo.destroy();
+    } finally {
+      globalThis.MutationObserver = originalMutationObserver;
+    }
+  });
+
   it('accepts characterData and attributeFilter options', () => {
     const el = document.createElement('div');
     document.body.appendChild(el);
