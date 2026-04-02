@@ -489,6 +489,98 @@ describe('watch', () => {
     count.value = 2;
     expect(callCount).toBe(1);
   });
+
+  it('debounces rapid changes and preserves the first old value in the burst', async () => {
+    const { signal, watchDebounce } = await import('../src/reactive/signal');
+    const count = signal(0);
+    const changes: [number, number | undefined][] = [];
+
+    const cleanup = watchDebounce(count, (newVal, oldVal) => {
+      changes.push([newVal, oldVal]);
+    }, 30);
+
+    count.value = 1;
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    count.value = 2;
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    expect(changes).toEqual([[2, 0]]);
+
+    cleanup();
+  });
+
+  it('supports immediate debounced watches', async () => {
+    const { signal, watchDebounce } = await import('../src/reactive/signal');
+    const count = signal(5);
+    const changes: [number, number | undefined][] = [];
+
+    const cleanup = watchDebounce(count, (newVal, oldVal) => {
+      changes.push([newVal, oldVal]);
+    }, 20, { immediate: true });
+
+    count.value = 6;
+    await new Promise((resolve) => setTimeout(resolve, 30));
+
+    expect(changes).toEqual([
+      [5, undefined],
+      [6, 5],
+    ]);
+
+    cleanup();
+  });
+
+  it('cancels pending debounced callbacks during cleanup', async () => {
+    const { signal, watchDebounce } = await import('../src/reactive/signal');
+    const count = signal(0);
+    let callCount = 0;
+
+    const cleanup = watchDebounce(count, () => {
+      callCount++;
+    }, 30);
+
+    count.value = 1;
+    cleanup();
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    expect(callCount).toBe(0);
+  });
+
+  it('throttles rapid changes', async () => {
+    const { signal, watchThrottle } = await import('../src/reactive/signal');
+    const count = signal(0);
+    const changes: [number, number | undefined][] = [];
+
+    const cleanup = watchThrottle(count, (newVal, oldVal) => {
+      changes.push([newVal, oldVal]);
+    }, 30);
+
+    count.value = 1;
+    count.value = 2;
+    await new Promise((resolve) => setTimeout(resolve, 40));
+    count.value = 3;
+
+    expect(changes).toEqual([
+      [1, 0],
+      [3, 2],
+    ]);
+
+    cleanup();
+  });
+
+  it('supports immediate throttled watches and cleanup', async () => {
+    const { signal, watchThrottle } = await import('../src/reactive/signal');
+    const count = signal(10);
+    const changes: [number, number | undefined][] = [];
+
+    const cleanup = watchThrottle(count, (newVal, oldVal) => {
+      changes.push([newVal, oldVal]);
+    }, 30, { immediate: true });
+
+    cleanup();
+    count.value = 11;
+
+    expect(changes).toEqual([[10, undefined]]);
+  });
 });
 
 describe('readonly', () => {
