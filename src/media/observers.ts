@@ -342,7 +342,9 @@ export const useMutationObserver = (
     subtree: options?.subtree ?? false,
     attributeOldValue: options?.attributeOldValue ?? false,
     characterDataOldValue: options?.characterDataOldValue ?? false,
-    ...(options?.attributeFilter ? { attributeFilter: options.attributeFilter } : {}),
+    ...(options && options.attributeFilter !== undefined
+      ? { attributeFilter: options.attributeFilter }
+      : {}),
   };
 
   if (!resolvedOptions.attributes && !resolvedOptions.childList && !resolvedOptions.characterData) {

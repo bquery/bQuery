@@ -1401,6 +1401,40 @@ describe('media/useMutationObserver', () => {
     }
   });
 
+  it('preserves an empty attributeFilter when attributes observation is enabled', () => {
+    const originalMutationObserver = globalThis.MutationObserver;
+    let observedOptions: MutationObserverInit | undefined;
+
+    class MockMutationObserver {
+      observe(_target: Node, options: MutationObserverInit): void {
+        observedOptions = options;
+      }
+
+      disconnect(): void {}
+
+      takeRecords(): MutationRecord[] {
+        return [];
+      }
+    }
+
+    globalThis.MutationObserver = MockMutationObserver as unknown as typeof MutationObserver;
+
+    try {
+      const el = document.createElement('div');
+      const mo = useMutationObserver(el, {
+        attributes: true,
+        attributeFilter: [],
+      });
+
+      expect(observedOptions).toBeDefined();
+      expect(observedOptions?.attributes).toBe(true);
+      expect(observedOptions?.attributeFilter).toEqual([]);
+      mo.destroy();
+    } finally {
+      globalThis.MutationObserver = originalMutationObserver;
+    }
+  });
+
   it('clears characterDataOldValue when characterData observation is disabled', () => {
     const originalMutationObserver = globalThis.MutationObserver;
     let observedOptions: MutationObserverInit | undefined;
