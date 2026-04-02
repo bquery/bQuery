@@ -1267,8 +1267,10 @@ describe('media/useResizeObserver', () => {
 // ─── useMutationObserver ─────────────────────────────────────────────────────
 
 describe('media/useMutationObserver', () => {
+  const MUTATION_OBSERVER_TIMEOUT_MS = 50;
+
   const waitForMutationObserver = () =>
-    new Promise((resolve) => setTimeout(resolve, 50));
+    new Promise((resolve) => setTimeout(resolve, MUTATION_OBSERVER_TIMEOUT_MS));
 
   const createMutationProbe = (target: Node, options: MutationObserverInit) => {
     const MutationObserverCtor = globalThis.MutationObserver;
@@ -1606,9 +1608,7 @@ describe('media/useMutationObserver', () => {
 
       expect(mo.value.count).toBeGreaterThan(0);
       expect(Array.isArray(mo.value.mutations)).toBe(true);
-      expect(mo.value.mutations.some((mutation) => mutation.type === 'attributes')).toBe(
-        true,
-      );
+      expect(mo.value.mutations.some((mutation) => mutation.type === 'attributes')).toBeTruthy();
     } finally {
       probe.disconnect();
       mo.destroy();
@@ -1639,7 +1639,7 @@ describe('media/useMutationObserver', () => {
 
       expect(mo.value.count).toBeGreaterThan(0);
       expect(Array.isArray(mo.value.mutations)).toBe(true);
-      expect(mo.value.mutations.some((mutation) => mutation.type === 'childList')).toBe(true);
+      expect(mo.value.mutations.some((mutation) => mutation.type === 'childList')).toBeTruthy();
     } finally {
       probe.disconnect();
       mo.destroy();
