@@ -30,6 +30,7 @@ const getErrorMessage = (source: ErrorSource): string => {
  */
 export const handleError: DirectiveHandler = (el, expression, context, cleanups) => {
   const htmlEl = el as HTMLElement;
+  const managesAriaHidden = !htmlEl.hasAttribute('aria-hidden');
 
   if (!htmlEl.hasAttribute('role')) {
     htmlEl.setAttribute('role', 'alert');
@@ -46,7 +47,13 @@ export const handleError: DirectiveHandler = (el, expression, context, cleanups)
 
     htmlEl.textContent = message;
     htmlEl.hidden = !hasMessage;
-    htmlEl.setAttribute('aria-hidden', hasMessage ? 'false' : 'true');
+    if (managesAriaHidden) {
+      if (hasMessage) {
+        htmlEl.removeAttribute('aria-hidden');
+      } else {
+        htmlEl.setAttribute('aria-hidden', 'true');
+      }
+    }
   });
 
   cleanups.push(cleanup);

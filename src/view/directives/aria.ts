@@ -1,4 +1,5 @@
 import { effect } from '../../reactive/index';
+import { isPrototypePollutionKey } from '../../core/utils/object';
 import { evaluate, parseObjectExpression } from '../evaluate';
 import type { DirectiveHandler } from '../types';
 
@@ -27,7 +28,7 @@ export const handleAria: DirectiveHandler = (el, expression, context, cleanups) 
 
   const cleanup = effect(() => {
     const newAttributes = new Set<string>();
-    const ariaValues: Record<string, unknown> = {};
+    const ariaValues = Object.create(null) as Record<string, unknown>;
 
     if (expression.trimStart().startsWith('{')) {
       const ariaMap = parseObjectExpression(expression);
@@ -37,7 +38,13 @@ export const handleAria: DirectiveHandler = (el, expression, context, cleanups) 
     } else {
       const result = evaluate<Record<string, unknown>>(expression, context);
       if (result && typeof result === 'object' && !Array.isArray(result)) {
-        Object.assign(ariaValues, result);
+        for (const [attrName, value] of Object.entries(result)) {
+          if (isPrototypePollutionKey(attrName)) {
+            continue;
+          }
+
+          ariaValues[attrName] = value;
+        }
       }
     }
 

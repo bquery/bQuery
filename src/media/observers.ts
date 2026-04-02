@@ -20,6 +20,52 @@ import type {
   ResizeObserverState,
 } from './types';
 
+type ResizeObserverBoxSizeLike = {
+  inlineSize: number;
+  blockSize: number;
+};
+
+const getResizeDimensions = (
+  entry: ResizeObserverEntry,
+  box: ResizeObserverBoxOptions
+): Pick<ResizeObserverState, 'width' | 'height'> => {
+  let boxSize:
+    | ResizeObserverBoxSizeLike
+    | readonly ResizeObserverBoxSizeLike[]
+    | undefined;
+
+  if (box === 'border-box') {
+    boxSize = entry.borderBoxSize;
+  } else if (box === 'device-pixel-content-box') {
+    boxSize = (
+      entry as ResizeObserverEntry & {
+        devicePixelContentBoxSize?:
+          | ResizeObserverBoxSizeLike
+          | readonly ResizeObserverBoxSizeLike[];
+      }
+    ).devicePixelContentBoxSize;
+  } else {
+    boxSize = entry.contentBoxSize;
+  }
+
+  const resolvedBoxSize = Array.isArray(boxSize) ? boxSize[0] : boxSize;
+  if (
+    resolvedBoxSize &&
+    typeof resolvedBoxSize.inlineSize === 'number' &&
+    typeof resolvedBoxSize.blockSize === 'number'
+  ) {
+    return {
+      width: resolvedBoxSize.inlineSize,
+      height: resolvedBoxSize.blockSize,
+    };
+  }
+
+  return {
+    width: entry.contentRect.width,
+    height: entry.contentRect.height,
+  };
+};
+
 // ─── useIntersectionObserver ────────────────────────────────────────────────
 
 /**
@@ -169,16 +215,18 @@ export const useResizeObserver = (
   const s = signal<ResizeObserverState>(initial);
   let observer: ResizeObserver | undefined;
   let destroyed = false;
+  const box = options?.box ?? 'content-box';
+  const observeOptions = options?.box ? { box: options.box } : undefined;
 
   if (typeof window !== 'undefined' && typeof ResizeObserver !== 'undefined') {
     observer = new ResizeObserver((entries: ResizeObserverEntry[]) => {
       if (destroyed) return;
       const last = entries[entries.length - 1];
       if (last) {
-        const rect = last.contentRect;
+        const { width, height } = getResizeDimensions(last, box);
         s.value = {
-          width: rect.width,
-          height: rect.height,
+          width,
+          height,
           entry: last,
         };
       }
@@ -187,9 +235,6 @@ export const useResizeObserver = (
     // Observe initial targets
     if (target) {
       const targets = Array.isArray(target) ? target : [target];
-      const observeOptions: ResizeObserverOptions | undefined = options?.box
-        ? { box: options.box }
-        : undefined;
       for (const el of targets) {
         observer.observe(el, observeOptions);
       }
@@ -204,9 +249,6 @@ export const useResizeObserver = (
       configurable: true,
       value(el: Element): void {
         if (!destroyed) {
-          const observeOptions: ResizeObserverOptions | undefined = options?.box
-            ? { box: options.box }
-            : undefined;
           observer?.observe(el, observeOptions);
         }
       },

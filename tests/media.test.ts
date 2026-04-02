@@ -1098,6 +1098,86 @@ describe('media/useResizeObserver', () => {
     el.remove();
   });
 
+  it('uses borderBoxSize when box is border-box', () => {
+    const originalResizeObserver = globalThis.ResizeObserver;
+    let callback: ResizeObserverCallback | undefined;
+
+    class MockResizeObserver {
+      constructor(cb: ResizeObserverCallback) {
+        callback = cb;
+      }
+
+      observe(): void {}
+      unobserve(): void {}
+      disconnect(): void {}
+    }
+
+    globalThis.ResizeObserver = MockResizeObserver as unknown as typeof ResizeObserver;
+
+    try {
+      const el = document.createElement('div');
+      const ro = useResizeObserver(el, { box: 'border-box' });
+
+      callback?.(
+        [
+          {
+            borderBoxSize: [{ inlineSize: 320, blockSize: 180 }],
+            contentBoxSize: [{ inlineSize: 300, blockSize: 160 }],
+            contentRect: { width: 300, height: 160 },
+            target: el,
+          } as unknown as ResizeObserverEntry,
+        ],
+        {} as ResizeObserver
+      );
+
+      expect(ro.value.width).toBe(320);
+      expect(ro.value.height).toBe(180);
+      ro.destroy();
+    } finally {
+      globalThis.ResizeObserver = originalResizeObserver;
+    }
+  });
+
+  it('falls back to contentRect when the configured resize box size is unavailable', () => {
+    const originalResizeObserver = globalThis.ResizeObserver;
+    let callback: ResizeObserverCallback | undefined;
+
+    class MockResizeObserver {
+      constructor(cb: ResizeObserverCallback) {
+        callback = cb;
+      }
+
+      observe(): void {}
+      unobserve(): void {}
+      disconnect(): void {}
+    }
+
+    globalThis.ResizeObserver = MockResizeObserver as unknown as typeof ResizeObserver;
+
+    try {
+      const el = document.createElement('div');
+      const ro = useResizeObserver(el, { box: 'device-pixel-content-box' });
+
+      callback?.(
+        [
+          {
+            borderBoxSize: [{ inlineSize: 320, blockSize: 180 }],
+            contentBoxSize: [{ inlineSize: 300, blockSize: 160 }],
+            contentRect: { width: 280, height: 140 },
+            target: el,
+          } as unknown as ResizeObserverEntry,
+        ],
+        {} as ResizeObserver
+      );
+
+      expect(ro.value.width).toBe(280);
+      expect(ro.value.height).toBe(140);
+      ro.destroy();
+    } finally {
+      globalThis.ResizeObserver = originalResizeObserver;
+    }
+  });
+
   it('observe() and unobserve() do not throw after creation', () => {
     const ro = useResizeObserver();
     const el = document.createElement('div');

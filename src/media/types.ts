@@ -183,7 +183,7 @@ export interface ClipboardAPI {
  */
 export interface IntersectionObserverOptions {
   /**
-   * Element or CSS selector for the root element to use as the viewport.
+   * Root element or document to use as the viewport.
    * Defaults to the browser viewport when `null` or omitted.
    */
   root?: Element | Document | null;
@@ -290,7 +290,7 @@ export interface MutationObserverState {
 /**
  * Extended handle returned by {@link useMutationObserver}.
  *
- * Exposes `observe()` and `disconnect()` for manual lifecycle control.
+ * Exposes `observe()`, `takeRecords()`, and `destroy()` for manual lifecycle control.
  */
 export interface MutationObserverSignal extends MediaSignalHandle<MutationObserverState> {
   /** Start observing mutations on the given target. Uses the options from construction time. */

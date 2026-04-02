@@ -196,7 +196,7 @@ describe('View', () => {
       errorMessage.value = 'Email is required';
       expect(message.hidden).toBe(false);
       expect(message.textContent).toBe('Email is required');
-      expect(message.getAttribute('aria-hidden')).toBe('false');
+      expect(message.hasAttribute('aria-hidden')).toBe(false);
 
       errorMessage.value = '';
       expect(message.hidden).toBe(true);
@@ -255,6 +255,22 @@ describe('View', () => {
       expect(message.getAttribute('aria-live')).toBe('assertive');
       expect(message.textContent).toBe('Server error');
     });
+
+    it('should preserve an author-provided aria-hidden attribute', () => {
+      container.innerHTML =
+        '<p bq-error="errorMessage" aria-hidden="true" role="status" aria-live="assertive"></p>';
+      const errorMessage = signal('Server error');
+
+      view = mount(container, { errorMessage });
+
+      const message = container.querySelector('p') as HTMLParagraphElement;
+      expect(message.hidden).toBe(false);
+      expect(message.getAttribute('aria-hidden')).toBe('true');
+
+      errorMessage.value = '';
+      expect(message.hidden).toBe(true);
+      expect(message.getAttribute('aria-hidden')).toBe('true');
+    });
   });
 
   describe('bq-aria', () => {
@@ -298,6 +314,21 @@ describe('View', () => {
       expect(div.getAttribute('aria-controls')).toBe('menu-panel');
       expect(div.getAttribute('aria-hidden')).toBe('true');
       expect(div.hasAttribute('aria-level')).toBe(false);
+    });
+
+    it('should ignore prototype-pollution keys in expression-returned ARIA maps', () => {
+      container.innerHTML = '<div bq-aria="ariaState"></div>';
+      const initialState = Object.create(null) as Record<string, string>;
+      initialState.label = 'Safe label';
+      initialState.__proto__ = 'unsafe';
+      const ariaState = signal(initialState);
+
+      view = mount(container, { ariaState });
+
+      const div = container.querySelector('div')!;
+      expect(div.getAttribute('aria-label')).toBe('Safe label');
+      expect(div.hasAttribute('aria-__proto__')).toBe(false);
+      expect(Object.prototype.hasOwnProperty.call(Object.prototype, 'unsafe')).toBe(false);
     });
 
     it('should accept keys that already include the aria- prefix', () => {
