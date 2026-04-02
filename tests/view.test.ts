@@ -320,7 +320,11 @@ describe('View', () => {
       container.innerHTML = '<div bq-aria="ariaState"></div>';
       const initialState = Object.create(null) as Record<string, string>;
       initialState.label = 'Safe label';
-      initialState.__proto__ = 'unsafe';
+      Object.defineProperty(initialState, '__proto__', {
+        value: 'unsafe',
+        enumerable: true,
+        configurable: true,
+      });
       const ariaState = signal(initialState);
 
       view = mount(container, { ariaState });
