@@ -343,7 +343,7 @@ function generateNonce(length?: number): string;
 
 ```ts
 const nonce = generateNonce();
-// Base64-encoded string, e.g., 'dGhpcyBpcyBhIHRlc3Q='
+// URL-safe Base64 (base64url) string without padding, e.g., 'dGhpcy1pc19hLXRlc3Q'
 
 const longNonce = generateNonce(32);
 ```

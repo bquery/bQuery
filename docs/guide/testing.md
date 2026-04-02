@@ -41,7 +41,7 @@ interface RenderComponentOptions {
   props?: Record<string, unknown>;
   /** Slot content. A string fills the default slot. An object maps slot names to HTML strings. */
   slots?: string | Record<string, string>;
-  /** Custom container element. Defaults to a new `<div>` appended to `document.body`. */
+  /** Custom container element. Defaults to `document.body`. */
   container?: HTMLElement;
 }
 ```
@@ -52,7 +52,7 @@ interface RenderComponentOptions {
 interface RenderResult {
   /** The mounted custom element. */
   el: HTMLElement;
-  /** Removes the element and container from the DOM. */
+  /** Removes the element from the DOM. The container is not removed automatically. */
   unmount: () => void;
 }
 ```

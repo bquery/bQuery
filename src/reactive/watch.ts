@@ -182,7 +182,7 @@ export const watchThrottle = <T>(
   );
 
   if (immediate) {
-    callback(source.value, undefined);
+    notify(source.value, undefined);
   }
 
   const cleanup = watch(source, (newValue, oldValue) => {

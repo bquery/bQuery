@@ -413,5 +413,5 @@ clearTimeline();
 
 - Intended for development and diagnostics, not production analytics.
 - Pairs nicely with `@bquery/bquery/testing` when you want assertions over reactive behavior.
-- All inspection methods return snapshots (frozen data), not live references.
+- All inspection methods return snapshot copies, not live references.
 - Timeline events include millisecond timestamps for performance analysis.

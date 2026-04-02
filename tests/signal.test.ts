@@ -581,6 +581,25 @@ describe('watch', () => {
 
     expect(changes).toEqual([[10, undefined]]);
   });
+
+  it('includes the immediate callback in the throttle window', async () => {
+    const { signal, watchThrottle } = await import('../src/reactive/signal');
+    const count = signal(10);
+    const changes: [number, number | undefined][] = [];
+
+    const cleanup = watchThrottle(count, (newVal, oldVal) => {
+      changes.push([newVal, oldVal]);
+    }, 30, { immediate: true });
+
+    count.value = 11;
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    count.value = 12;
+    await new Promise((resolve) => setTimeout(resolve, 30));
+
+    expect(changes).toEqual([[10, undefined]]);
+
+    cleanup();
+  });
 });
 
 describe('readonly', () => {
