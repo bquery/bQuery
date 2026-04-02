@@ -1002,6 +1002,40 @@ describe('media/useIntersectionObserver', () => {
     el.remove();
   });
 
+  it('fails gracefully when IntersectionObserver construction throws', () => {
+    const originalIntersectionObserver = globalThis.IntersectionObserver;
+
+    class MockIntersectionObserver {
+      constructor() {
+        throw new Error('invalid observer options');
+      }
+    }
+
+    globalThis.IntersectionObserver = MockIntersectionObserver as unknown as typeof IntersectionObserver;
+
+    try {
+      const el = document.createElement('div');
+      expect(() =>
+        useIntersectionObserver(el, {
+          rootMargin: 'bad-margin',
+        }),
+      ).not.toThrow();
+
+      const io = useIntersectionObserver(el, {
+        rootMargin: 'bad-margin',
+      });
+      expect(io.value).toEqual({
+        isIntersecting: false,
+        intersectionRatio: 0,
+        entry: null,
+      });
+      expect(() => io.observe(el)).not.toThrow();
+      io.destroy();
+    } finally {
+      globalThis.IntersectionObserver = originalIntersectionObserver;
+    }
+  });
+
   it('observe() and unobserve() do not throw after creation', () => {
     const io = useIntersectionObserver();
     const el = document.createElement('div');
@@ -1178,6 +1212,39 @@ describe('media/useResizeObserver', () => {
     }
   });
 
+  it('fails gracefully when initial resize observation throws', () => {
+    const originalResizeObserver = globalThis.ResizeObserver;
+
+    class MockResizeObserver {
+      observe(): void {
+        throw new Error('invalid box');
+      }
+
+      unobserve(): void {}
+      disconnect(): void {}
+    }
+
+    globalThis.ResizeObserver = MockResizeObserver as unknown as typeof ResizeObserver;
+
+    try {
+      const el = document.createElement('div');
+      expect(() =>
+        useResizeObserver(el, { box: 'border-box' }),
+      ).not.toThrow();
+
+      const ro = useResizeObserver(el, { box: 'border-box' });
+      expect(ro.value).toEqual({
+        width: 0,
+        height: 0,
+        entry: null,
+      });
+      expect(() => ro.observe(el)).not.toThrow();
+      ro.destroy();
+    } finally {
+      globalThis.ResizeObserver = originalResizeObserver;
+    }
+  });
+
   it('observe() and unobserve() do not throw after creation', () => {
     const ro = useResizeObserver();
     const el = document.createElement('div');
@@ -1290,6 +1357,47 @@ describe('media/useMutationObserver', () => {
       expect(observedOptions?.attributes).toBe(true);
       expect(observedOptions?.childList).toBe(false);
       expect(observedOptions?.characterData).toBe(false);
+      mo.destroy();
+    } finally {
+      globalThis.MutationObserver = originalMutationObserver;
+    }
+  });
+
+  it('fails gracefully when initial mutation observation throws', () => {
+    const originalMutationObserver = globalThis.MutationObserver;
+
+    class MockMutationObserver {
+      constructor(_cb: MutationCallback) {}
+
+      observe(): void {
+        throw new Error('invalid mutation options');
+      }
+
+      disconnect(): void {}
+
+      takeRecords(): MutationRecord[] {
+        return [];
+      }
+    }
+
+    globalThis.MutationObserver = MockMutationObserver as unknown as typeof MutationObserver;
+
+    try {
+      const el = document.createElement('div');
+      expect(() =>
+        useMutationObserver(el, {
+          attributes: true,
+        }),
+      ).not.toThrow();
+
+      const mo = useMutationObserver(el, {
+        attributes: true,
+      });
+      expect(mo.value).toEqual({
+        mutations: [],
+        count: 0,
+      });
+      expect(() => mo.observe(el)).not.toThrow();
       mo.destroy();
     } finally {
       globalThis.MutationObserver = originalMutationObserver;

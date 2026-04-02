@@ -113,31 +113,36 @@ export const useIntersectionObserver = (
   let destroyed = false;
 
   if (typeof window !== 'undefined' && typeof IntersectionObserver !== 'undefined') {
-    observer = new IntersectionObserver(
-      (entries: IntersectionObserverEntry[]) => {
-        if (destroyed) return;
-        const last = entries[entries.length - 1];
-        if (last) {
-          s.value = {
-            isIntersecting: last.isIntersecting,
-            intersectionRatio: last.intersectionRatio,
-            entry: last,
-          };
-        }
-      },
-      {
-        root: options?.root ?? null,
-        rootMargin: options?.rootMargin ?? '0px',
-        threshold: options?.threshold ?? 0,
-      },
-    );
+    try {
+      observer = new IntersectionObserver(
+        (entries: IntersectionObserverEntry[]) => {
+          if (destroyed) return;
+          const last = entries[entries.length - 1];
+          if (last) {
+            s.value = {
+              isIntersecting: last.isIntersecting,
+              intersectionRatio: last.intersectionRatio,
+              entry: last,
+            };
+          }
+        },
+        {
+          root: options?.root ?? null,
+          rootMargin: options?.rootMargin ?? '0px',
+          threshold: options?.threshold ?? 0,
+        },
+      );
 
-    // Observe initial targets
-    if (target) {
-      const targets = Array.isArray(target) ? target : [target];
-      for (const el of targets) {
-        observer.observe(el);
+      // Observe initial targets
+      if (target) {
+        const targets = Array.isArray(target) ? target : [target];
+        for (const el of targets) {
+          observer.observe(el);
+        }
       }
+    } catch {
+      observer?.disconnect();
+      observer = undefined;
     }
   }
 
@@ -148,7 +153,11 @@ export const useIntersectionObserver = (
       enumerable: false,
       configurable: true,
       value(el: Element): void {
-        if (!destroyed) observer?.observe(el);
+        if (!destroyed) {
+          try {
+            observer?.observe(el);
+          } catch {}
+        }
       },
     },
     unobserve: {
@@ -219,25 +228,30 @@ export const useResizeObserver = (
   const observeOptions = options?.box ? { box: options.box } : undefined;
 
   if (typeof window !== 'undefined' && typeof ResizeObserver !== 'undefined') {
-    observer = new ResizeObserver((entries: ResizeObserverEntry[]) => {
-      if (destroyed) return;
-      const last = entries[entries.length - 1];
-      if (last) {
-        const { width, height } = getResizeDimensions(last, box);
-        s.value = {
-          width,
-          height,
-          entry: last,
-        };
-      }
-    });
+    try {
+      observer = new ResizeObserver((entries: ResizeObserverEntry[]) => {
+        if (destroyed) return;
+        const last = entries[entries.length - 1];
+        if (last) {
+          const { width, height } = getResizeDimensions(last, box);
+          s.value = {
+            width,
+            height,
+            entry: last,
+          };
+        }
+      });
 
-    // Observe initial targets
-    if (target) {
-      const targets = Array.isArray(target) ? target : [target];
-      for (const el of targets) {
-        observer.observe(el, observeOptions);
+      // Observe initial targets
+      if (target) {
+        const targets = Array.isArray(target) ? target : [target];
+        for (const el of targets) {
+          observer.observe(el, observeOptions);
+        }
       }
+    } catch {
+      observer?.disconnect();
+      observer = undefined;
     }
   }
 
@@ -249,7 +263,9 @@ export const useResizeObserver = (
       configurable: true,
       value(el: Element): void {
         if (!destroyed) {
-          observer?.observe(el, observeOptions);
+          try {
+            observer?.observe(el, observeOptions);
+          } catch {}
         }
       },
     },
@@ -334,17 +350,22 @@ export const useMutationObserver = (
   }
 
   if (typeof window !== 'undefined' && typeof MutationObserver !== 'undefined') {
-    observer = new MutationObserver((mutations: MutationRecord[]) => {
-      if (destroyed) return;
-      totalCount += 1;
-      s.value = {
-        mutations,
-        count: totalCount,
-      };
-    });
+    try {
+      observer = new MutationObserver((mutations: MutationRecord[]) => {
+        if (destroyed) return;
+        totalCount += 1;
+        s.value = {
+          mutations,
+          count: totalCount,
+        };
+      });
 
-    if (target) {
-      observer.observe(target, resolvedOptions);
+      if (target) {
+        observer.observe(target, resolvedOptions);
+      }
+    } catch {
+      observer?.disconnect();
+      observer = undefined;
     }
   }
 
@@ -355,7 +376,11 @@ export const useMutationObserver = (
       enumerable: false,
       configurable: true,
       value(node: Node): void {
-        if (!destroyed) observer?.observe(node, resolvedOptions);
+        if (!destroyed) {
+          try {
+            observer?.observe(node, resolvedOptions);
+          } catch {}
+        }
       },
     },
     takeRecords: {
