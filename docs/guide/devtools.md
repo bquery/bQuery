@@ -146,7 +146,7 @@ const stores = inspectStores();
 function inspectComponents(): ComponentSnapshot[];
 ```
 
-Lists all custom elements registered in the document via `customElements.define()`, along with instance counts.
+Lists custom elements that are both registered and currently instantiated in the DOM, along with instance counts.
 
 ```ts
 import { inspectComponents } from '@bquery/bquery/devtools';

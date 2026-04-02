@@ -58,7 +58,7 @@ export const Disabled = {
 };
 ```
 
-When `disabled` is `true`, the output is `<ui-button disabled>Save</ui-button>`.  
+When `disabled` is `true`, the output is `<ui-button disabled="">Save</ui-button>`.  
 When `disabled` is `false`, the attribute is omitted entirely.
 
 **Composing multiple custom elements:**

@@ -211,7 +211,7 @@ escapeHtml('<script>alert(1)</script>');
 // '&lt;script&gt;alert(1)&lt;/script&gt;'
 
 escapeHtml('"Hello" & \'World\'');
-// '&quot;Hello&quot; &amp; &#39;World&#39;'
+// '&quot;Hello&quot; &amp; &#x27;World&#x27;'
 
 escapeHtml('Normal text');
 // 'Normal text'
