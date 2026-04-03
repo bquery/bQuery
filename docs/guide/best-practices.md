@@ -33,7 +33,9 @@ import { createRouter } from '@bquery/bquery/router';
 import { defineBqueryConfig } from '@bquery/bquery/platform';
 import { setupAuth } from './auth/auth-guard';
 
-defineBqueryConfig({ /* ... */ });
+defineBqueryConfig({
+  transitions: { skipOnReducedMotion: true },
+});
 setupAuth();
 createRouter({ routes: [/* ... */] });
 ```

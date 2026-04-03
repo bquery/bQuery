@@ -50,8 +50,8 @@ $('.card').each(function () {
   $(this).addClass('visible');
 });
 
-// bQuery
-$$('.card').addClass('visible'); // chainable, no callback needed
+// bQuery — operates on the whole collection without a callback
+$$('.card').addClass('visible');
 ```
 
 ### Context-scoped queries
