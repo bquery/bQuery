@@ -591,6 +591,17 @@ describe('watch', () => {
     }
   });
 
+  it('rethrows immediate debounced callback errors synchronously', async () => {
+    const { signal, watchDebounce } = await import('../src/reactive/signal');
+    const count = signal(0);
+
+    expect(() => {
+      watchDebounce(count, () => {
+        throw new Error('immediate debounce failure');
+      }, 10, { immediate: true });
+    }).toThrow('immediate debounce failure');
+  });
+
   it('throttles rapid changes', async () => {
     const { signal, watchThrottle } = await import('../src/reactive/signal');
     const count = signal(0);

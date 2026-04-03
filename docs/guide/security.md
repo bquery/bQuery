@@ -439,8 +439,8 @@ document.head.appendChild(script);
 ## Notes
 
 - `sanitizeHtml()` uses DOMParser internally for reliable parsing.
-- All DOM-writing methods in bQuery's core module call `sanitizeHtml()` automatically.
+- bQuery's standard core HTML-writing methods sanitize untrusted content by default with `sanitizeHtml()`. Explicit escape hatches such as `htmlUnsafe()` and other raw DOM writes bypass sanitization, so use them only with content you already trust.
 - The sanitizer handles nested and recursive attack vectors.
 - `trusted()` should only be used with values you have already sanitized — never with raw user input.
-- The default allowed tag set includes 99+ safe HTML elements.
+- The default allowed tag set includes a broad set of safe HTML elements.
 - `generateNonce()` requires a secure context (`crypto.getRandomValues`).
