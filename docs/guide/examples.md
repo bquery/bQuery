@@ -59,7 +59,7 @@ A simple todo list using the view module's declarative directives:
 </div>
 
 <script type="module">
-  import { mount, signal } from '@bquery/bquery/view';
+  import { mount, signal } from 'https://cdn.jsdelivr.net/npm/@bquery/bquery/view/+esm';
 
   const newTodo = signal('');
   const todos = signal([]);
@@ -83,13 +83,13 @@ A simple todo list using the view module's declarative directives:
 ### Fetch and display a user list
 
 ```ts
-import { $, signal, effect } from '@bquery/bquery';
+import { $, effect } from '@bquery/bquery';
 import { useFetch } from '@bquery/bquery/reactive';
 
-const { data, error, loading } = useFetch('/api/users');
+const { data, error, pending } = useFetch('/api/users');
 
 effect(() => {
-  if (loading.value) {
+  if (pending.value) {
     $('#users').html('<p>Loading...</p>');
   } else if (error.value) {
     $('#users').html(`<p class="error">Failed to load users</p>`);
@@ -154,8 +154,8 @@ const { data, error } = usePolling('/api/dashboard/stats', {
 
 effect(() => {
   if (data.value) {
-    $('#active-users').text(data.value.activeUsers);
-    $('#total-orders').text(data.value.totalOrders);
+    $('#active-users').text(String(data.value.activeUsers));
+    $('#total-orders').text(String(data.value.totalOrders));
   }
 });
 ```
@@ -166,12 +166,14 @@ effect(() => {
 import { usePaginatedFetch } from '@bquery/bquery/reactive';
 import { $, effect } from '@bquery/bquery';
 
-const { data, page, next, prev, loading } = usePaginatedFetch(
+const { data, page, next, prev, pending } = usePaginatedFetch(
   (p) => `/api/posts?page=${p}&limit=10`,
 );
 
 effect(() => {
-  if (data.value) {
+  if (pending.value) {
+    $('#posts').html('<p>Loading...</p>');
+  } else if (data.value) {
     const posts = data.value as Array<{ title: string }>;
     $('#posts').html(
       posts.map((p) => `<article><h3>${p.title}</h3></article>`).join(''),

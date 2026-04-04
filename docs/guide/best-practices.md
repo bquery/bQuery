@@ -65,12 +65,12 @@ Never store values that can be derived:
 
 ```ts
 // ❌ Avoid — manually syncing derived state
-const items = signal([]);
-const count = signal(0);
-// Must remember to update count every time items change
+const syncedItems = signal<string[]>([]);
+const manualCount = signal(0);
+// Must remember to update manualCount every time syncedItems change
 
 // ✅ Prefer — computed derives automatically
-const items = signal([]);
+const items = signal<string[]>([]);
 const count = computed(() => items.value.length);
 ```
 
@@ -462,7 +462,7 @@ import { animate } from '@bquery/bquery/motion';
 import { untrack, effect, signal } from '@bquery/bquery/reactive';
 
 const searchQuery = signal('');
-const results = signal([]);
+const results = signal<string[]>([]);
 
 effect(() => {
   const query = searchQuery.value;
@@ -475,9 +475,10 @@ effect(() => {
 ### Debounce reactive watchers
 
 ```ts
-import { watchDebounce } from '@bquery/bquery/reactive';
+import { signal, watchDebounce } from '@bquery/bquery/reactive';
 
 const searchQuery = signal('');
+const searchResults = signal<string[]>([]);
 
 watchDebounce(searchQuery, async (query) => {
   const results = await fetch(`/api/search?q=${query}`).then((r) => r.json());

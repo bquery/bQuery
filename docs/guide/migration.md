@@ -207,10 +207,10 @@ $.ajax({
 // bQuery
 import { effect, useFetch } from '@bquery/bquery/reactive';
 
-const { data, error, loading } = useFetch('/api/users');
+const { data, error, pending, status } = useFetch('/api/users');
 
 effect(() => {
-  if (loading.value) showSpinner();
+  if (pending.value || status.value === 'pending') showSpinner();
   else if (error.value) showError(error.value);
   else renderUsers(data.value);
 });
@@ -437,7 +437,7 @@ ES modules (`type="module"`) are deferred by default, so your code already runs 
 
 <!-- bQuery — just write your code -->
 <script type="module">
-  import { $ } from '@bquery/bquery';
+  import { $ } from 'https://cdn.jsdelivr.net/npm/@bquery/bquery/+esm';
   // DOM is already ready
   $('#app').text('Hello!');
 </script>

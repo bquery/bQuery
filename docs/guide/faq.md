@@ -375,13 +375,14 @@ mount('#app', { name, greeting });
 ### How do I set up client-side routing?
 
 ```ts
+import { effect } from '@bquery/bquery/reactive';
 import { createRouter, navigate, currentRoute } from '@bquery/bquery/router';
 
 createRouter({
   routes: [
-    { path: '/', handler: () => showPage('home') },
-    { path: '/about', handler: () => showPage('about') },
-    { path: '/user/:id', handler: ({ params }) => showUser(params.id) },
+    { path: '/', component: () => showPage('home') },
+    { path: '/about', component: () => showPage('about') },
+    { path: '/user/:id', component: () => showUser(currentRoute.value.params.id) },
   ],
 });
 
