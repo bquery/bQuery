@@ -451,7 +451,7 @@ ES modules (`type="module"`) are deferred by default, so your code already runs 
 
 <!-- bQuery — just write your code -->
 <script type="module">
-  import { $ } from 'https://cdn.jsdelivr.net/npm/@bquery/bquery/+esm';
+  import { $ } from 'https://cdn.jsdelivr.net/npm/@bquery/bquery@1/+esm';
   // DOM is already ready
   $('#app').text('Hello!');
 </script>

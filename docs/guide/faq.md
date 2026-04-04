@@ -37,7 +37,7 @@ No. bQuery works directly in the browser via CDN:
 
 ```html
 <script type="module">
-  import { $, signal, effect } from 'https://cdn.jsdelivr.net/npm/@bquery/bquery/+esm';
+  import { $, signal, effect } from 'https://cdn.jsdelivr.net/npm/@bquery/bquery@1/+esm';
 
   const name = signal('World');
   effect(() => $('#greeting').text(`Hello, ${name.value}!`));
@@ -83,7 +83,7 @@ pnpm add @bquery/bquery
 
 ```html
 <script type="module">
-  import { $ } from 'https://cdn.jsdelivr.net/npm/@bquery/bquery/+esm';
+  import { $ } from 'https://cdn.jsdelivr.net/npm/@bquery/bquery@1/+esm';
 </script>
 ```
 

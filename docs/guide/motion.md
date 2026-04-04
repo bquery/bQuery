@@ -322,7 +322,7 @@ button.addEventListener('pointerleave', () => scale.to(1));
 
 - **Start with `transition()`** — it's the simplest way to animate DOM changes
 - **Use `keyframePresets`** instead of writing keyframes manually — they cover most common animations
-- **Always check `prefersReducedMotion()`** or use `skipOnReducedMotion: true` to respect user preferences
+- **Always check `prefersReducedMotion()`** to respect user preferences — for `transition()` you can use `skipOnReducedMotion: true`, and for other helpers use `respectReducedMotion` where supported
 - **`scrollAnimate()` is great for landing pages** — it automatically triggers animations when elements scroll into view
 - **Springs feel more natural** than CSS transitions for interactive elements like drag, resize, and button feedback
 - **Use `sequence()` or `timeline()`** when you need multiple animations to run in a specific order

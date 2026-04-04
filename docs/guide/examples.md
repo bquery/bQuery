@@ -12,7 +12,7 @@ The simplest bQuery program:
 <p id="greeting"></p>
 
 <script type="module">
-  import { $ } from 'https://cdn.jsdelivr.net/npm/@bquery/bquery/+esm';
+  import { $ } from 'https://cdn.jsdelivr.net/npm/@bquery/bquery@1/+esm';
   $('#greeting').text('Hello, World!');
 </script>
 ```
@@ -29,7 +29,7 @@ A counter with signal-based state:
 </div>
 
 <script type="module">
-  import { $, signal, effect } from 'https://cdn.jsdelivr.net/npm/@bquery/bquery/+esm';
+  import { $, signal, effect } from 'https://cdn.jsdelivr.net/npm/@bquery/bquery@1/+esm';
 
   const count = signal(0);
 
@@ -59,7 +59,7 @@ A simple todo list using the view module's declarative directives:
 </div>
 
 <script type="module">
-  import { mount, signal } from 'https://cdn.jsdelivr.net/npm/@bquery/bquery/view/+esm';
+  import { mount, signal } from 'https://cdn.jsdelivr.net/npm/@bquery/bquery@1/view/+esm';
 
   const newTodo = signal('');
   const todos = signal([]);
