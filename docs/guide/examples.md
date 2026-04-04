@@ -630,6 +630,7 @@ import { $ } from '@bquery/bquery/core';
 const local = storage.local();
 const isDark = signal(false);
 
+// storage.local() is async, so initialize from persisted state after setup.
 async function initTheme() {
   isDark.value = (await local.get('dark-mode')) === 'true';
 }
@@ -677,6 +678,7 @@ import { trapFocus } from '@bquery/bquery/a11y';
 let focusTrap: ReturnType<typeof trapFocus> | null = null;
 
 function openModal(modalEl: HTMLElement) {
+  focusTrap?.release();
   modalEl.hidden = false;
   focusTrap = trapFocus(modalEl);
 }

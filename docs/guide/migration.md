@@ -158,7 +158,7 @@ $('#item').remove();
 // jQuery
 const handleClick = (e) => console.log('clicked');
 $('#btn').on('click', handleClick);
-$('#btn').off('click');
+$('#btn').off('click', handleClick);
 
 // bQuery — keep a reference to the handler you want to remove
 const handleBqClick = (e) => console.log('clicked');
