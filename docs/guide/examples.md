@@ -271,6 +271,8 @@ const form = createForm({
 Use `useFormField()` when you need a single validated input without a full form:
 
 ```ts
+import { $ } from '@bquery/bquery/core';
+import { effect } from '@bquery/bquery/reactive';
 import { useFormField, required, email } from '@bquery/bquery/forms';
 
 const emailField = useFormField('', {
@@ -333,8 +335,7 @@ function showToast(message: string, type = 'info') {
 ### Reusable modal dialog
 
 ```ts
-import { component, html, bool } from '@bquery/bquery/component';
-import { signal, effect } from '@bquery/bquery/reactive';
+import { component, html } from '@bquery/bquery/component';
 
 component('modal-dialog', {
   props: { open: false, title: '' },
@@ -357,9 +358,20 @@ component('modal-dialog', {
 ```
 
 ```html
-<modal-dialog title="Confirm Action" ?open="${isOpen}">
+<modal-dialog id="confirmDialog" title="Confirm Action">
   <p>Are you sure you want to continue?</p>
 </modal-dialog>
+
+<script type="module">
+  const dialog = document.getElementById('confirmDialog');
+  const isOpen = true;
+
+  if (isOpen) {
+    dialog?.setAttribute('open', '');
+  } else {
+    dialog?.removeAttribute('open');
+  }
+</script>
 ```
 
 ---
@@ -709,8 +721,8 @@ effect(() => {
 // Send a message
 $('#send-btn').on('click', () => {
   const input = $('#message-input');
-  send(JSON.stringify({ text: input.attr('value') }));
-  input.attr('value', '');
+  send(JSON.stringify({ text: (input.raw as HTMLInputElement).value }));
+  (input.raw as HTMLInputElement).value = '';
 });
 
 // Show connection status
@@ -829,6 +841,8 @@ describe('my-counter', () => {
 ### Mock signals in tests
 
 ```ts
+import { expect, test } from 'bun:test';
+import { effect } from '@bquery/bquery/reactive';
 import { mockSignal } from '@bquery/bquery/testing';
 
 test('displays user name', () => {

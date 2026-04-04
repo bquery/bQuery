@@ -407,7 +407,7 @@ Use this as a step-by-step migration plan:
 - [ ] **Replace `<script src="jquery.js">`** with `<script type="module">` and bQuery CDN import
 - [ ] **Replace `$()` selector calls** — use `$()` for required elements, `$$()` for optional/collections
 - [ ] **Replace `$.ajax()`** calls with `useFetch()`, `http`, or `useSubmit()`
-- [ ] **Replace `$.each()`** with native `for...of` or `$$().forEach()`
+- [ ] **Replace `$.each()`** with native `for...of`, `$$().each(...)`, or iteration over `$$().elements`
 - [ ] **Replace jQuery animations** with `animate()`, `transition()`, or CSS transitions
 - [ ] **Replace `$(document).ready()`** — ES modules run deferred by default, no wrapper needed
 - [ ] **Add reactive state** where you previously had manual DOM updates

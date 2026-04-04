@@ -21,15 +21,15 @@ $('#increment').on('click', () => count.value++);
 
 ### How is bQuery different from jQuery?
 
-| Feature            | jQuery                | bQuery                                      |
-| ------------------ | --------------------- | ------------------------------------------- |
-| Reactivity         | Manual DOM updates    | Signals, computed, effects                  |
-| TypeScript         | Community types       | Built-in strict types                       |
-| Security           | Raw `$.html()`        | Sanitized by default                        |
-| Bundle             | ~87 kB minified       | Tree-shakeable, import only what you need   |
-| Components         | None                  | Web Components with typed props             |
-| Async Data         | `$.ajax()`            | Signals, fetch, polling, WebSocket, SSE     |
-| Build Step         | None needed           | None needed (Vite optional)                 |
+| Feature            | jQuery                   | bQuery                                      |
+| ------------------ | ------------------------ | ------------------------------------------- |
+| Reactivity         | Manual DOM updates       | Signals, computed, effects                  |
+| TypeScript         | Community types          | Built-in strict types                       |
+| Security           | Raw `$(...).html()`      | Sanitized by default                        |
+| Bundle             | ~87 kB minified          | Tree-shakeable, import only what you need   |
+| Components         | None                     | Web Components with typed props             |
+| Async Data         | `$.ajax()`               | Signals, fetch, polling, WebSocket, SSE     |
+| Build Step         | None needed              | None needed (Vite optional)                 |
 
 ### Do I need a build step?
 
@@ -403,7 +403,7 @@ effect(() => {
 ```ts
 import { enableDevtools, inspectSignals, logSignals } from '@bquery/bquery/devtools';
 
-enableDevtools();
+enableDevtools(true);
 logSignals(); // prints all tracked signals to console
 ```
 
