@@ -478,11 +478,11 @@ effect(() => {
 import { signal, watchDebounce } from '@bquery/bquery/reactive';
 
 const searchQuery = signal('');
-const searchResults = signal<string[]>([]);
+const debouncedSearchResults = signal<string[]>([]);
 
 watchDebounce(searchQuery, async (query) => {
   const results = await fetch(`/api/search?q=${query}`).then((r) => r.json());
-  searchResults.value = results;
+  debouncedSearchResults.value = results;
 }, 300);
 ```
 
