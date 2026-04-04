@@ -219,7 +219,7 @@ mount('#login-form', { form });
 ```
 
 ```html
-<form id="login-form" bq-on:submit="$event.preventDefault(); form.handleSubmit()">
+<form id="login-form" bq-on:submit="$event.preventDefault(); void form.handleSubmit().catch((error) => console.error('Login submission failed', error))">
   <div>
     <label>Email</label>
     <input type="email" bq-model="form.fields.email.value" />
@@ -410,6 +410,16 @@ createRouter({
       component: () => transition(() => $('#content').html(pages.contact)),
     },
   ],
+});
+
+effect(() => {
+  const component = currentRoute.value.matched?.component;
+  if (!component) return;
+
+  const result = component();
+  if (result instanceof Promise) {
+    void result.catch((error) => console.error('Route render failed', error));
+  }
 });
 
 // Highlight active navigation link

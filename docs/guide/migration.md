@@ -383,13 +383,24 @@ const form = createForm({
 ### Client-side routing
 
 ```ts
-import { createRouter, navigate } from '@bquery/bquery/router';
+import { effect } from '@bquery/bquery/reactive';
+import { createRouter, currentRoute, navigate } from '@bquery/bquery/router';
 
 createRouter({
   routes: [
     { path: '/', component: () => showHome() },
     { path: '/about', component: () => showAbout() },
   ],
+});
+
+effect(() => {
+  const component = currentRoute.value.matched?.component;
+  if (!component) return;
+
+  const result = component();
+  if (result instanceof Promise) {
+    void result.catch((error) => console.error('Route render failed', error));
+  }
 });
 ```
 

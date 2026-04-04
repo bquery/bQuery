@@ -386,6 +386,16 @@ createRouter({
   ],
 });
 
+effect(() => {
+  const component = currentRoute.value.matched?.component;
+  if (!component) return;
+
+  const result = component();
+  if (result instanceof Promise) {
+    void result.catch((error) => console.error('Route render failed', error));
+  }
+});
+
 // Navigate programmatically
 navigate('/about');
 
