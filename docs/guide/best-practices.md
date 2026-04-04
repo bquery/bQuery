@@ -390,6 +390,7 @@ createRouter({
   ],
 });
 
+// Keep rendering explicit: react to route changes and run the matched component safely.
 effect(() => {
   const component = currentRoute.value.matched?.component;
   if (!component) return;

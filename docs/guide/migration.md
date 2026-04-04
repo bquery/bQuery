@@ -393,6 +393,7 @@ createRouter({
   ],
 });
 
+// bQuery keeps routing and rendering separate, so render the matched view reactively.
 effect(() => {
   const component = currentRoute.value.matched?.component;
   if (!component) return;

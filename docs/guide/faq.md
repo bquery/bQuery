@@ -386,6 +386,7 @@ createRouter({
   ],
 });
 
+// createRouter() tracks the current route; render the matched view in an effect.
 effect(() => {
   const component = currentRoute.value.matched?.component;
   if (!component) return;

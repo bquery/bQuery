@@ -412,6 +412,7 @@ createRouter({
   ],
 });
 
+// The router updates currentRoute for you; this effect renders the matched view.
 effect(() => {
   const component = currentRoute.value.matched?.component;
   if (!component) return;
