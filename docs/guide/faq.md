@@ -402,9 +402,14 @@ effect(() => {
 ### How do I inspect signals at runtime?
 
 ```ts
-import { enableDevtools, inspectSignals, logSignals } from '@bquery/bquery/devtools';
+import { signal } from '@bquery/bquery/reactive';
+import { enableDevtools, inspectSignals, logSignals, trackSignal } from '@bquery/bquery/devtools';
+
+const count = signal(0);
 
 enableDevtools(true);
+trackSignal('count', () => count.peek(), () => 0);
+console.table(inspectSignals());
 logSignals(); // prints all tracked signals to console
 ```
 

@@ -200,14 +200,16 @@ $('#content').raw.innerHTML = myGeneratedHtml;
 ### Never interpolate user input into raw HTML
 
 ```ts
+import { escapeHtml } from '@bquery/bquery/security';
+
 // ❌ Dangerous — even if you think the data is safe
 element.raw.innerHTML = `<p>${userComment}</p>`;
 
 // ✅ Use text for user content
 $('#comment').text(userComment);
 
-// ✅ Or use sanitized HTML
-$('#comment').html(`<p>${userComment}</p>`);
+// ✅ If you need HTML structure, escape the user content first
+$('#comment').html(`<p>${escapeHtml(userComment)}</p>`);
 ```
 
 ### Use `escapeHtml()` for explicit escaping

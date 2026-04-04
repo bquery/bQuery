@@ -207,11 +207,11 @@ $.ajax({
 // bQuery
 import { effect, useFetch } from '@bquery/bquery/reactive';
 
-const { data, error, pending, status } = useFetch('/api/users');
+const { data, error, pending } = useFetch('/api/users');
 
 effect(() => {
-  if (pending.value || status.value === 'pending') showSpinner();
-  else if (error.value) showError(error.value);
+  if (pending.value) showSpinner();
+  else if (error.value) showError(error.value.message);
   else renderUsers(data.value);
 });
 ```
