@@ -602,6 +602,28 @@ describe('watch', () => {
     }).toThrow('immediate debounce failure');
   });
 
+  it('normalizes non-finite debounce intervals to zero', async () => {
+    const { signal, watchDebounce } = await import('../src/reactive/signal');
+    const count = signal(0);
+    const changes: [number, number | undefined][] = [];
+
+    const cleanup = watchDebounce(count, (newVal, oldVal) => {
+      changes.push([newVal, oldVal]);
+    }, Number.NaN);
+
+    count.value = 1;
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    count.value = 2;
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(changes).toEqual([
+      [1, 0],
+      [2, 1],
+    ]);
+
+    cleanup();
+  });
+
   it('throttles rapid changes', async () => {
     const { signal, watchThrottle } = await import('../src/reactive/signal');
     const count = signal(0);

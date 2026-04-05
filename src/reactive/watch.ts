@@ -107,6 +107,7 @@ export const watchDebounce = <T>(
   options: WatchOptions<T> = {}
 ): CleanupFn => {
   const { immediate = false, equals = Object.is } = options;
+  const normalizedDelayMs = Number.isFinite(delayMs) ? Math.max(0, delayMs) : 0;
   let hasPending = false;
   let pendingNewValue!: T;
   let pendingOldValue: T | undefined;
@@ -128,7 +129,7 @@ export const watchDebounce = <T>(
     }
     hasPending = false;
     pendingOldValue = undefined;
-  }, Math.max(0, delayMs));
+  }, normalizedDelayMs);
 
   if (immediate) {
     callback(source.peek(), undefined);
