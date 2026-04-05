@@ -8,8 +8,11 @@ and this project adheres to Semantic Versioning.
 
 - [Changelog](#changelog)
   - [Releases](#releases)
-  - [\[Unreleased\] - 2026-04-04](#unreleased---2026-04-04)
-  - [\[1.9.0\] - 2026-04-04](#190---2026-04-04)
+  - [\[Unreleased\] - 2026-04-05](#unreleased---2026-04-05)
+    - [Added (Unreleased)](#added-unreleased)
+    - [Changed (Unreleased)](#changed-unreleased)
+    - [Fixed (Unreleased)](#fixed-unreleased)
+  - [\[1.9.0\] - 2026-04-05](#190---2026-04-05)
     - [Added (1.9.0)](#added-190)
     - [Changed (1.9.0)](#changed-190)
   - [\[1.8.2\] - 2026-04-01](#182---2026-04-01)
@@ -61,7 +64,7 @@ and this project adheres to Semantic Versioning.
   - [\[1.0.0\] - 2026-01-21](#100---2026-01-21)
     - [Added (1.0.0)](#added-100)
 
-## [Unreleased] - 2026-04-04
+## [Unreleased] - 2026-04-05
 
 ### Added (Unreleased)
 
@@ -75,7 +78,7 @@ and this project adheres to Semantic Versioning.
 
 - No changes yet.
 
-## [1.9.0] - 2026-04-04
+## [1.9.0] - 2026-04-05
 
 ### Added (1.9.0)
 
