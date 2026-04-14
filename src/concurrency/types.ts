@@ -67,7 +67,7 @@ export interface CreateTaskWorkerOptions {
 export interface RunTaskOptions extends CreateTaskWorkerOptions, TaskRunOptions {}
 
 /** Options for creating a reusable RPC worker. */
-export interface CreateRpcWorkerOptions extends CreateTaskWorkerOptions {}
+export type CreateRpcWorkerOptions = CreateTaskWorkerOptions;
 
 /** Options accepted by the one-off RPC method helper. */
 export interface CallWorkerMethodOptions extends CreateRpcWorkerOptions, TaskRunOptions {}
@@ -115,7 +115,7 @@ export interface TaskWorker<TInput = void, TResult = unknown> {
 export type WorkerRpcHandler<TInput = void, TResult = unknown> = WorkerTaskHandler<TInput, TResult>;
 
 /** Explicit map of named worker RPC handlers. */
-export type WorkerRpcHandlers = Record<string, WorkerRpcHandler<any, any>>;
+export type WorkerRpcHandlers = Record<string, WorkerRpcHandler<unknown, unknown>>;
 
 /** Reusable RPC-style worker handle with named method dispatch. */
 export interface RpcWorker<TRoutes extends WorkerRpcHandlers = WorkerRpcHandlers> {
