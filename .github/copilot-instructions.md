@@ -129,7 +129,7 @@ Entry points:
 - **Security by default:** HTML-writing APIs sanitize untrusted content via `sanitizeHtml()`.
 - For trusted content, prefer explicit raw DOM escape hatches such as `.raw.innerHTML` instead of weakening defaults.
 - In components, sanitize untrusted props before interpolating them into HTML templates.
-- Do not introduce new uses of `eval`, `new Function()`, or `document.write()`. The existing view module evaluator is a documented exception and should not spread to other modules.
+- Do not introduce new uses of `eval`, `new Function()`, or `document.write()` outside the documented `view` and `concurrency` module exceptions. Any such exception must stay tightly scoped and include explicit CSP / `'unsafe-eval'` documentation.
 - Escape user strings before HTML attribute insertion.
 - Support Trusted Types where relevant.
 - Be careful with parser-style code: linear scanners are preferred over regex-heavy approaches on untrusted template input.
