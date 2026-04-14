@@ -22,6 +22,7 @@ Version `1.9.0` adds `watchDebounce()` / `watchThrottle()`, the `bq-error` / `bq
 3. **Strict TypeScript**: `strict: true`, no unused locals/params.
 4. **Pure ESM**: No CommonJS in source code.
 5. **Zero dependencies**: No `dependencies` in package.json.
+6. **Concurrency**: `@bquery/bquery/concurrency` is browser-focused, zero-build, and should stay explicit (no hidden pool/bundler magic by default).
 
 ## When Adding Code
 
@@ -48,6 +49,7 @@ Version `1.9.0` adds `watchDebounce()` / `watchThrottle()`, the `bq-error` / `bq
 | `linkedSignal()`  | Read-write derived value        |
 | `watchDebounce()` | Debounced watcher callback      |
 | `watchThrottle()` | Throttled watcher callback      |
+| `runTask()`       | One-off zero-build worker task  |
 
 | 1.9.0 API                                                                     | Reminder                                              |
 | ----------------------------------------------------------------------------- | ----------------------------------------------------- |
@@ -60,5 +62,6 @@ Version `1.9.0` adds `watchDebounce()` / `watchThrottle()`, the `bq-error` / `bq
 - `AGENT.md` — Full agent guide
 - `llms.txt` — Compact project summary
 - `src/full.ts` — Explicit full bundle export surface
+- `src/concurrency/index.ts` — Worker-task public surface
 - `.github/copilot-instructions.md` — Copilot context
 - `CHANGELOG.md` — Version history and recent changes

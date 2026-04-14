@@ -139,6 +139,31 @@ export type {
 } from './reactive/index';
 
 // ============================================================================
+// Concurrency Module: Zero-build worker task helpers
+// ============================================================================
+export {
+  createTaskWorker,
+  getConcurrencySupport,
+  isConcurrencySupported,
+  runTask,
+  TaskWorkerAbortError,
+  TaskWorkerError,
+  TaskWorkerSerializationError,
+  TaskWorkerTimeoutError,
+  TaskWorkerUnsupportedError,
+} from './concurrency/index';
+export type {
+  ConcurrencySupport,
+  CreateTaskWorkerOptions,
+  RunTaskOptions,
+  TaskRunOptions,
+  TaskWorker,
+  TaskWorkerErrorCode,
+  TaskWorkerState,
+  WorkerTaskHandler,
+} from './concurrency/index';
+
+// ============================================================================
 // Component Module: Web Components helper with Shadow DOM
 // ============================================================================
 export {
