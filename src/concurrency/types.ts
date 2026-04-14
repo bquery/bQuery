@@ -14,7 +14,10 @@
  * parameter types contravariantly under `strictFunctionTypes`, but method
  * signatures remain bivariant. Modeling the public handler as a method-shaped
  * signature keeps object-literal task and RPC handlers ergonomic in strict
- * typechecks, including the repository's dedicated test typecheck.
+ * typechecks, including the repository's dedicated test typecheck. In practice
+ * this allows narrower inline handler parameter annotations in object literals;
+ * the trade-off is that assignability here is intentionally a little less strict
+ * than a plain function-type alias would be.
  *
  * @example
  * ```ts
