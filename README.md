@@ -20,7 +20,7 @@
 
 **The jQuery for the modern Web Platform.**
 
-bQuery.js is a slim, TypeScript-first library that combines jQuery's direct DOM workflow with modern features like reactivity, async data composables, HTTP clients, polling and pagination helpers, realtime transports, REST workflows, Web Components, motion utilities, routing, stores, declarative views, accessibility helpers, forms, i18n, media signals, drag-and-drop, plugins, devtools, testing utilities, and SSR — without a mandatory build step.
+bQuery.js is a slim, TypeScript-first library that combines jQuery's direct DOM workflow with modern features like reactivity, zero-build worker tasks, async data composables, HTTP clients, polling and pagination helpers, realtime transports, REST workflows, Web Components, motion utilities, routing, stores, declarative views, accessibility helpers, forms, i18n, media signals, drag-and-drop, plugins, devtools, testing utilities, and SSR — without a mandatory build step.
 
 > **New in 1.9.0:** `watchDebounce()` / `watchThrottle()` smooth signal watchers, the View module adds `bq-error` and `bq-aria`, and the Media module now includes `useIntersectionObserver()`, `useResizeObserver()`, and `useMutationObserver()`.
 
@@ -127,6 +127,9 @@ import {
   deduplicateRequest,
 } from '@bquery/bquery/reactive';
 
+// Concurrency only
+import { createTaskWorker, getConcurrencySupport, runTask } from '@bquery/bquery/concurrency';
+
 // Components only
 import {
   bool,
@@ -180,6 +183,7 @@ import { storyHtml, when } from '@bquery/bquery/storybook';
 | ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Core**      | Selectors, DOM manipulation, events, traversal, and typed utilities                                                                                |
 | **Reactive**  | `signal`, `computed`, `effect`, `watchDebounce`, `watchThrottle`, async data, HTTP clients, polling, pagination, WebSocket / SSE, and REST helpers |
+| **Concurrency** | Zero-build worker task helpers with explicit lifecycle, timeout, abort, and support detection                                                    |
 | **Component** | Typed Web Components with scoped reactivity and configurable Shadow DOM                                                                            |
 | **Storybook** | Safe story template helpers with boolean-attribute shorthand                                                                                       |
 | **Motion**    | View transitions, FLIP, morphing, parallax, typewriter, springs, and timelines                                                                     |
@@ -198,7 +202,7 @@ import { storyHtml, when } from '@bquery/bquery/storybook';
 | **Testing**   | Component mounting, mock signals/router helpers, and async test utilities                                                                          |
 | **SSR**       | Server-side rendering, hydration, and store-state serialization                                                                                    |
 
-Storybook authoring helpers are also available as a dedicated entry point via `@bquery/bquery/storybook`.
+Storybook authoring helpers are also available as a dedicated entry point via `@bquery/bquery/storybook`. Worker-task helpers ship as a dedicated entry point via `@bquery/bquery/concurrency`.
 
 ## Quick examples
 
@@ -281,6 +285,20 @@ const fullName = linkedSignal(
 );
 
 fullName.value = 'Grace Hopper';
+```
+
+### Concurrency – worker tasks
+
+```ts
+import { runTask } from '@bquery/bquery/concurrency';
+
+const total = await runTask(
+  ({ values }: { values: number[] }) => values.reduce((sum, value) => sum + value, 0),
+  { values: [1, 2, 3, 4] },
+  { timeout: 1_000 }
+);
+
+console.log(total); // 10
 ```
 
 ### Reactive – async data & fetch

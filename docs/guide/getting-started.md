@@ -97,6 +97,9 @@ import {
   useResource,
 } from '@bquery/bquery/reactive';
 
+// Concurrency only (zero-build worker tasks)
+import { runTask, createTaskWorker, isConcurrencySupported } from '@bquery/bquery/concurrency';
+
 // Components only (Web Components + default library)
 import { bool, component, html, registerDefaultComponents } from '@bquery/bquery/component';
 
@@ -141,6 +144,7 @@ import { renderToString, hydrateMount } from '@bquery/bquery/ssr';
 | ------------- | --------------------------------------------------------------------------------------------------- |
 | **Core**      | Selectors, DOM manipulation, traversal, events, and typed utilities                                 |
 | **Reactive**  | Signals, computed values, effects, batching, HTTP clients, polling, streaming, and REST composables |
+| **Concurrency** | Zero-build worker task execution with support checks, aborts, timeouts, and reusable workers |
 | **Component** | Typed Web Components with scoped reactivity and Shadow DOM control                                  |
 | **Storybook** | Safe string-template helpers for stories and boolean attributes                                     |
 | **Motion**    | Transitions, morphing, parallax, typewriter, FLIP, scroll, and springs                              |

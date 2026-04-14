@@ -68,11 +68,11 @@ and this project adheres to Semantic Versioning.
 
 ### Added (Unreleased)
 
-- No changes yet.
+- **Concurrency**: Added the new `@bquery/bquery/concurrency` entry point with `runTask()`, `createTaskWorker()`, support detection helpers, and explicit timeout / abort / lifecycle error types for zero-build browser worker tasks.
 
 ### Changed (Unreleased)
 
-- No changes yet.
+- **Docs / Agent context**: Synced the README, guides, build/export metadata, and agent context files for the new concurrency module and its milestone-1 scope.
 
 ### Fixed (Unreleased)
 
