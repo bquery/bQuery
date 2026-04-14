@@ -9,7 +9,7 @@ import { computed } from './computed';
 import { Signal, signal } from './core';
 
 /** @internal */
-type WebSocketSendData = string | Blob | BufferSource;
+type WebSocketSendData = string | Blob | ArrayBufferLike | ArrayBufferView;
 
 // ---------------------------------------------------------------------------
 // Types
@@ -165,6 +165,23 @@ const computeDelay = (attempt: number, config: WebSocketReconnectConfig): number
   return Math.min(base * factor ** attempt, max);
 };
 
+/** @internal */
+const sendSocketData = (socket: WebSocket, data: WebSocketSendData): void => {
+  if (typeof data === 'string' || data instanceof Blob || data instanceof ArrayBuffer) {
+    socket.send(data);
+    return;
+  }
+
+  if (ArrayBuffer.isView(data)) {
+    socket.send(data as BufferSource);
+    return;
+  }
+
+  if (typeof SharedArrayBuffer !== 'undefined' && data instanceof SharedArrayBuffer) {
+    socket.send(data as unknown as BufferSource);
+  }
+};
+
 // ---------------------------------------------------------------------------
 // useWebSocket
 // ---------------------------------------------------------------------------
@@ -268,7 +285,7 @@ export const useWebSocket = <TSend = string, TReceive = string>(
     heartbeatTimer = setInterval(() => {
       if (ws?.readyState === WebSocket.OPEN) {
         pingSentAt = Date.now();
-        ws.send(pingMsg);
+        sendSocketData(ws, pingMsg);
         if (pongTimer !== undefined) {
           clearTimeout(pongTimer);
         }
@@ -344,7 +361,7 @@ export const useWebSocket = <TSend = string, TReceive = string>(
       if (ws.readyState !== WebSocket.OPEN) {
         break;
       }
-      ws.send(sendQueue[index]);
+      sendSocketData(ws, sendQueue[index]);
     }
 
     if (index > 0) {
@@ -466,7 +483,7 @@ export const useWebSocket = <TSend = string, TReceive = string>(
   const sendRaw = (raw: WebSocketSendData): void => {
     if (disposed) return;
     if (ws?.readyState === WebSocket.OPEN) {
-      ws.send(raw);
+      sendSocketData(ws, raw);
     } else {
       sendQueue.push(raw);
     }
