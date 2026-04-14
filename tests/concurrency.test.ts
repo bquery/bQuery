@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'bun:test';
 import {
   callWorkerMethod,
+  createRpcPool,
   createRpcWorker,
+  createTaskPool,
   createTaskWorker,
   getConcurrencySupport,
   isConcurrencySupported,
@@ -379,6 +381,177 @@ describe('concurrency/callWorkerMethod', () => {
       );
 
       expect(total).toBe(12);
+    });
+  });
+});
+
+describe('concurrency/createTaskPool', () => {
+  it('runs up to the configured concurrency and queues the rest', async () => {
+    await withMockWorkerEnvironment(async () => {
+      const pool = createTaskPool(
+        async ({ delay, value }: { delay: number; value: number }) => {
+          await new Promise((resolve) => setTimeout(resolve, delay));
+          return value * 2;
+        },
+        { concurrency: 2 }
+      );
+
+      const first = pool.run({ delay: 20, value: 1 });
+      const second = pool.run({ delay: 20, value: 2 });
+      const third = pool.run({ delay: 0, value: 3 });
+
+      expect(pool.pending).toBe(2);
+      expect(pool.size).toBe(1);
+      expect(pool.busy).toBe(true);
+      expect(pool.state).toBe('running');
+
+      await expect(Promise.all([first, second, third])).resolves.toEqual([2, 4, 6]);
+      expect(pool.pending).toBe(0);
+      expect(pool.size).toBe(0);
+      expect(pool.state).toBe('idle');
+
+      pool.terminate();
+    });
+  });
+
+  it('rejects queued tasks when the pool queue is full', async () => {
+    await withMockWorkerEnvironment(async () => {
+      const pool = createTaskPool(
+        async ({ delay, value }: { delay: number; value: number }) => {
+          await new Promise((resolve) => setTimeout(resolve, delay));
+          return value;
+        },
+        { concurrency: 1, maxQueue: 1 }
+      );
+
+      const first = pool.run({ delay: 20, value: 1 });
+      const second = pool.run({ delay: 0, value: 2 });
+
+      await expect(pool.run({ delay: 0, value: 3 })).rejects.toMatchObject({
+        code: 'QUEUE_FULL',
+      });
+
+      await expect(first).resolves.toBe(1);
+      await expect(second).resolves.toBe(2);
+      pool.terminate();
+    });
+  });
+
+  it('clears queued tasks without interrupting active ones', async () => {
+    await withMockWorkerEnvironment(async () => {
+      const pool = createTaskPool(
+        async ({ delay, value }: { delay: number; value: number }) => {
+          await new Promise((resolve) => setTimeout(resolve, delay));
+          return value;
+        },
+        { concurrency: 1 }
+      );
+
+      const first = pool.run({ delay: 20, value: 1 });
+      const second = pool.run({ delay: 0, value: 2 });
+      const third = pool.run({ delay: 0, value: 3 });
+      const secondError = second.then(
+        () => null,
+        (error) => error
+      );
+      const thirdError = third.then(
+        () => null,
+        (error) => error
+      );
+
+      expect(pool.size).toBe(2);
+      pool.clear();
+      expect(pool.size).toBe(0);
+
+      await expect(first).resolves.toBe(1);
+      await expect(secondError).resolves.toMatchObject({ code: 'QUEUE_CLEARED' });
+      await expect(thirdError).resolves.toMatchObject({ code: 'QUEUE_CLEARED' });
+
+      pool.terminate();
+    });
+  });
+
+  it('rejects queued tasks when aborted before execution starts', async () => {
+    await withMockWorkerEnvironment(async () => {
+      const pool = createTaskPool(
+        async ({ delay, value }: { delay: number; value: number }) => {
+          await new Promise((resolve) => setTimeout(resolve, delay));
+          return value;
+        },
+        { concurrency: 1 }
+      );
+      const controller = new AbortController();
+
+      const first = pool.run({ delay: 20, value: 1 });
+      const queued = pool.run(
+        { delay: 0, value: 2 },
+        {
+          signal: controller.signal,
+        }
+      );
+
+      expect(pool.size).toBe(1);
+      controller.abort();
+
+      await expect(queued).rejects.toBeInstanceOf(TaskWorkerAbortError);
+      expect(pool.size).toBe(0);
+      await expect(first).resolves.toBe(1);
+      pool.terminate();
+    });
+  });
+});
+
+describe('concurrency/createRpcPool', () => {
+  it('executes RPC calls across multiple workers and queues overflow', async () => {
+    await withMockWorkerEnvironment(async () => {
+      const pool = createRpcPool(
+        {
+          wait: async ({ delay, value }: { delay: number; value: number }) => {
+            await new Promise((resolve) => setTimeout(resolve, delay));
+            return value;
+          },
+        },
+        { concurrency: 2 }
+      );
+
+      const first = pool.call('wait', { delay: 20, value: 1 });
+      const second = pool.call('wait', { delay: 20, value: 2 });
+      const third = pool.call('wait', { delay: 0, value: 3 });
+
+      expect(pool.pending).toBe(2);
+      expect(pool.size).toBe(1);
+
+      await expect(Promise.all([first, second, third])).resolves.toEqual([1, 2, 3]);
+      expect(pool.pending).toBe(0);
+      expect(pool.size).toBe(0);
+
+      pool.terminate();
+    });
+  });
+
+  it('terminates active and queued RPC calls', async () => {
+    await withMockWorkerEnvironment(async () => {
+      const pool = createRpcPool(
+        {
+          wait: async ({ delay, value }: { delay: number; value: number }) => {
+            await new Promise((resolve) => setTimeout(resolve, delay));
+            return value;
+          },
+        },
+        { concurrency: 1 }
+      );
+
+      const first = pool.call('wait', { delay: 20, value: 1 });
+      const second = pool.call('wait', { delay: 0, value: 2 });
+      const secondError = second.then(
+        () => null,
+        (error) => error
+      );
+
+      pool.terminate();
+
+      await expect(first).rejects.toMatchObject({ code: 'TERMINATED' });
+      await expect(secondError).resolves.toMatchObject({ code: 'TERMINATED' });
     });
   });
 });

@@ -143,7 +143,9 @@ export type {
 // ============================================================================
 export {
   callWorkerMethod,
+  createRpcPool,
   createRpcWorker,
+  createTaskPool,
   createTaskWorker,
   getConcurrencySupport,
   isConcurrencySupported,
@@ -157,10 +159,14 @@ export {
 export type {
   CallWorkerMethodOptions,
   ConcurrencySupport,
+  CreateRpcPoolOptions,
   CreateRpcWorkerOptions,
+  CreateTaskPoolOptions,
   CreateTaskWorkerOptions,
+  RpcPool,
   RpcWorker,
   RunTaskOptions,
+  TaskPool,
   TaskRunOptions,
   TaskWorker,
   TaskWorkerErrorCode,

@@ -69,10 +69,11 @@ and this project adheres to Semantic Versioning.
 ### Added (Unreleased)
 
 - **Concurrency**: Expanded `@bquery/bquery/concurrency` with Milestone 2 RPC-style communication via `createRpcWorker()` and `callWorkerMethod()`, adding explicit named method dispatch on top of the existing zero-build worker task API.
+- **Concurrency / Pools**: Added `createTaskPool()` and `createRpcPool()` for explicit browser-first worker pools with bounded concurrency, FIFO queueing, and backpressure via `maxQueue`.
 
 ### Changed (Unreleased)
 
-- **Docs / Agent context**: Synced the README, guides, build/export metadata, and agent context files for the concurrency module's Milestone 2 task + RPC scope.
+- **Docs / Agent context**: Synced the README, guides, build/export metadata, and agent context files for the concurrency module's task + RPC + pool scope, including a `threadts-universal` parity matrix.
 
 ### Fixed (Unreleased)
 
