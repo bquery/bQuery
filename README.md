@@ -20,7 +20,7 @@
 
 **The jQuery for the modern Web Platform.**
 
-bQuery.js is a slim, TypeScript-first library that combines jQuery's direct DOM workflow with modern features like reactivity, async data composables, HTTP clients, polling and pagination helpers, realtime transports, REST workflows, Web Components, motion utilities, routing, stores, declarative views, accessibility helpers, forms, i18n, media signals, drag-and-drop, plugins, devtools, testing utilities, and SSR — without a mandatory build step.
+bQuery.js is a slim, TypeScript-first library that combines jQuery's direct DOM workflow with modern features like reactivity, zero-build worker tasks, async data composables, HTTP clients, polling and pagination helpers, realtime transports, REST workflows, Web Components, motion utilities, routing, stores, declarative views, accessibility helpers, forms, i18n, media signals, drag-and-drop, plugins, devtools, testing utilities, and SSR — without a mandatory build step.
 
 > **New in 1.9.0:** `watchDebounce()` / `watchThrottle()` smooth signal watchers, the View module adds `bq-error` and `bq-aria`, and the Media module now includes `useIntersectionObserver()`, `useResizeObserver()`, and `useMutationObserver()`.
 
@@ -127,6 +127,26 @@ import {
   deduplicateRequest,
 } from '@bquery/bquery/reactive';
 
+// Concurrency only
+import {
+  batchTasks,
+  callWorkerMethod,
+  createRpcPool,
+  createRpcWorker,
+  createTaskPool,
+  createTaskWorker,
+  every,
+  filter,
+  find,
+  getConcurrencySupport,
+  map,
+  parallel,
+  pipeline,
+  reduce,
+  runTask,
+  some,
+} from '@bquery/bquery/concurrency';
+
 // Components only
 import {
   bool,
@@ -180,6 +200,7 @@ import { storyHtml, when } from '@bquery/bquery/storybook';
 | ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Core**      | Selectors, DOM manipulation, events, traversal, and typed utilities                                                                                |
 | **Reactive**  | `signal`, `computed`, `effect`, `watchDebounce`, `watchThrottle`, async data, HTTP clients, polling, pagination, WebSocket / SSE, and REST helpers |
+| **Concurrency** | Zero-build worker tasks, explicit RPC helpers, bounded worker pools, high-level collection helpers, and an optional fluent pipeline layer              |
 | **Component** | Typed Web Components with scoped reactivity and configurable Shadow DOM                                                                            |
 | **Storybook** | Safe story template helpers with boolean-attribute shorthand                                                                                       |
 | **Motion**    | View transitions, FLIP, morphing, parallax, typewriter, springs, and timelines                                                                     |
@@ -198,7 +219,7 @@ import { storyHtml, when } from '@bquery/bquery/storybook';
 | **Testing**   | Component mounting, mock signals/router helpers, and async test utilities                                                                          |
 | **SSR**       | Server-side rendering, hydration, and store-state serialization                                                                                    |
 
-Storybook authoring helpers are also available as a dedicated entry point via `@bquery/bquery/storybook`.
+Storybook authoring helpers are also available as a dedicated entry point via `@bquery/bquery/storybook`. Worker-task, RPC, worker-pool, high-level task-list / collection helpers, and the optional fluent pipeline layer ship as a dedicated entry point via `@bquery/bquery/concurrency`.
 
 ## Quick examples
 
@@ -281,6 +302,93 @@ const fullName = linkedSignal(
 );
 
 fullName.value = 'Grace Hopper';
+```
+
+### Concurrency – worker tasks
+
+```ts
+import { runTask } from '@bquery/bquery/concurrency';
+
+const total = await runTask(
+  ({ values }: { values: number[] }) => values.reduce((sum, value) => sum + value, 0),
+  { values: [1, 2, 3, 4] },
+  { timeout: 1_000 }
+);
+
+console.log(total); // 10
+```
+
+### Concurrency – RPC-style worker methods
+
+```ts
+import { createRpcWorker } from '@bquery/bquery/concurrency';
+
+const rpc = createRpcWorker({
+  formatUser: ({ first, last }: { first: string; last: string }) => `${last}, ${first}`,
+  sum: ({ values }: { values: number[] }) => values.reduce((total, value) => total + value, 0),
+});
+
+console.log(await rpc.call('formatUser', { first: 'Ada', last: 'Lovelace' }));
+console.log(await rpc.call('sum', { values: [1, 2, 3] }));
+
+rpc.terminate();
+```
+
+### Concurrency – pooled worker execution
+
+```ts
+import { createTaskPool } from '@bquery/bquery/concurrency';
+
+const pool = createTaskPool(
+  ({ value }: { value: number }) => value * 2,
+  { concurrency: 4, maxQueue: 16, name: 'double-pool' }
+);
+
+const results = await Promise.all([
+  pool.run({ value: 1 }),
+  pool.run({ value: 2 }),
+  pool.run({ value: 3 }),
+]);
+
+console.log(results); // [2, 4, 6]
+pool.terminate();
+```
+
+### Concurrency – task lists, collection helpers & pipelines
+
+```ts
+import { batchTasks, every, filter, find, map, parallel, pipeline, reduce, some } from '@bquery/bquery/concurrency';
+
+const tasks = await parallel([
+  { handler: (value: number) => value * 2, input: 5 },
+  { handler: ({ first, last }: { first: string; last: string }) => `${last}, ${first}`, input: { first: 'Ada', last: 'Lovelace' } },
+]);
+
+const batched = await batchTasks(
+  [
+    { handler: (value: number) => value * 2, input: 1 },
+    { handler: (value: number) => value * 2, input: 2 },
+    { handler: (value: number) => value * 2, input: 3 },
+  ],
+  2
+);
+
+const mapped = await map([1, 2, 3, 4], (value, index) => value + index, {
+  batchSize: 2,
+  concurrency: 2,
+});
+
+const filtered = await filter([5, 2, 9, 4], (value) => value % 2 === 1);
+const hasEven = await some([1, 3, 4], (value) => value % 2 === 0);
+const allEven = await every([2, 4, 6], (value) => value % 2 === 0);
+const firstLarge = await find([3, 8, 11, 14], (value) => value > 10);
+const reduced = await reduce([1, 2, 3, 4], (accumulator, value) => accumulator + value, 0);
+const piped = await pipeline([1, 2, 3, 4], { batchSize: 2, concurrency: 2 })
+  .map((value) => value * 2)
+  .filter((value) => value > 4)
+  .toArray();
+
+console.log(tasks, batched, mapped, filtered, hasEven, allEven, firstLarge, reduced, piped);
 ```
 
 ### Reactive – async data & fetch

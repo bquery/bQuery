@@ -16,7 +16,7 @@
 | Toolchain   | Node.js `>=24.0.0`, Bun `>=1.3.11`                                                                                                                                                                                                                           |
 | Repository  | <https://github.com/bQuery/bQuery>                                                                                                                                                                                                                           |
 | Homepage    | <https://bQuery.flausch-code.de>                                                                                                                                                                                                                             |
-| Description | jQuery-style DOM library with reactivity, async data, HTTP clients, polling / pagination, realtime transports, REST helpers, Web Components, motion, routing, stores, declarative views, and shared runtime config — zero-build capable, security-by-default |
+| Description | jQuery-style DOM library with reactivity, zero-build worker tasks, async data, HTTP clients, polling / pagination, realtime transports, REST helpers, Web Components, motion, routing, stores, declarative views, and shared runtime config — zero-build capable, security-by-default |
 
 ---
 
@@ -49,6 +49,7 @@ src/
 ├── full.ts             # Full bundle with explicit named exports (CDN)
 ├── core/               # $, $$, BQueryElement, BQueryCollection, utils
 ├── reactive/           # signal, computed, effect, scopes, watch/watchDebounce/watchThrottle, async data/fetch, HTTP, polling, pagination, realtime, REST
+├── concurrency/        # runTask(), workers/pools, RPC helpers, support/lifecycle helpers
 ├── component/          # component(), defineComponent(), scoped reactivity, defaults
 ├── storybook/          # storyHtml(), when() helpers for Storybook stories
 ├── motion/             # animate, transition, flip, morph, spring, timeline, scroll
@@ -131,6 +132,32 @@ Each `src/<module>/index.ts` re-exports the module's public API.
 | `readonly(sig)`                          | function  | Read-only wrapper around a signal                                   |
 | `isSignal`, `isComputed`                 | functions | Type guards                                                         |
 | `Signal`, `Computed`                     | classes   | Signal and Computed value classes                                   |
+
+### Concurrency (`@bquery/bquery/concurrency`)
+
+| Export                                                | Kind      | Description                                                        |
+| ----------------------------------------------------- | --------- | ------------------------------------------------------------------ |
+| `runTask(handler, input, options?)`                   | function  | Execute one task in a fresh zero-build Web Worker                  |
+| `createTaskWorker(handler, options?)`                 | function  | Create a reusable single-task worker with explicit lifecycle       |
+| `createTaskPool(handler, options?)`                   | function  | Create a bounded reusable task-worker pool with FIFO queueing      |
+| `createRpcWorker(handlers, options?)`                 | function  | Create a reusable named-method worker for explicit RPC-style calls |
+| `callWorkerMethod(handlers, method, input, options?)` | function  | Execute one named worker method in a fresh worker                  |
+| `createRpcPool(handlers, options?)`                   | function  | Create a bounded reusable RPC-worker pool with FIFO queueing       |
+| `parallel(tasks, options?)`                           | function  | Execute an explicit list of standalone tasks across a worker pool  |
+| `batchTasks(tasks, batchSize?, options?)`             | function  | Execute task lists in sequential batches using parallel workers    |
+| `map(values, mapper, options?)`                       | function  | Map arrays in parallel with optional chunking via worker pools     |
+| `filter(values, predicate, options?)`                 | function  | Filter arrays in parallel while preserving the original order      |
+| `some(values, predicate, options?)`                   | function  | Evaluate whether any array item matches in worker chunks           |
+| `every(values, predicate, options?)`                  | function  | Evaluate whether all array items match in worker chunks            |
+| `find(values, predicate, options?)`                   | function  | Find the first matching array item after worker-side predicate runs |
+| `reduce(values, reducer, initialValue, options?)`     | function  | Reduce arrays off the main thread with standard accumulator order  |
+| `pipeline(values, options?)`                          | function  | Create an optional immutable fluent pipeline over collection helpers |
+| `getConcurrencySupport()` / `isConcurrencySupported()` | functions | Detect whether inline browser worker tasks are available           |
+| `TaskWorkerError`                                     | class     | Base error with stable `code` values for concurrency failures      |
+| `TaskWorkerAbortError`                                | class     | Error thrown when a task run is aborted                            |
+| `TaskWorkerTimeoutError`                              | class     | Error thrown when a task exceeds its timeout                       |
+| `TaskWorkerSerializationError`                        | class     | Error thrown when a handler or payload cannot be serialized safely |
+| `TaskWorkerUnsupportedError`                          | class     | Error thrown when required worker primitives are unavailable       |
 
 ### Component (`@bquery/bquery/component`)
 
@@ -439,7 +466,7 @@ it('should add class', () => {
 | ------------------------------- | --------------------------------------------------------------------------------------- |
 | `src/index.ts`                  | Default entry point — re-exports all modules                                            |
 | `src/full.ts`                   | Full bundle with explicit named exports (CDN); keep in sync with public runtime exports |
-| `vite.config.ts`                | Library build config (21 entry points, ESM)                                             |
+| `vite.config.ts`                | Library build config (22 entry points, ESM)                                             |
 | `vite.umd.config.ts`            | UMD bundle config for CDN/script tags                                                   |
 | `tsconfig.json`                 | TypeScript config (strict, ES2020, Bundler)                                             |
 | `tsconfig.test.json`            | Test-specific TypeScript config                                                         |

@@ -27,6 +27,10 @@
       "import": "./dist/reactive.es.mjs",
       "types": "./dist/reactive/index.d.ts"
     },
+    "./concurrency": {
+      "import": "./dist/concurrency.es.mjs",
+      "types": "./dist/concurrency/index.d.ts"
+    },
     "./component": {
       "import": "./dist/component.es.mjs",
       "types": "./dist/component/index.d.ts"
