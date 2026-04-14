@@ -8,6 +8,7 @@ It is intentionally narrower than `threadts-universal`: the current milestones f
 
 ```ts
 import {
+  batchTasks,
   createTaskWorker,
   createTaskPool,
   createRpcWorker,
@@ -15,6 +16,8 @@ import {
   callWorkerMethod,
   getConcurrencySupport,
   isConcurrencySupported,
+  map,
+  parallel,
   runTask,
 } from '@bquery/bquery/concurrency';
 ```
@@ -29,6 +32,8 @@ import {
 - Named request/response dispatch via `createRpcWorker()`
 - One-off RPC method execution via `callWorkerMethod()`
 - Reusable RPC pools via `createRpcPool()`
+- Task-list helpers via `parallel()` and `batchTasks()`
+- Array mapping via `map()`
 - Explicit support detection
 - Timeout handling
 - Abort handling
@@ -39,7 +44,8 @@ import {
 ### Planned for later milestones
 
 - Reactive bindings around worker state
-- Higher-level array/pipeline helpers inspired by `threadts-universal`
+- Additional collection helpers such as `filter()`, `reduce()`, `some()`, `every()`, and `find()`
+- Fluent pipeline helpers inspired by `threadts-universal`
 
 ### Intentionally out of scope for bQuery
 
@@ -58,7 +64,7 @@ import {
 | Worker lifecycle | termination / reuse | **Supported** with explicit `terminate()` on workers and pools |
 | Timeout + cancellation | supported | **Supported** via `timeout` and `AbortSignal` |
 | Support detection | runtime-dependent | **Supported** via `getConcurrencySupport()` / `isConcurrencySupported()` |
-| Array / batch / pipeline helpers | broad high-level surface | **Planned later**; only after low-level browser primitives stay stable |
+| Array / batch / pipeline helpers | broad high-level surface | **Partially adapted** via `parallel()`, `batchTasks()`, and `map()`; more collection helpers + pipelines remain planned |
 | Decorators / implicit magic | broad decorator suite | **Not adopted**; conflicts with bQuery's explicit, lightweight browser-first design |
 | Node / Deno / Bun adapters | universal runtime adapters | **Not adopted** in this browser-focused package |
 
@@ -211,6 +217,72 @@ const total = await callWorkerMethod(
   { values: [2, 4, 6] }
 );
 ```
+
+## `parallel()`
+
+Use `parallel()` when you want to run an explicit list of standalone tasks across a bounded worker pool.
+
+```ts
+import { parallel } from '@bquery/bquery/concurrency';
+
+const results = await parallel([
+  { handler: (value: number) => value * 2, input: 5 },
+  { handler: ({ first, last }: { first: string; last: string }) => `${last}, ${first}`, input: { first: 'Ada', last: 'Lovelace' } },
+]);
+
+console.log(results); // [10, 'Lovelace, Ada']
+```
+
+### `parallel()` behavior
+
+- Preserves task order in the returned result array
+- Reuses the existing task-pool runtime instead of creating hidden long-lived globals
+- Each task may provide its own `signal`, `timeout`, and `transfer` options
+- Handlers must still be standalone serializable functions
+
+## `batchTasks()`
+
+Use `batchTasks()` when the task list should run in sequential batches while each batch still uses parallel workers.
+
+The name is intentionally adapted from `threadts-universal`'s `batch()` to avoid colliding with bQuery's existing reactive `batch()` export.
+
+```ts
+import { batchTasks } from '@bquery/bquery/concurrency';
+
+const results = await batchTasks(
+  [
+    { handler: (value: number) => value * 2, input: 1 },
+    { handler: (value: number) => value * 2, input: 2 },
+    { handler: (value: number) => value * 2, input: 3 },
+  ],
+  2
+);
+
+console.log(results); // [2, 4, 6]
+```
+
+## `map()`
+
+Use `map()` when one standalone mapper should process an array in parallel with optional chunking.
+
+```ts
+import { map } from '@bquery/bquery/concurrency';
+
+const results = await map(
+  [1, 2, 3, 4],
+  (value, index) => value + index,
+  { batchSize: 2, concurrency: 2 }
+);
+
+console.log(results); // [1, 3, 5, 7]
+```
+
+### `map()` behavior
+
+- Preserves original array order
+- Uses `batchSize` to group several items into one worker run
+- Shares one optional `AbortSignal` across all chunks
+- Requires a standalone mapper that can be reconstructed safely in a worker
 
 ## Timeout and abort
 
