@@ -49,8 +49,10 @@ Version `1.9.0` adds `watchDebounce()` / `watchThrottle()`, the `bq-error` / `bq
 | `linkedSignal()`  | Read-write derived value        |
 | `watchDebounce()` | Debounced watcher callback      |
 | `watchThrottle()` | Throttled watcher callback      |
-| `runTask()`       | One-off zero-build worker task  |
-| `createRpcWorker()` | Named worker RPC dispatch     |
+| `runTask()`         | One-off zero-build worker task         |
+| `createTaskPool()`  | Bounded task-worker pool with queueing |
+| `createRpcWorker()` | Named worker RPC dispatch              |
+| `createRpcPool()`   | Bounded RPC-worker pool with queueing  |
 
 | 1.9.0 API                                                                     | Reminder                                              |
 | ----------------------------------------------------------------------------- | ----------------------------------------------------- |

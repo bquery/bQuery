@@ -27,6 +27,8 @@ export type TaskWorkerErrorCode =
   | 'ABORT'
   | 'BUSY'
   | 'METHOD_NOT_FOUND'
+  | 'QUEUE_CLEARED'
+  | 'QUEUE_FULL'
   | 'SERIALIZATION'
   | 'TERMINATED'
   | 'TIMEOUT'
@@ -71,6 +73,28 @@ export type CreateRpcWorkerOptions = CreateTaskWorkerOptions;
 
 /** Options accepted by the one-off RPC method helper. */
 export interface CallWorkerMethodOptions extends CreateRpcWorkerOptions, TaskRunOptions {}
+
+/** Options for creating a reusable task worker pool. */
+export interface CreateTaskPoolOptions extends CreateTaskWorkerOptions {
+  /** Maximum number of workers executing tasks in parallel (default: 4). */
+  concurrency?: number;
+  /**
+   * Maximum number of not-yet-started tasks kept in the queue.
+   * Use `0` to disable queueing or `Infinity` for an unbounded queue.
+   */
+  maxQueue?: number;
+}
+
+/** Options for creating a reusable RPC worker pool. */
+export interface CreateRpcPoolOptions extends CreateRpcWorkerOptions {
+  /** Maximum number of workers executing calls in parallel (default: 4). */
+  concurrency?: number;
+  /**
+   * Maximum number of not-yet-started calls kept in the queue.
+   * Use `0` to disable queueing or `Infinity` for an unbounded queue.
+   */
+  maxQueue?: number;
+}
 
 /** Feature-detection snapshot for the browser concurrency runtime. */
 export interface ConcurrencySupport {
@@ -138,6 +162,73 @@ export interface RpcWorker<TRoutes extends WorkerRpcHandlers = WorkerRpcHandlers
   /**
    * Permanently terminate the backing worker.
    * Any in-flight call is rejected with a termination error.
+   */
+  terminate(): void;
+}
+
+/** Reusable pool of task workers with bounded concurrency and queueing. */
+export interface TaskPool<TInput = void, TResult = unknown> {
+  /** Current lifecycle state. */
+  readonly state: TaskWorkerState;
+  /** Whether the pool has active or queued tasks. */
+  readonly busy: boolean;
+  /** Maximum number of parallel worker runs. */
+  readonly concurrency: number;
+  /** Number of tasks currently running. */
+  readonly pending: number;
+  /** Number of tasks currently waiting in the queue. */
+  readonly size: number;
+  /**
+   * Queue or immediately execute one task in the pool.
+   *
+   * @param input - Serializable task input
+   * @param options - Per-run timeout, abort, and transfer options
+   */
+  run(input: TInput, options?: TaskRunOptions): Promise<TResult>;
+  /**
+   * Remove queued tasks that have not started yet.
+   * Active tasks continue running.
+   */
+  clear(): void;
+  /**
+   * Permanently terminate the pool and all backing workers.
+   * Active and queued tasks reject with termination errors.
+   */
+  terminate(): void;
+}
+
+/** Reusable pool of RPC workers with bounded concurrency and queueing. */
+export interface RpcPool<TRoutes extends WorkerRpcHandlers = WorkerRpcHandlers> {
+  /** Current lifecycle state. */
+  readonly state: TaskWorkerState;
+  /** Whether the pool has active or queued calls. */
+  readonly busy: boolean;
+  /** Maximum number of parallel worker calls. */
+  readonly concurrency: number;
+  /** Number of calls currently running. */
+  readonly pending: number;
+  /** Number of calls currently waiting in the queue. */
+  readonly size: number;
+  /**
+   * Queue or immediately execute one RPC call in the pool.
+   *
+   * @param method - Method name from the provided RPC handler map
+   * @param input - Serializable payload for the selected method
+   * @param options - Per-call timeout, abort, and transfer options
+   */
+  call<TMethod extends keyof TRoutes & string>(
+    method: TMethod,
+    input: Parameters<TRoutes[TMethod]>[0],
+    options?: TaskRunOptions
+  ): Promise<Awaited<ReturnType<TRoutes[TMethod]>>>;
+  /**
+   * Remove queued calls that have not started yet.
+   * Active calls continue running.
+   */
+  clear(): void;
+  /**
+   * Permanently terminate the pool and all backing workers.
+   * Active and queued calls reject with termination errors.
    */
   terminate(): void;
 }

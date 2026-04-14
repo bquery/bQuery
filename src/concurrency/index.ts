@@ -9,6 +9,7 @@
  */
 
 export { callWorkerMethod, createRpcWorker } from './rpc';
+export { createRpcPool, createTaskPool } from './pool';
 export { createTaskWorker, runTask } from './task';
 export { getConcurrencySupport, isConcurrencySupported } from './support';
 export {
@@ -22,10 +23,14 @@ export {
 export type {
   ConcurrencySupport,
   CallWorkerMethodOptions,
+  CreateRpcPoolOptions,
   CreateRpcWorkerOptions,
+  CreateTaskPoolOptions,
   CreateTaskWorkerOptions,
+  RpcPool,
   RpcWorker,
   RunTaskOptions,
+  TaskPool,
   TaskRunOptions,
   TaskWorker,
   TaskWorkerErrorCode,

@@ -2,14 +2,16 @@
 
 The concurrency module adds a small, explicit browser-side worker layer for bQuery's zero-build model.
 
-It is intentionally narrower than `threadts-universal`: Milestones 1 and 2 focus on **safe task execution**, **explicit RPC-style method dispatch**, **lifecycle cleanup**, **timeout/abort handling**, and **support detection** without introducing pools, decorators, or runtime-specific adapters that would bloat the package.
+It is intentionally narrower than `threadts-universal`: the current milestones focus on **safe task execution**, **explicit RPC-style method dispatch**, **bounded pools/queueing**, **lifecycle cleanup**, **timeout/abort handling**, and **support detection** without introducing decorators, implicit proxies, or runtime-specific adapters that would bloat the package.
 
 ## Import
 
 ```ts
 import {
   createTaskWorker,
+  createTaskPool,
   createRpcWorker,
+  createRpcPool,
   callWorkerMethod,
   getConcurrencySupport,
   isConcurrencySupported,
@@ -23,17 +25,19 @@ import {
 
 - One-off worker execution via `runTask()`
 - Reusable single-task workers via `createTaskWorker()`
+- Reusable task pools via `createTaskPool()`
 - Named request/response dispatch via `createRpcWorker()`
 - One-off RPC method execution via `callWorkerMethod()`
+- Reusable RPC pools via `createRpcPool()`
 - Explicit support detection
 - Timeout handling
 - Abort handling
 - Worker lifecycle cleanup and termination errors
+- FIFO queueing with configurable backpressure
 - Zero-build browser usage via inline `Blob` workers
 
 ### Planned for later milestones
 
-- Pools and queueing
 - Reactive bindings around worker state
 - Higher-level array/pipeline helpers inspired by `threadts-universal`
 
@@ -42,6 +46,21 @@ import {
 - Node/Deno/Bun-specific worker adapters in the browser-focused package
 - Decorator-heavy APIs
 - Implicit bundler glue or code generation that breaks zero-build usage
+
+## ThreadTS parity matrix
+
+| Feature group | `threadts-universal` | bQuery status |
+| --- | --- | --- |
+| One-off task execution | `run()` | **Supported** via `runTask()` |
+| Explicit reusable workers | low-level worker APIs | **Supported** via `createTaskWorker()` |
+| Explicit RPC dispatch | named methods / adapters | **Supported** via `createRpcWorker()` and `callWorkerMethod()` |
+| Pools + queueing | auto-scaling pools / priority queues | **Adapted** via `createTaskPool()` and `createRpcPool()` with explicit bounded concurrency + FIFO queueing |
+| Worker lifecycle | termination / reuse | **Supported** with explicit `terminate()` on workers and pools |
+| Timeout + cancellation | supported | **Supported** via `timeout` and `AbortSignal` |
+| Support detection | runtime-dependent | **Supported** via `getConcurrencySupport()` / `isConcurrencySupported()` |
+| Array / batch / pipeline helpers | broad high-level surface | **Planned later**; only after low-level browser primitives stay stable |
+| Decorators / implicit magic | broad decorator suite | **Not adopted**; conflicts with bQuery's explicit, lightweight browser-first design |
+| Node / Deno / Bun adapters | universal runtime adapters | **Not adopted** in this browser-focused package |
 
 ## `runTask()`
 
@@ -110,6 +129,72 @@ rpc.terminate();
 - Unknown methods reject with `code: 'METHOD_NOT_FOUND'`
 - The current Milestone 2 API still processes **one call at a time per worker**
 - Timeout and abort handling reset the worker so the next call starts cleanly
+
+## `createTaskPool()`
+
+Use `createTaskPool()` when the same standalone task should run across multiple workers with explicit bounded concurrency and FIFO queueing.
+
+```ts
+import { createTaskPool } from '@bquery/bquery/concurrency';
+
+const pool = createTaskPool(
+  async ({ delay, value }: { delay: number; value: number }) => {
+    await new Promise((resolve) => setTimeout(resolve, delay));
+    return value * 2;
+  },
+  { concurrency: 4, maxQueue: 16, name: 'double-pool' }
+);
+
+const results = await Promise.all([
+  pool.run({ delay: 20, value: 1 }),
+  pool.run({ delay: 20, value: 2 }),
+  pool.run({ delay: 0, value: 3 }),
+]);
+
+console.log(results); // [2, 4, 6]
+pool.terminate();
+```
+
+### Task-pool behavior
+
+- Runs up to `concurrency` tasks in parallel
+- Additional runs wait in a **FIFO queue**
+- `maxQueue` bounds queued-but-not-started work
+- `clear()` rejects queued tasks with `code: 'QUEUE_CLEARED'` without interrupting active tasks
+- Calls beyond `maxQueue` reject with `code: 'QUEUE_FULL'`
+- Abort signals can cancel queued tasks before they start or active tasks while they run
+
+## `createRpcPool()`
+
+Use `createRpcPool()` when a small set of named methods should run across multiple reusable workers with bounded concurrency and FIFO queueing.
+
+```ts
+import { createRpcPool } from '@bquery/bquery/concurrency';
+
+const pool = createRpcPool(
+  {
+    sum: ({ values }: { values: number[] }) => values.reduce((total, value) => total + value, 0),
+  },
+  { concurrency: 2, maxQueue: 8 }
+);
+
+const totals = await Promise.all([
+  pool.call('sum', { values: [1, 2, 3] }),
+  pool.call('sum', { values: [4, 5, 6] }),
+  pool.call('sum', { values: [7, 8, 9] }),
+]);
+
+console.log(totals); // [6, 15, 24]
+pool.terminate();
+```
+
+### RPC-pool behavior
+
+- Uses the same explicit named-method model as `createRpcWorker()`
+- Spreads calls across up to `concurrency` workers
+- Queues overflow calls in FIFO order
+- `clear()` only affects queued calls
+- `terminate()` rejects queued and active calls, then tears down all backing workers
 
 ## `callWorkerMethod()`
 
@@ -192,4 +277,4 @@ await runTask((input: ArrayBuffer) => input.byteLength, buffer, {
 - Task handlers must be **standalone functions**; they cannot rely on outer closures
 - The module currently targets **browser worker primitives** (`Worker`, `Blob`, `URL.createObjectURL`)
 - CSP setups may need `worker-src blob:` for inline worker creation
-- Pools, queues, and higher-level parallel collection APIs are intentionally deferred to later milestones
+- Higher-level array/pipeline helpers remain intentionally deferred to later milestones
