@@ -26,6 +26,7 @@ export type TaskWorkerState = 'idle' | 'running' | 'terminated';
 export type TaskWorkerErrorCode =
   | 'ABORT'
   | 'BUSY'
+  | 'METHOD_NOT_FOUND'
   | 'SERIALIZATION'
   | 'TERMINATED'
   | 'TIMEOUT'
@@ -65,6 +66,12 @@ export interface CreateTaskWorkerOptions {
 /** Options accepted by the one-off `runTask()` helper. */
 export interface RunTaskOptions extends CreateTaskWorkerOptions, TaskRunOptions {}
 
+/** Options for creating a reusable RPC worker. */
+export interface CreateRpcWorkerOptions extends CreateTaskWorkerOptions {}
+
+/** Options accepted by the one-off RPC method helper. */
+export interface CallWorkerMethodOptions extends CreateRpcWorkerOptions, TaskRunOptions {}
+
 /** Feature-detection snapshot for the browser concurrency runtime. */
 export interface ConcurrencySupport {
   /** `Worker` constructor availability. */
@@ -100,6 +107,37 @@ export interface TaskWorker<TInput = void, TResult = unknown> {
   /**
    * Permanently terminate the backing worker.
    * Any in-flight task is rejected with a termination error.
+   */
+  terminate(): void;
+}
+
+/** Standalone named RPC handler executed inside a Web Worker. */
+export type WorkerRpcHandler<TInput = void, TResult = unknown> = WorkerTaskHandler<TInput, TResult>;
+
+/** Explicit map of named worker RPC handlers. */
+export type WorkerRpcHandlers = Record<string, WorkerRpcHandler<any, any>>;
+
+/** Reusable RPC-style worker handle with named method dispatch. */
+export interface RpcWorker<TRoutes extends WorkerRpcHandlers = WorkerRpcHandlers> {
+  /** Current lifecycle state. */
+  readonly state: TaskWorkerState;
+  /** Whether a method call is currently in progress. */
+  readonly busy: boolean;
+  /**
+   * Call one named RPC method in the backing worker.
+   *
+   * @param method - Method name from the provided RPC handler map
+   * @param input - Serializable payload for the selected method
+   * @param options - Per-call timeout, abort, and transfer options
+   */
+  call<TMethod extends keyof TRoutes & string>(
+    method: TMethod,
+    input: Parameters<TRoutes[TMethod]>[0],
+    options?: TaskRunOptions
+  ): Promise<Awaited<ReturnType<TRoutes[TMethod]>>>;
+  /**
+   * Permanently terminate the backing worker.
+   * Any in-flight call is rejected with a termination error.
    */
   terminate(): void;
 }

@@ -49,7 +49,7 @@ src/
 ├── full.ts             # Full bundle with explicit named exports (CDN)
 ├── core/               # $, $$, BQueryElement, BQueryCollection, utils
 ├── reactive/           # signal, computed, effect, scopes, watch/watchDebounce/watchThrottle, async data/fetch, HTTP, polling, pagination, realtime, REST
-├── concurrency/        # runTask(), createTaskWorker(), worker support/lifecycle helpers
+├── concurrency/        # runTask(), createTaskWorker(), createRpcWorker(), support/lifecycle helpers
 ├── component/          # component(), defineComponent(), scoped reactivity, defaults
 ├── storybook/          # storyHtml(), when() helpers for Storybook stories
 ├── motion/             # animate, transition, flip, morph, spring, timeline, scroll
@@ -139,6 +139,8 @@ Each `src/<module>/index.ts` re-exports the module's public API.
 | ----------------------------------------------------- | --------- | ------------------------------------------------------------------ |
 | `runTask(handler, input, options?)`                   | function  | Execute one task in a fresh zero-build Web Worker                  |
 | `createTaskWorker(handler, options?)`                 | function  | Create a reusable single-task worker with explicit lifecycle       |
+| `createRpcWorker(handlers, options?)`                 | function  | Create a reusable named-method worker for explicit RPC-style calls |
+| `callWorkerMethod(handlers, method, input, options?)` | function  | Execute one named worker method in a fresh worker                  |
 | `getConcurrencySupport()` / `isConcurrencySupported()` | functions | Detect whether inline browser worker tasks are available           |
 | `TaskWorkerError`                                     | class     | Base error with stable `code` values for concurrency failures      |
 | `TaskWorkerAbortError`                                | class     | Error thrown when a task run is aborted                            |

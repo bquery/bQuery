@@ -50,6 +50,7 @@ Version `1.9.0` adds `watchDebounce()` / `watchThrottle()`, the `bq-error` / `bq
 | `watchDebounce()` | Debounced watcher callback      |
 | `watchThrottle()` | Throttled watcher callback      |
 | `runTask()`       | One-off zero-build worker task  |
+| `createRpcWorker()` | Named worker RPC dispatch     |
 
 | 1.9.0 API                                                                     | Reminder                                              |
 | ----------------------------------------------------------------------------- | ----------------------------------------------------- |

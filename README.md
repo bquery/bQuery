@@ -128,7 +128,13 @@ import {
 } from '@bquery/bquery/reactive';
 
 // Concurrency only
-import { createTaskWorker, getConcurrencySupport, runTask } from '@bquery/bquery/concurrency';
+import {
+  callWorkerMethod,
+  createRpcWorker,
+  createTaskWorker,
+  getConcurrencySupport,
+  runTask,
+} from '@bquery/bquery/concurrency';
 
 // Components only
 import {
@@ -183,7 +189,7 @@ import { storyHtml, when } from '@bquery/bquery/storybook';
 | ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Core**      | Selectors, DOM manipulation, events, traversal, and typed utilities                                                                                |
 | **Reactive**  | `signal`, `computed`, `effect`, `watchDebounce`, `watchThrottle`, async data, HTTP clients, polling, pagination, WebSocket / SSE, and REST helpers |
-| **Concurrency** | Zero-build worker task helpers with explicit lifecycle, timeout, abort, and support detection                                                    |
+| **Concurrency** | Zero-build worker task and RPC helpers with explicit lifecycle, timeout, abort, support detection, and named method dispatch                    |
 | **Component** | Typed Web Components with scoped reactivity and configurable Shadow DOM                                                                            |
 | **Storybook** | Safe story template helpers with boolean-attribute shorthand                                                                                       |
 | **Motion**    | View transitions, FLIP, morphing, parallax, typewriter, springs, and timelines                                                                     |
@@ -202,7 +208,7 @@ import { storyHtml, when } from '@bquery/bquery/storybook';
 | **Testing**   | Component mounting, mock signals/router helpers, and async test utilities                                                                          |
 | **SSR**       | Server-side rendering, hydration, and store-state serialization                                                                                    |
 
-Storybook authoring helpers are also available as a dedicated entry point via `@bquery/bquery/storybook`. Worker-task helpers ship as a dedicated entry point via `@bquery/bquery/concurrency`.
+Storybook authoring helpers are also available as a dedicated entry point via `@bquery/bquery/storybook`. Worker-task and RPC helpers ship as a dedicated entry point via `@bquery/bquery/concurrency`.
 
 ## Quick examples
 
@@ -299,6 +305,22 @@ const total = await runTask(
 );
 
 console.log(total); // 10
+```
+
+### Concurrency – RPC-style worker methods
+
+```ts
+import { createRpcWorker } from '@bquery/bquery/concurrency';
+
+const rpc = createRpcWorker({
+  formatUser: ({ first, last }: { first: string; last: string }) => `${last}, ${first}`,
+  sum: ({ values }: { values: number[] }) => values.reduce((total, value) => total + value, 0),
+});
+
+console.log(await rpc.call('formatUser', { first: 'Ada', last: 'Lovelace' }));
+console.log(await rpc.call('sum', { values: [1, 2, 3] }));
+
+rpc.terminate();
 ```
 
 ### Reactive – async data & fetch

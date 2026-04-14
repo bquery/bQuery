@@ -68,11 +68,11 @@ and this project adheres to Semantic Versioning.
 
 ### Added (Unreleased)
 
-- **Concurrency**: Added the new `@bquery/bquery/concurrency` entry point with `runTask()`, `createTaskWorker()`, support detection helpers, and explicit timeout / abort / lifecycle error types for zero-build browser worker tasks.
+- **Concurrency**: Expanded `@bquery/bquery/concurrency` with Milestone 2 RPC-style communication via `createRpcWorker()` and `callWorkerMethod()`, adding explicit named method dispatch on top of the existing zero-build worker task API.
 
 ### Changed (Unreleased)
 
-- **Docs / Agent context**: Synced the README, guides, build/export metadata, and agent context files for the new concurrency module and its milestone-1 scope.
+- **Docs / Agent context**: Synced the README, guides, build/export metadata, and agent context files for the concurrency module's Milestone 2 task + RPC scope.
 
 ### Fixed (Unreleased)
 
