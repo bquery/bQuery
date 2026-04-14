@@ -179,7 +179,10 @@ const sendSocketData = (socket: WebSocket, data: WebSocketSendData): void => {
 
   if (typeof SharedArrayBuffer !== 'undefined' && data instanceof SharedArrayBuffer) {
     socket.send(data as unknown as BufferSource);
+    return;
   }
+
+  throw new TypeError('Unsupported WebSocket payload type.');
 };
 
 // ---------------------------------------------------------------------------
