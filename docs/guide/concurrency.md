@@ -2,25 +2,29 @@
 
 The concurrency module adds a small, explicit browser-side worker layer for bQuery's zero-build model.
 
-It is intentionally narrower than `threadts-universal`: milestone 1 focuses on **safe task execution**, **lifecycle cleanup**, **timeout/abort handling**, and **support detection** without introducing pools, decorators, or runtime-specific adapters that would bloat the package.
+It is intentionally narrower than `threadts-universal`: Milestones 1 and 2 focus on **safe task execution**, **explicit RPC-style method dispatch**, **lifecycle cleanup**, **timeout/abort handling**, and **support detection** without introducing pools, decorators, or runtime-specific adapters that would bloat the package.
 
 ## Import
 
 ```ts
 import {
   createTaskWorker,
+  createRpcWorker,
+  callWorkerMethod,
   getConcurrencySupport,
   isConcurrencySupported,
   runTask,
 } from '@bquery/bquery/concurrency';
 ```
 
-## Milestone 1 scope
+## Current scope
 
 ### Included now
 
 - One-off worker execution via `runTask()`
 - Reusable single-task workers via `createTaskWorker()`
+- Named request/response dispatch via `createRpcWorker()`
+- One-off RPC method execution via `callWorkerMethod()`
 - Explicit support detection
 - Timeout handling
 - Abort handling
@@ -30,7 +34,6 @@ import {
 ### Planned for later milestones
 
 - Pools and queueing
-- RPC/request-response abstractions beyond single-task execution
 - Reactive bindings around worker state
 - Higher-level array/pipeline helpers inspired by `threadts-universal`
 
@@ -82,6 +85,47 @@ worker.terminate();
 - Calling `run()` while another task is active rejects with a `BUSY` error
 - Abort and timeout handling terminate the active worker run so the next run starts cleanly
 - Calling `terminate()` permanently disposes the worker handle
+
+## `createRpcWorker()`
+
+Use `createRpcWorker()` when one worker should expose a small set of named methods.
+
+```ts
+import { createRpcWorker } from '@bquery/bquery/concurrency';
+
+const rpc = createRpcWorker({
+  formatUser: ({ first, last }: { first: string; last: string }) => `${last}, ${first}`,
+  sum: ({ values }: { values: number[] }) => values.reduce((total, value) => total + value, 0),
+});
+
+console.log(await rpc.call('formatUser', { first: 'Ada', last: 'Lovelace' }));
+console.log(await rpc.call('sum', { values: [1, 2, 3, 4] }));
+
+rpc.terminate();
+```
+
+### RPC behavior
+
+- Only explicitly provided method names can be called
+- Unknown methods reject with `code: 'METHOD_NOT_FOUND'`
+- The current Milestone 2 API still processes **one call at a time per worker**
+- Timeout and abort handling reset the worker so the next call starts cleanly
+
+## `callWorkerMethod()`
+
+Use `callWorkerMethod()` when you want one RPC call without manually managing a worker handle.
+
+```ts
+import { callWorkerMethod } from '@bquery/bquery/concurrency';
+
+const total = await callWorkerMethod(
+  {
+    sum: ({ values }: { values: number[] }) => values.reduce((result, value) => result + value, 0),
+  },
+  'sum',
+  { values: [2, 4, 6] }
+);
+```
 
 ## Timeout and abort
 

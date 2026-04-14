@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'bun:test';
 import {
+  callWorkerMethod,
+  createRpcWorker,
   createTaskWorker,
   getConcurrencySupport,
   isConcurrencySupported,
@@ -254,6 +256,129 @@ describe('concurrency/createTaskWorker', () => {
       await expect(worker.run({ delay: 0, value: 1 })).rejects.toMatchObject({
         code: 'TERMINATED',
       });
+    });
+  });
+});
+
+describe('concurrency/createRpcWorker', () => {
+  it('calls multiple named methods sequentially on the same worker', async () => {
+    await withMockWorkerEnvironment(async () => {
+      const rpc = createRpcWorker({
+        formatUser: ({ first, last }: { first: string; last: string }) => `${last}, ${first}`,
+        sum: ({ values }: { values: number[] }) => values.reduce((total, value) => total + value, 0),
+      });
+
+      expect(await rpc.call('formatUser', { first: 'Ada', last: 'Lovelace' })).toBe(
+        'Lovelace, Ada'
+      );
+      expect(await rpc.call('sum', { values: [1, 2, 3, 4] })).toBe(10);
+      rpc.terminate();
+    });
+  });
+
+  it('rejects unknown methods with an explicit method error code', async () => {
+    await withMockWorkerEnvironment(async () => {
+      const rpc = createRpcWorker({
+        square: (value: number) => value * value,
+      });
+
+      await expect(rpc.call('cube' as 'square', 3)).rejects.toMatchObject({
+        code: 'METHOD_NOT_FOUND',
+      });
+      rpc.terminate();
+    });
+  });
+
+  it('propagates RPC handler errors back to the caller', async () => {
+    await withMockWorkerEnvironment(async () => {
+      const rpc = createRpcWorker({
+        fail: () => {
+          throw new Error('boom');
+        },
+      });
+
+      await expect(rpc.call('fail', undefined)).rejects.toMatchObject({
+        message: 'boom',
+      });
+      rpc.terminate();
+    });
+  });
+
+  it('rejects overlapping RPC calls on the same worker', async () => {
+    await withMockWorkerEnvironment(async () => {
+      const rpc = createRpcWorker({
+        wait: async ({ delay, value }: { delay: number; value: number }) => {
+          await new Promise((resolve) => setTimeout(resolve, delay));
+          return value;
+        },
+      });
+
+      const firstCall = rpc.call('wait', { delay: 20, value: 1 });
+      await expect(rpc.call('wait', { delay: 0, value: 2 })).rejects.toMatchObject({
+        code: 'BUSY',
+      });
+      expect(await firstCall).toBe(1);
+      rpc.terminate();
+    });
+  });
+
+  it('times out and aborts RPC calls with the same cleanup guarantees as task workers', async () => {
+    await withMockWorkerEnvironment(async () => {
+      const rpc = createRpcWorker({
+        wait: async ({ delay, value }: { delay: number; value: number }) => {
+          await new Promise((resolve) => setTimeout(resolve, delay));
+          return value;
+        },
+      });
+
+      await expect(rpc.call('wait', { delay: 30, value: 2 }, { timeout: 5 })).rejects.toBeInstanceOf(
+        TaskWorkerTimeoutError
+      );
+      expect(await rpc.call('wait', { delay: 0, value: 3 })).toBe(3);
+
+      const controller = new AbortController();
+      const pending = rpc.call('wait', { delay: 30, value: 4 }, { signal: controller.signal });
+      controller.abort();
+
+      await expect(pending).rejects.toBeInstanceOf(TaskWorkerAbortError);
+      expect(await rpc.call('wait', { delay: 0, value: 5 })).toBe(5);
+      rpc.terminate();
+    });
+  });
+
+  it('rejects the in-flight RPC call when the worker is terminated', async () => {
+    await withMockWorkerEnvironment(async () => {
+      const rpc = createRpcWorker({
+        wait: async ({ delay, value }: { delay: number; value: number }) => {
+          await new Promise((resolve) => setTimeout(resolve, delay));
+          return value;
+        },
+      });
+
+      const pending = rpc.call('wait', { delay: 30, value: 8 });
+      rpc.terminate();
+
+      await expect(pending).rejects.toMatchObject({ code: 'TERMINATED' });
+      await expect(rpc.call('wait', { delay: 0, value: 1 })).rejects.toMatchObject({
+        code: 'TERMINATED',
+      });
+    });
+  });
+});
+
+describe('concurrency/callWorkerMethod', () => {
+  it('executes one RPC method in a fresh worker', async () => {
+    await withMockWorkerEnvironment(async () => {
+      const total = await callWorkerMethod(
+        {
+          sum: ({ values }: { values: number[] }) =>
+            values.reduce((result, value) => result + value, 0),
+        },
+        'sum',
+        { values: [2, 4, 6] }
+      );
+
+      expect(total).toBe(12);
     });
   });
 });

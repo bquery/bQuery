@@ -1,5 +1,5 @@
 /**
- * Zero-build worker task helpers.
+ * RPC-style worker communication helpers.
  *
  * @module bquery/concurrency
  */
@@ -20,12 +20,12 @@ import {
 } from './internal';
 import { isConcurrencySupported } from './support';
 import type {
-  CreateTaskWorkerOptions,
-  RunTaskOptions,
+  CallWorkerMethodOptions,
+  CreateRpcWorkerOptions,
+  RpcWorker,
   TaskRunOptions,
-  TaskWorker,
   TaskWorkerState,
-  WorkerTaskHandler,
+  WorkerRpcHandlers,
 } from './types';
 
 interface WorkerSuccessMessage<TResult> {
@@ -50,40 +50,80 @@ interface PendingRun<TResult> {
   timeoutId?: ReturnType<typeof setTimeout>;
 }
 
-const WORKER_RUN_MESSAGE = 'bq:run';
+const WORKER_RPC_MESSAGE = 'bq:rpc';
 
-const createWorkerScript = (handlerSource: string): string => {
+const validateRpcHandlers = <TRoutes extends WorkerRpcHandlers>(
+  handlers: TRoutes
+): Array<[keyof TRoutes & string, string]> => {
+  const methodNames = Object.keys(handlers) as Array<keyof TRoutes & string>;
+
+  if (methodNames.length === 0) {
+    throw new TaskWorkerSerializationError(
+      'RPC workers require at least one standalone method handler.'
+    );
+  }
+
+  return methodNames.map((method) => {
+    const handler = handlers[method];
+    if (typeof handler !== 'function') {
+      throw new TaskWorkerSerializationError(
+        `RPC handler "${method}" must be a standalone function.`
+      );
+    }
+
+    return [method, validateTaskHandler(handler)];
+  });
+};
+
+const createRpcWorkerScript = (handlerSources: Array<[string, string]>): string => {
+  const assignments = handlerSources
+    .map(([method, source]) => `handlers[${JSON.stringify(method)}] = (${source});`)
+    .join('\n');
+
   return `'use strict';
 const serializeError = (error) => {
   if (error && typeof error === 'object') {
     return {
       code: typeof error.code === 'string' ? error.code : undefined,
-      message: typeof error.message === 'string' ? error.message : 'Worker task failed.',
+      message: typeof error.message === 'string' ? error.message : 'Worker RPC call failed.',
       name: typeof error.name === 'string' ? error.name : 'Error',
       stack: typeof error.stack === 'string' ? error.stack : undefined,
     };
   }
 
   return {
-    message: typeof error === 'string' ? error : 'Worker task failed.',
+    message: typeof error === 'string' ? error : 'Worker RPC call failed.',
     name: 'Error',
   };
 };
 
-const handler = (${handlerSource});
+const handlers = Object.create(null);
+${assignments}
 
-if (typeof handler !== 'function') {
-  throw new TypeError('The worker task handler must evaluate to a function.');
-}
+const hasOwn = Object.prototype.hasOwnProperty;
 
 self.onmessage = async (event) => {
   const message = event.data;
-  if (!message || message.type !== '${WORKER_RUN_MESSAGE}') {
+  if (!message || message.type !== '${WORKER_RPC_MESSAGE}') {
+    return;
+  }
+
+  const method = typeof message.method === 'string' ? message.method : '';
+  if (!hasOwn.call(handlers, method)) {
+    self.postMessage({
+      error: {
+        code: 'METHOD_NOT_FOUND',
+        message: 'Unknown RPC method "' + String(method) + '".',
+        name: 'TaskWorkerError',
+      },
+      id: message.id,
+      type: 'bq:error',
+    });
     return;
   }
 
   try {
-    const result = await handler(message.payload);
+    const result = await handlers[method](message.payload);
     self.postMessage({ id: message.id, result, type: 'bq:result' });
   } catch (error) {
     self.postMessage({ error: serializeError(error), id: message.id, type: 'bq:error' });
@@ -92,32 +132,40 @@ self.onmessage = async (event) => {
 };
 
 /**
- * Creates a reusable worker task handle around a standalone function.
+ * Creates a reusable RPC-style worker with explicit named method dispatch.
+ *
+ * The worker processes one request at a time to keep lifecycle, timeout, abort,
+ * and cleanup semantics aligned with the minimal Milestone 1 task API.
  *
  * @example
  * ```ts
- * import { createTaskWorker } from '@bquery/bquery/concurrency';
+ * import { createRpcWorker } from '@bquery/bquery/concurrency';
  *
- * const worker = createTaskWorker((value: number) => value * value, { name: 'square-worker' });
- * const result = await worker.run(12);
- * worker.terminate();
+ * const rpc = createRpcWorker({
+ *   sum: ({ values }: { values: number[] }) => values.reduce((total, value) => total + value, 0),
+ *   double: (value: number) => value * 2,
+ * });
+ *
+ * const total = await rpc.call('sum', { values: [1, 2, 3] });
+ * rpc.terminate();
  * ```
  */
-export function createTaskWorker<TInput = void, TResult = unknown>(
-  handler: WorkerTaskHandler<TInput, TResult>,
-  options: CreateTaskWorkerOptions = {}
-): TaskWorker<TInput, TResult> {
+export function createRpcWorker<TRoutes extends WorkerRpcHandlers>(
+  handlers: TRoutes,
+  options: CreateRpcWorkerOptions = {}
+): RpcWorker<TRoutes> {
   if (!isConcurrencySupported()) {
     throw new TaskWorkerUnsupportedError();
   }
 
-  const handlerSource = validateTaskHandler(handler);
-  const scriptSource = createWorkerScript(handlerSource);
+  const handlerSources = validateRpcHandlers(handlers);
+  const scriptSource = createRpcWorkerScript(handlerSources);
   const defaultTimeout = normalizeTimeout(options.timeout);
   let disposed = false;
   let worker: Worker | null = null;
-  let pending: PendingRun<TResult> | null = null;
+  let pending: PendingRun<unknown> | null = null;
   let nextRunId = 0;
+  let pendingAbortSignal: AbortSignal | undefined;
 
   const cleanupPending = (): void => {
     if (!pending) {
@@ -135,8 +183,6 @@ export function createTaskWorker<TInput = void, TResult = unknown>(
     pending = null;
     pendingAbortSignal = undefined;
   };
-
-  let pendingAbortSignal: AbortSignal | undefined;
 
   const detachWorker = (): void => {
     if (!worker) {
@@ -161,7 +207,7 @@ export function createTaskWorker<TInput = void, TResult = unknown>(
 
   const ensureWorker = (): Worker => {
     if (disposed) {
-      throw new TaskWorkerError('The task worker has already been terminated.', 'TERMINATED');
+      throw new TaskWorkerError('The RPC worker has already been terminated.', 'TERMINATED');
     }
 
     if (worker) {
@@ -169,7 +215,7 @@ export function createTaskWorker<TInput = void, TResult = unknown>(
     }
 
     const instance = createWorkerInstance(scriptSource, options.name);
-    instance.onmessage = (event: MessageEvent<WorkerResponse<TResult>>) => {
+    instance.onmessage = (event: MessageEvent<WorkerResponse<unknown>>) => {
       const current = pending;
       if (!current) {
         return;
@@ -191,7 +237,7 @@ export function createTaskWorker<TInput = void, TResult = unknown>(
     };
 
     instance.onerror = (event: ErrorEvent) => {
-      const error = new TaskWorkerError(event.message || 'Worker execution failed.', 'WORKER');
+      const error = new TaskWorkerError(event.message || 'Worker RPC execution failed.', 'WORKER');
       detachWorker();
       rejectPending(error);
     };
@@ -216,17 +262,19 @@ export function createTaskWorker<TInput = void, TResult = unknown>(
 
       return pending ? 'running' : 'idle';
     },
-    run(input: TInput, runOptions: TaskRunOptions = {}): Promise<TResult> {
+    call<TMethod extends keyof TRoutes & string>(
+      method: TMethod,
+      input: Parameters<TRoutes[TMethod]>[0],
+      runOptions: TaskRunOptions = {}
+    ): Promise<Awaited<ReturnType<TRoutes[TMethod]>>> {
       if (disposed) {
-        return Promise.reject(
-          new TaskWorkerError('The task worker has already been terminated.', 'TERMINATED')
-        );
+        return Promise.reject(new TaskWorkerError('The RPC worker has already been terminated.', 'TERMINATED'));
       }
 
       if (pending) {
         return Promise.reject(
           new TaskWorkerError(
-            'This task worker is already running a task. Create another worker or wait for the current task to finish.',
+            'This RPC worker is already processing a request. Wait for the current call to finish or create another worker.',
             'BUSY'
           )
         );
@@ -240,8 +288,8 @@ export function createTaskWorker<TInput = void, TResult = unknown>(
       const timeout = normalizeTimeout(runOptions.timeout) ?? defaultTimeout;
       const runId = nextRunId++;
 
-      return new Promise<TResult>((resolve, reject) => {
-        const current: PendingRun<TResult> = {
+      return new Promise<Awaited<ReturnType<TRoutes[TMethod]>>>((resolve, reject) => {
+        const current: PendingRun<Awaited<ReturnType<TRoutes[TMethod]>>> = {
           id: runId,
           reject,
           resolve,
@@ -258,23 +306,23 @@ export function createTaskWorker<TInput = void, TResult = unknown>(
         if (timeout !== undefined) {
           current.timeoutId = setTimeout(() => {
             resetAfterInterruptedRun(
-              new TaskWorkerTimeoutError(`Worker task exceeded the timeout of ${timeout}ms.`)
+              new TaskWorkerTimeoutError(`Worker RPC call exceeded the timeout of ${timeout}ms.`)
             );
           }, timeout);
         }
 
-        pending = current;
+        pending = current as PendingRun<unknown>;
 
         try {
           activeWorker.postMessage(
-            { id: runId, payload: input, type: WORKER_RUN_MESSAGE },
+            { id: runId, method, payload: input, type: WORKER_RPC_MESSAGE },
             runOptions.transfer ?? []
           );
         } catch (error) {
           detachWorker();
           rejectPending(
             new TaskWorkerSerializationError(
-              'Failed to serialize the task input or transfer list for worker execution.',
+              'Failed to serialize the RPC payload or transfer list for worker execution.',
               error
             )
           );
@@ -288,30 +336,42 @@ export function createTaskWorker<TInput = void, TResult = unknown>(
 
       disposed = true;
       detachWorker();
-      rejectPending(new TaskWorkerError('The task worker was terminated.', 'TERMINATED'));
+      rejectPending(new TaskWorkerError('The RPC worker was terminated.', 'TERMINATED'));
     },
   };
 }
 
 /**
- * Executes a single task in a fresh worker and tears it down afterwards.
+ * Executes a single named RPC method in a fresh worker and tears it down after
+ * the response is received.
  *
  * @example
  * ```ts
- * import { runTask } from '@bquery/bquery/concurrency';
+ * import { callWorkerMethod } from '@bquery/bquery/concurrency';
  *
- * const result = await runTask((value: number) => value * 2, 21);
+ * const total = await callWorkerMethod(
+ *   {
+ *     sum: ({ values }: { values: number[] }) =>
+ *       values.reduce((result, value) => result + value, 0),
+ *   },
+ *   'sum',
+ *   { values: [1, 2, 3] }
+ * );
  * ```
  */
-export async function runTask<TInput = void, TResult = unknown>(
-  handler: WorkerTaskHandler<TInput, TResult>,
-  input: TInput,
-  options: RunTaskOptions = {}
-): Promise<TResult> {
-  const worker = createTaskWorker(handler, options);
+export async function callWorkerMethod<
+  TRoutes extends WorkerRpcHandlers,
+  TMethod extends keyof TRoutes & string,
+>(
+  handlers: TRoutes,
+  method: TMethod,
+  input: Parameters<TRoutes[TMethod]>[0],
+  options: CallWorkerMethodOptions = {}
+): Promise<Awaited<ReturnType<TRoutes[TMethod]>>> {
+  const worker = createRpcWorker(handlers, options);
 
   try {
-    return await worker.run(input, options);
+    return await worker.call(method, input, options);
   } finally {
     worker.terminate();
   }

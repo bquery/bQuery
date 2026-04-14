@@ -8,6 +8,7 @@
  * @module bquery/concurrency
  */
 
+export { callWorkerMethod, createRpcWorker } from './rpc';
 export { createTaskWorker, runTask } from './task';
 export { getConcurrencySupport, isConcurrencySupported } from './support';
 export {
@@ -20,11 +21,16 @@ export {
 
 export type {
   ConcurrencySupport,
+  CallWorkerMethodOptions,
+  CreateRpcWorkerOptions,
   CreateTaskWorkerOptions,
+  RpcWorker,
   RunTaskOptions,
   TaskRunOptions,
   TaskWorker,
   TaskWorkerErrorCode,
   TaskWorkerState,
+  WorkerRpcHandler,
+  WorkerRpcHandlers,
   WorkerTaskHandler,
 } from './types';

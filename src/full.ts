@@ -142,6 +142,8 @@ export type {
 // Concurrency Module: Zero-build worker task helpers
 // ============================================================================
 export {
+  callWorkerMethod,
+  createRpcWorker,
   createTaskWorker,
   getConcurrencySupport,
   isConcurrencySupported,
@@ -153,13 +155,18 @@ export {
   TaskWorkerUnsupportedError,
 } from './concurrency/index';
 export type {
+  CallWorkerMethodOptions,
   ConcurrencySupport,
+  CreateRpcWorkerOptions,
   CreateTaskWorkerOptions,
+  RpcWorker,
   RunTaskOptions,
   TaskRunOptions,
   TaskWorker,
   TaskWorkerErrorCode,
   TaskWorkerState,
+  WorkerRpcHandler,
+  WorkerRpcHandlers,
   WorkerTaskHandler,
 } from './concurrency/index';
 

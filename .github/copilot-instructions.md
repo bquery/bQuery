@@ -66,7 +66,7 @@ Public modules live under `src/<module>/index.ts`. Important module groups:
 
 - `core` — `$`, `$$`, DOM wrappers, traversal, manipulation, events, utilities
 - `reactive` — signals, computed values, scopes, batching, watch/watchDebounce/watchThrottle, async helpers, HTTP, polling/pagination, realtime transport, REST helpers
-- `concurrency` — zero-build worker tasks, support detection, timeout/abort, reusable worker lifecycle
+- `concurrency` — zero-build worker tasks, explicit RPC-style method dispatch, support detection, timeout/abort, reusable worker lifecycle
 - `component` — Web Components helpers, typed props, lifecycle hooks, shadow DOM helpers
 - `motion` — transitions, FLIP, springs, timelines, parallax, typewriter, reduced motion
 - `security` — sanitization, Trusted Types, CSP helpers
