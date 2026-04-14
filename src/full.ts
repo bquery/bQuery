@@ -142,6 +142,7 @@ export type {
 // Concurrency Module: Zero-build worker task helpers
 // ============================================================================
 export {
+  batchTasks,
   callWorkerMethod,
   createRpcPool,
   createRpcWorker,
@@ -149,6 +150,8 @@ export {
   createTaskWorker,
   getConcurrencySupport,
   isConcurrencySupported,
+  map,
+  parallel,
   runTask,
   TaskWorkerAbortError,
   TaskWorkerError,
@@ -163,6 +166,11 @@ export type {
   CreateRpcWorkerOptions,
   CreateTaskPoolOptions,
   CreateTaskWorkerOptions,
+  ParallelMapHandler,
+  ParallelMapOptions,
+  ParallelOptions,
+  ParallelResults,
+  ParallelTask,
   RpcPool,
   RpcWorker,
   RunTaskOptions,

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'bun:test';
 import {
+  batchTasks,
   callWorkerMethod,
   createRpcPool,
   createRpcWorker,
@@ -7,6 +8,8 @@ import {
   createTaskWorker,
   getConcurrencySupport,
   isConcurrencySupported,
+  map,
+  parallel,
   runTask,
   TaskWorkerAbortError,
   TaskWorkerSerializationError,
@@ -381,6 +384,86 @@ describe('concurrency/callWorkerMethod', () => {
       );
 
       expect(total).toBe(12);
+    });
+  });
+});
+
+describe('concurrency/high-level helpers', () => {
+  it('runs mixed standalone tasks in parallel and preserves result order', async () => {
+    await withMockWorkerEnvironment(async () => {
+      const results = await parallel([
+        { handler: (value: number) => value * 2, input: 5 },
+        {
+          handler: ({ first, last }: { first: string; last: string }) => `${last}, ${first}`,
+          input: { first: 'Ada', last: 'Lovelace' },
+        },
+        {
+          handler: async ({ delay, value }: { delay: number; value: number }) => {
+            await new Promise((resolve) => setTimeout(resolve, delay));
+            return value + 1;
+          },
+          input: { delay: 5, value: 9 },
+        },
+      ]);
+
+      expect(results).toEqual([10, 'Lovelace, Ada', 10]);
+    });
+  });
+
+  it('executes tasks in sequential batches via batchTasks', async () => {
+    await withMockWorkerEnvironment(async () => {
+      const results = await batchTasks(
+        [
+          { handler: (value: number) => value * 2, input: 1 },
+          { handler: (value: number) => value * 2, input: 2 },
+          { handler: (value: number) => value * 2, input: 3 },
+        ],
+        2,
+        { concurrency: 2 }
+      );
+
+      expect(results).toEqual([2, 4, 6]);
+    });
+  });
+
+  it('rejects invalid batch sizes for batchTasks', async () => {
+    await withMockWorkerEnvironment(async () => {
+      await expect(
+        batchTasks([{ handler: (value: number) => value, input: 1 }], 0)
+      ).rejects.toBeInstanceOf(RangeError);
+    });
+  });
+
+  it('maps arrays in parallel with chunking and index-aware callbacks', async () => {
+    await withMockWorkerEnvironment(async () => {
+      const results = await map(
+        [1, 2, 3, 4],
+        async (value, index) => {
+          await new Promise((resolve) => setTimeout(resolve, 2));
+          return value + index;
+        },
+        { batchSize: 2, concurrency: 2 }
+      );
+
+      expect(results).toEqual([1, 3, 5, 7]);
+    });
+  });
+
+  it('aborts queued or running map chunks through a shared signal', async () => {
+    await withMockWorkerEnvironment(async () => {
+      const controller = new AbortController();
+      const pending = map(
+        [1, 2, 3, 4],
+        async (value) => {
+          await new Promise((resolve) => setTimeout(resolve, 20));
+          return value * 2;
+        },
+        { batchSize: 1, concurrency: 1, signal: controller.signal }
+      );
+
+      controller.abort();
+
+      await expect(pending).rejects.toBeInstanceOf(TaskWorkerAbortError);
     });
   });
 });

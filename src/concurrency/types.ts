@@ -96,6 +96,43 @@ export interface CreateRpcPoolOptions extends CreateRpcWorkerOptions {
   maxQueue?: number;
 }
 
+/** Standalone task descriptor for `parallel()` / `batchTasks()`. */
+export interface ParallelTask<TInput = unknown, TResult = unknown> {
+  /** Standalone handler revived inside a worker context. */
+  handler: WorkerTaskHandler<TInput, TResult>;
+  /** Serializable payload for the handler. */
+  input: TInput;
+  /** Optional per-task timeout, abort, and transfer options. */
+  options?: TaskRunOptions;
+}
+
+/** Shared pool options for high-level parallel task helpers. */
+export interface ParallelOptions extends CreateTaskPoolOptions {}
+
+/** Callback signature used by `map()` for parallel array processing. */
+export type ParallelMapHandler<TInput, TResult> = (
+  value: TInput,
+  index: number
+) => TResult | Promise<TResult>;
+
+/** Options for `map()` chunking and cancellation behavior. */
+export interface ParallelMapOptions extends CreateTaskPoolOptions {
+  /**
+   * Number of array items grouped into each worker run.
+   * Defaults to `1`.
+   */
+  batchSize?: number;
+  /** AbortSignal shared across all queued or running map chunks. */
+  signal?: AbortSignal;
+}
+
+/** Result tuple inferred from a `parallel()` or `batchTasks()` task list. */
+export type ParallelResults<TTasks extends readonly ParallelTask[]> = {
+  [TIndex in keyof TTasks]: TTasks[TIndex] extends ParallelTask<any, infer TResult>
+    ? Awaited<TResult>
+    : never;
+};
+
 /** Feature-detection snapshot for the browser concurrency runtime. */
 export interface ConcurrencySupport {
   /** `Worker` constructor availability. */
@@ -113,8 +150,8 @@ export interface ConcurrencySupport {
 /**
  * Reusable worker-task handle.
  *
- * A task worker runs one task at a time. Queueing and pooling are intentionally
- * left for later milestones so the initial API stays explicit and lightweight.
+ * A task worker runs one task at a time. Queueing and pooling live in the
+ * separate `TaskPool` / `RpcPool` APIs so the worker handle itself stays explicit.
  */
 export interface TaskWorker<TInput = void, TResult = unknown> {
   /** Current lifecycle state. */

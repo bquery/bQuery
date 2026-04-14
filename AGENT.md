@@ -143,6 +143,9 @@ Each `src/<module>/index.ts` re-exports the module's public API.
 | `createRpcWorker(handlers, options?)`                 | function  | Create a reusable named-method worker for explicit RPC-style calls |
 | `callWorkerMethod(handlers, method, input, options?)` | function  | Execute one named worker method in a fresh worker                  |
 | `createRpcPool(handlers, options?)`                   | function  | Create a bounded reusable RPC-worker pool with FIFO queueing       |
+| `parallel(tasks, options?)`                           | function  | Execute an explicit list of standalone tasks across a worker pool  |
+| `batchTasks(tasks, batchSize?, options?)`             | function  | Execute task lists in sequential batches using parallel workers    |
+| `map(values, mapper, options?)`                       | function  | Map arrays in parallel with optional chunking via worker pools     |
 | `getConcurrencySupport()` / `isConcurrencySupported()` | functions | Detect whether inline browser worker tasks are available           |
 | `TaskWorkerError`                                     | class     | Base error with stable `code` values for concurrency failures      |
 | `TaskWorkerAbortError`                                | class     | Error thrown when a task run is aborted                            |

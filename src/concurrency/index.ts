@@ -1,14 +1,15 @@
 /**
  * Optional concurrency helpers built on zero-build Web Workers.
  *
- * The initial milestone intentionally focuses on explicit task execution,
- * lifecycle cleanup, timeout handling, and cancellation without introducing
- * pools, decorators, or build-time worker glue.
+ * The concurrency surface intentionally stays browser-first and explicit:
+ * worker tasks, RPC helpers, bounded pools, and thin high-level helpers
+ * without decorators, hidden global runtimes, or build-time worker glue.
  *
  * @module bquery/concurrency
  */
 
 export { callWorkerMethod, createRpcWorker } from './rpc';
+export { batchTasks, map, parallel } from './high-level';
 export { createRpcPool, createTaskPool } from './pool';
 export { createTaskWorker, runTask } from './task';
 export { getConcurrencySupport, isConcurrencySupported } from './support';
@@ -22,6 +23,11 @@ export {
 
 export type {
   ConcurrencySupport,
+  ParallelMapHandler,
+  ParallelMapOptions,
+  ParallelOptions,
+  ParallelResults,
+  ParallelTask,
   CallWorkerMethodOptions,
   CreateRpcPoolOptions,
   CreateRpcWorkerOptions,
