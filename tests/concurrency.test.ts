@@ -221,7 +221,7 @@ describe('concurrency/runTask', () => {
   it('ignores overridden function toString() values during task validation', async () => {
     await withMockWorkerEnvironment(async () => {
       let customToStringCalled = false;
-      const handler = ((value: number) => value * 2) as WorkerTaskHandler<number, number>;
+      const handler: WorkerTaskHandler<number, number> = (value: number) => value * 2;
 
       Object.defineProperty(handler, 'toString', {
         value: () => {
@@ -510,6 +510,7 @@ describe('concurrency/high-level helpers', () => {
 
   it('maps sparse arrays without crashing chunk execution', async () => {
     await withMockWorkerEnvironment(async () => {
+      // Intentionally sparse: middle element tests hole handling.
       const values = [1, , 3] as Array<number | undefined>;
       const results = await map(
         values,
