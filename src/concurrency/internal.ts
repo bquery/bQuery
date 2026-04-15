@@ -29,6 +29,8 @@ const TASK_WORKER_ERROR_CODES = new Set<TaskWorkerErrorCode>([
   'WORKER',
 ]);
 
+const NATIVE_FUNCTION_SOURCE_RE = /\{\s*\[native code\]\s*\}$/u;
+
 /** @internal */
 export const isTaskWorkerErrorCode = (code: string | undefined): code is TaskWorkerErrorCode => {
   return typeof code === 'string' && TASK_WORKER_ERROR_CODES.has(code as TaskWorkerErrorCode);
@@ -49,7 +51,7 @@ export const validateTaskHandler = <TInput, TResult>(
 ): string => {
   const source = Function.prototype.toString.call(handler).trim();
 
-  if (!source || source.includes('[native code]')) {
+  if (!source || NATIVE_FUNCTION_SOURCE_RE.test(source)) {
     throw new TaskWorkerSerializationError(
       'Task handlers must be standalone user-defined functions or arrow functions.'
     );

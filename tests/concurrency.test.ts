@@ -220,6 +220,16 @@ describe('concurrency/runTask', () => {
     });
   });
 
+  it('allows user-defined handlers that mention "[native code]" in their own source', async () => {
+    await withMockWorkerEnvironment(async () => {
+      await expect(
+        runTask(() => {
+          return '[native code]';
+        }, undefined)
+      ).resolves.toBe('[native code]');
+    });
+  });
+
   it('ignores overridden function toString() values during task validation', async () => {
     await withMockWorkerEnvironment(async () => {
       let customToStringCalled = false;
