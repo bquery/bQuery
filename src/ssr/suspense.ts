@@ -42,8 +42,14 @@ interface SuspenseSlot {
 }
 
 type SettledSuspenseSlot =
-  | { slot: SuspenseSlot; ok: true; value: unknown }
-  | { slot: SuspenseSlot; ok: false; error: unknown };
+  | { index: number; slot: SuspenseSlot; ok: true; value: unknown }
+  | { index: number; slot: SuspenseSlot; ok: false; error: unknown };
+
+interface PendingSuspenseEntry {
+  index: number;
+  slot: SuspenseSlot;
+  settled: Promise<SettledSuspenseSlot>;
+}
 
 /**
  * Whitelist regex for slot/template IDs. The IDs end up inside an inline
@@ -366,22 +372,26 @@ export const renderToStreamSuspense = (
         // Resolve slots in arrival order so the network can flush as soon as
         // each promise settles. Track entries by array position because
         // multiple slots may intentionally share the same promise instance.
-        const pending = slots.map((slot) => ({
-          slot,
+        const pending = new Map<number, PendingSuspenseEntry>(
+          slots.map((slot, index) => [
+            index,
+            {
+              index,
+              slot,
           settled: slot.promise.then<SettledSuspenseSlot, SettledSuspenseSlot>(
-            (value) => ({ slot, ok: true, value }),
-            (error) => ({ slot, ok: false, error })
-          ),
-        }));
+                (value) => ({ index, slot, ok: true, value }),
+                (error) => ({ index, slot, ok: false, error })
+              ),
+            },
+          ])
+        );
 
-        while (pending.length > 0) {
+        while (pending.size > 0) {
           if (ctx.signal.aborted) {
             return;
           }
-          const settled = await Promise.race(pending.map((entry) => entry.settled));
-          const settledIndex = pending.findIndex((entry) => entry.slot.id === settled.slot.id);
-          if (settledIndex === -1) continue;
-          pending.splice(settledIndex, 1);
+          const settled = await Promise.race(Array.from(pending.values(), (entry) => entry.settled));
+          if (!pending.delete(settled.index)) continue;
           const { slot } = settled;
           const resolvedId = `${resolvedIdPrefix}-${slot.id.split('-').pop()}`;
           let resolvedHtml: string;
