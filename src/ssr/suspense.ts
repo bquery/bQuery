@@ -1,0 +1,301 @@
+/**
+ * Suspense-style out-of-order streaming for SSR.
+ *
+ * Renders the synchronous shell with `defer(...)` placeholders wrapped in
+ * `<bq-slot id="bq-s-N">…</bq-slot>` markers, flushes that initial chunk,
+ * then streams a `<template id="bq-r-N">…</template>` plus a tiny inline
+ * patch script for every resolved promise. The patch script swaps the
+ * template content into the placeholder and removes both.
+ *
+ * Honours `SSRContext.signal` for cancellation and propagates the context
+ * nonce onto every emitted `<script>` tag for CSP-strict environments.
+ *
+ * @module bquery/ssr
+ */
+
+import { isComputed, isSignal, type Signal } from '../reactive/index';
+import type { BindingContext } from '../view/types';
+import { createSSRContext, type SSRContext } from './context';
+import { renderToString } from './render';
+import type { AsyncRenderOptions } from './render-async';
+
+const DEFER_BRAND = Symbol.for('bquery.ssr.defer');
+
+interface DeferredLike<T = unknown> {
+  [DEFER_BRAND]: true;
+  promise: Promise<T>;
+  fallback?: unknown;
+}
+
+const isDeferredLike = (value: unknown): value is DeferredLike =>
+  typeof value === 'object' && value !== null &&
+  (value as Record<symbol, unknown>)[DEFER_BRAND] === true;
+
+const isReactive = (value: unknown): boolean => isSignal(value) || isComputed(value);
+
+/** A single slot collected by `renderToStreamSuspense`. */
+interface SuspenseSlot {
+  id: string;
+  key: string;
+  promise: Promise<unknown>;
+}
+
+/**
+ * Build a synchronous rendering context where every `defer(...)` value is
+ * replaced by a placeholder string and every other Promise/loader is
+ * replaced by its fallback (`undefined`). The deferred values are recorded
+ * so the streaming loop can resolve them after the shell flushes.
+ */
+const splitDeferred = (
+  context: BindingContext,
+  prefix: string
+): { syncContext: BindingContext; slots: SuspenseSlot[] } => {
+  const syncContext: BindingContext = {};
+  const slots: SuspenseSlot[] = [];
+  let counter = 0;
+  for (const [key, value] of Object.entries(context)) {
+    if (isReactive(value)) {
+      syncContext[key] = value as Signal<unknown>;
+      continue;
+    }
+    if (isDeferredLike(value)) {
+      const id = `${prefix}-${counter++}`;
+      slots.push({ id, key, promise: value.promise });
+      // Render with the fallback so the synchronous shell has *something*.
+      syncContext[key] = value.fallback;
+      continue;
+    }
+    if (value && typeof (value as Promise<unknown>).then === 'function') {
+      // Bare promises become deferred slots without a fallback.
+      const id = `${prefix}-${counter++}`;
+      slots.push({ id, key, promise: value as Promise<unknown> });
+      syncContext[key] = undefined;
+      continue;
+    }
+    syncContext[key] = value;
+  }
+  return { syncContext, slots };
+};
+
+const escapeHtml = (s: string): string =>
+  s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+const escapeAttr = (s: string): string =>
+  escapeHtml(s).replace(/"/g, '&quot;');
+
+const escapeScriptBody = (s: string): string =>
+  s
+    .replace(/<\/(script)/gi, '<\\/$1')
+    .replace(/<!--/g, '<\\!--')
+    .replace(/\u2028/g, '\\u2028')
+    .replace(/\u2029/g, '\\u2029');
+
+/** Options for `renderToStreamSuspense`. */
+export interface SuspenseStreamOptions extends AsyncRenderOptions {
+  /**
+   * Prefix used for slot/template IDs. Default: `'bq-s'` for placeholders
+   * and `'bq-r'` for resolved templates.
+   */
+  slotIdPrefix?: string;
+  /**
+   * Tag name used for the placeholder element. Default: `'bq-slot'`.
+   * Must be a valid custom-element tag (contain a `-`) so the browser keeps
+   * inner content intact.
+   */
+  slotTag?: string;
+}
+
+const buildPatchScript = (slotId: string, resolvedId: string, nonce?: string): string => {
+  const body = `(()=>{var s=document.getElementById(${JSON.stringify(slotId)});var t=document.getElementById(${JSON.stringify(resolvedId)});if(!s||!t)return;var f=t.content?t.content.cloneNode(true):t;while(s.firstChild)s.removeChild(s.firstChild);s.appendChild(f);t.parentNode&&t.parentNode.removeChild(t);s.parentNode&&s.replaceWith(...s.childNodes);})();`;
+  const nonceAttr = nonce ? ` nonce="${escapeAttr(nonce)}"` : '';
+  return `<script${nonceAttr}>${escapeScriptBody(body)}</script>`;
+};
+
+const renderResolvedFragment = (
+  _template: string,
+  fullContext: BindingContext,
+  syncContext: BindingContext,
+  key: string,
+  resolved: unknown,
+  options: SuspenseStreamOptions
+): string => {
+  // Re-render only the wrapping placeholder content. We use the original
+  // template if the user provided a slot template via context (`__slot_<key>`)
+  // or fall back to a stringification of the resolved value.
+  const slotTemplateKey = `__suspense_${key}`;
+  const slotTemplate = (fullContext as Record<string, unknown>)[slotTemplateKey];
+  if (typeof slotTemplate === 'string') {
+    return renderToString(
+      slotTemplate,
+      { ...syncContext, [key]: resolved },
+      {
+        prefix: options.prefix,
+        stripDirectives: options.stripDirectives,
+        annotateHydration: options.annotateHydration,
+      }
+    ).html;
+  }
+  // Default: stringify the resolved value (with HTML escaping).
+  if (resolved === null || resolved === undefined) return '';
+  if (typeof resolved === 'string') return escapeHtml(resolved);
+  return escapeHtml(String(resolved));
+  // NOTE: the simple template path also serves as a hint for `bq-text`-style
+  // bindings; rich nested rendering can be done by passing a slot template.
+};
+
+const replaceSlotsInShell = (
+  html: string,
+  context: BindingContext,
+  slots: SuspenseSlot[],
+  options: SuspenseStreamOptions
+): string => {
+  // Wrap the original placeholder text within a `<slotTag>` element so we can
+  // patch it on the client. Only the parts that *come from* a deferred value
+  // need wrapping; the synchronous renderer already produced them as text
+  // (the fallback). We surround the *entire* fallback text in the slot tag.
+  // To keep the renderer agnostic, we wrap the resolved value's fallback
+  // wherever the renderer placed it. We rely on a marker attribute set by the
+  // user (`bq-defer="key"`) to mark where the slot wrapper goes.
+  // Without such a marker, the slot fallback is already inlined and we
+  // append the resolved templates at the end of <body>.
+  const slotTag = options.slotTag ?? 'bq-slot';
+  let out = html;
+  for (const slot of slots) {
+    const marker = `bq-defer="${slot.key}"`;
+    // Replace `<tag ... bq-defer="key" ...>...</tag>` element by wrapping its
+    // outerHTML inside the slot wrapper. We do a tolerant match: any element
+    // whose attributes contain `bq-defer="<key>"`.
+    const re = new RegExp(
+      `<([a-zA-Z][\\w-]*)([^>]*${escapeRegExp(marker)}[^>]*)>([\\s\\S]*?)<\\/\\1>`,
+      'g'
+    );
+    out = out.replace(re, (_match, _tag: string, _attrs: string, inner: string) => {
+      return `<${slotTag} id="${escapeAttr(slot.id)}">${inner}</${slotTag}>`;
+    });
+  }
+  // If we didn't find any markers but slots exist, append placeholders at the
+  // end of <body> (or the end of html) so the user can still see updates.
+  for (const slot of slots) {
+    if (!out.includes(`id="${slot.id}"`)) {
+      const placeholder = `<${slotTag} id="${escapeAttr(slot.id)}"></${slotTag}>`;
+      const idx = out.toLowerCase().lastIndexOf('</body>');
+      if (idx === -1) out += placeholder;
+      else out = out.slice(0, idx) + placeholder + out.slice(idx);
+    }
+  }
+  // `context` reference suppressed to keep the function side-effect free
+  // for the static analysis; the render uses syncContext where needed.
+  void context;
+  return out;
+};
+
+const escapeRegExp = (input: string): string =>
+  input.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+const getEncoder = (): TextEncoder => {
+  if (typeof TextEncoder === 'undefined') {
+    throw new Error('bQuery SSR: TextEncoder is not available in this runtime.');
+  }
+  return new TextEncoder();
+};
+
+/**
+ * Renders a template into a Web `ReadableStream<Uint8Array>` with
+ * Suspense-style out-of-order streaming. The synchronous shell is flushed
+ * first; deferred slots stream in as their promises resolve.
+ *
+ * Use `bq-defer="key"` on an element whose content depends on a `defer()`
+ * value to mark where the placeholder wrapping should happen. Without the
+ * marker, resolved fragments are appended at the end of `<body>`.
+ */
+export const renderToStreamSuspense = (
+  template: string,
+  data: BindingContext,
+  options: SuspenseStreamOptions = {}
+): ReadableStream<Uint8Array> => {
+  if (typeof ReadableStream === 'undefined') {
+    throw new Error('bQuery SSR: ReadableStream is not available in this runtime.');
+  }
+  const encoder = getEncoder();
+  const ctx: SSRContext =
+    options.context ?? createSSRContext({ ...options, mode: 'stream' });
+  const slotIdPrefix = options.slotIdPrefix ?? 'bq-s';
+  const resolvedIdPrefix = `${slotIdPrefix.replace(/-s$/, '-r') || 'bq-r'}`;
+
+  return new ReadableStream<Uint8Array>({
+    async start(controller) {
+      const onAbort = () => {
+        try {
+          controller.error(new DOMException('SSR stream aborted', 'AbortError'));
+        } catch {
+          /* already closed */
+        }
+      };
+      if (ctx.signal.aborted) {
+        onAbort();
+        return;
+      }
+      ctx.signal.addEventListener('abort', onAbort, { once: true });
+
+      try {
+        const { syncContext, slots } = splitDeferred(data, slotIdPrefix);
+        // Render the synchronous shell with fallbacks.
+        const shell = renderToString(template, syncContext, {
+          prefix: options.prefix,
+          stripDirectives: options.stripDirectives,
+          annotateHydration: options.annotateHydration,
+        }).html;
+
+        const wrapped = replaceSlotsInShell(shell, syncContext, slots, options);
+        controller.enqueue(encoder.encode(wrapped));
+
+        // Resolve slots in arrival order so the network can flush as soon as
+        // each promise settles. We use Promise.race with a tracking map.
+        const pending = new Map<Promise<unknown>, SuspenseSlot>();
+        for (const slot of slots) pending.set(slot.promise, slot);
+
+        while (pending.size > 0) {
+          if (ctx.signal.aborted) {
+            return;
+          }
+          const racers = Array.from(pending.keys()).map((p) =>
+            p.then(
+              (value) => ({ p, value, error: undefined as unknown }),
+              (error) => ({ p, value: undefined, error })
+            )
+          );
+          const settled = await Promise.race(racers);
+          const slot = pending.get(settled.p)!;
+          pending.delete(settled.p);
+          const resolvedId = `${resolvedIdPrefix}-${slot.id.split('-').pop()}`;
+          let resolvedHtml: string;
+          if (settled.error !== undefined) {
+            ctx.reportError(settled.error);
+            resolvedHtml = '';
+          } else {
+            resolvedHtml = renderResolvedFragment(
+              template,
+              data,
+              syncContext,
+              slot.key,
+              settled.value,
+              options
+            );
+          }
+          const tpl = `<template id="${escapeAttr(resolvedId)}">${resolvedHtml}</template>`;
+          const patch = buildPatchScript(slot.id, resolvedId, ctx.nonce);
+          controller.enqueue(encoder.encode(tpl + patch));
+        }
+        controller.close();
+      } catch (error) {
+        try {
+          controller.error(error);
+        } catch {
+          /* already errored */
+        }
+      } finally {
+        ctx.signal.removeEventListener('abort', onAbort);
+      }
+    },
+  });
+};

@@ -13,6 +13,11 @@ import { DANGEROUS_PROTOCOLS } from '../security/constants';
 import { sanitizeHtml } from '../security/sanitize';
 import type { BindingContext } from '../view/types';
 import { getDOMParserImpl, resolveBackend } from './config';
+import {
+  cheapHash,
+  collectDirectiveSignatureFromElement,
+  HYDRATION_HASH_ATTR,
+} from './hash';
 import { renderTemplatePure } from './renderer';
 import type { RenderOptions, SSRResult } from './types';
 import { serializeStoreState } from './serialize';
@@ -209,8 +214,15 @@ const processSSRElement = (
   el: Element,
   context: BindingContext,
   prefix: string,
-  doc: Document
+  doc: Document,
+  annotateHydration = false
 ): boolean => {
+  // Capture directive signature *before* we mutate any directive attributes,
+  // so the resulting hash matches what the DOM-free renderer would emit.
+  const signature = annotateHydration
+    ? collectDirectiveSignatureFromElement(el, prefix)
+    : '';
+
   // Handle bq-if: remove element if condition is falsy
   const ifExpr = el.getAttribute(`${prefix}-if`);
   if (ifExpr !== null) {
@@ -340,8 +352,8 @@ const processSSRElement = (
           }
 
           // Recursively process the clone
-          processSSRElement(clone, itemContext, prefix, doc);
-          processSSRChildren(clone, itemContext, prefix, doc);
+          processSSRElement(clone, itemContext, prefix, doc, annotateHydration);
+          processSSRChildren(clone, itemContext, prefix, doc, annotateHydration);
 
           parent.insertBefore(clone, el);
         }
@@ -351,6 +363,10 @@ const processSSRElement = (
         return true; // Already handled children
       }
     }
+  }
+
+  if (signature) {
+    el.setAttribute(HYDRATION_HASH_ATTR, cheapHash(signature));
   }
 
   return true;
@@ -364,7 +380,8 @@ const processSSRChildren = (
   parent: Element,
   context: BindingContext,
   prefix: string,
-  doc: Document
+  doc: Document,
+  annotateHydration = false
 ): void => {
   // Process children in reverse to handle removals safely
   const children = Array.from(parent.children);
@@ -372,21 +389,21 @@ const processSSRChildren = (
     // Skip bq-for elements — they're handled by parent
     if (child.hasAttribute(`${prefix}-for`)) {
       // Process the for directive on this element
-      const keep = processSSRElement(child, context, prefix, doc);
+      const keep = processSSRElement(child, context, prefix, doc, annotateHydration);
       if (!keep) {
         child.remove();
       }
       continue;
     }
 
-    const keep = processSSRElement(child, context, prefix, doc);
+    const keep = processSSRElement(child, context, prefix, doc, annotateHydration);
     if (!keep) {
       child.remove();
       continue;
     }
 
     // Recurse into children
-    processSSRChildren(child, context, prefix, doc);
+    processSSRChildren(child, context, prefix, doc, annotateHydration);
   }
 };
 
@@ -463,7 +480,12 @@ export const renderToString = (
   data: BindingContext,
   options: RenderOptions = {}
 ): SSRResult => {
-  const { prefix = 'bq', stripDirectives = false, includeStoreState = false } = options;
+  const {
+    prefix = 'bq',
+    stripDirectives = false,
+    includeStoreState = false,
+    annotateHydration = false,
+  } = options;
 
   if (!template || typeof template !== 'string') {
     throw new Error('bQuery SSR: template must be a non-empty string.');
@@ -479,6 +501,7 @@ export const renderToString = (
     const html = renderTemplatePure(template, data, {
       prefix,
       stripDirectives,
+      annotateHydration,
     });
     let storeState: string | undefined;
     if (includeStoreState) {
@@ -505,7 +528,7 @@ export const renderToString = (
   }
 
   // Process all children of the body
-  processSSRChildren(body, data, prefix, doc);
+  processSSRChildren(body, data, prefix, doc, annotateHydration);
 
   // Strip directive attributes if requested
   if (stripDirectives) {

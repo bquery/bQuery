@@ -92,6 +92,7 @@ export const renderToStringAsync = async (
     prefix: options.prefix,
     stripDirectives: options.stripDirectives,
     includeStoreState: options.includeStoreState,
+    annotateHydration: options.annotateHydration,
   };
 
   let { html, storeState } = renderToString(template, resolvedData, baseOptions);

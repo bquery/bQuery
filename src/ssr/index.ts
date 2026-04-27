@@ -113,6 +113,51 @@ export {
 export type { HydrationHandle } from './strategies';
 
 // ---------------------------------------------------------------------------
+// Hydration mismatch detection
+// ---------------------------------------------------------------------------
+export { verifyHydration } from './mismatch';
+export type { HydrationMismatch, VerifyHydrationOptions } from './mismatch';
+export { HYDRATION_HASH_ATTR } from './hash';
+
+// ---------------------------------------------------------------------------
+// Suspense / out-of-order streaming
+// ---------------------------------------------------------------------------
+export { renderToStreamSuspense } from './suspense';
+export type { SuspenseStreamOptions } from './suspense';
+
+// ---------------------------------------------------------------------------
+// Router ↔ SSR bridge
+// ---------------------------------------------------------------------------
+export { createSSRRouterContext, resolveSSRRoute, runRouteLoaders } from './router-bridge';
+export type { ResolvedSSRRoute, SSRRouteLoader } from './router-bridge';
+
+// ---------------------------------------------------------------------------
+// Versioned store snapshots
+// ---------------------------------------------------------------------------
+export {
+  hydrateStoreSnapshot,
+  readStoreSnapshot,
+  serializeStoreSnapshot,
+} from './store-snapshot';
+export type {
+  HydrateSnapshotOptions,
+  HydrateSnapshotResult,
+  SerializeSnapshotOptions,
+  SerializeSnapshotResult,
+  SSRStoreSnapshot,
+} from './store-snapshot';
+
+// ---------------------------------------------------------------------------
+// Resumability
+// ---------------------------------------------------------------------------
+export { createResumableState, resumeState } from './resumability';
+export type {
+  CreateResumableStateOptions,
+  ResumableState,
+  ResumeReader,
+} from './resumability';
+
+// ---------------------------------------------------------------------------
 // Runtime adapters
 // ---------------------------------------------------------------------------
 export {

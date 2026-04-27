@@ -29,6 +29,19 @@ export type RenderOptions = {
    * @default false
    */
   includeStoreState?: boolean | string[];
+
+  /**
+   * Whether to add a `data-bq-h` mismatch hash to every element that carries
+   * a `bq-*` directive. Used by `verifyHydration()` on the client to flag
+   * Server↔Client divergence in development. Adds ≈ 6–8 bytes per directive
+   * element; safe to leave on in production but only useful in dev builds.
+   *
+   * Currently honoured by the DOM-free renderer; the legacy DOM backend
+   * applies the same annotation when `DOMParser` is available.
+   *
+   * @default false
+   */
+  annotateHydration?: boolean;
 };
 
 /**

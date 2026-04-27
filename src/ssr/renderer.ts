@@ -15,6 +15,11 @@ import { DANGEROUS_PROTOCOLS } from '../security/constants';
 import { sanitizeHtml } from '../security/sanitize';
 import type { BindingContext } from '../view/types';
 import { evaluateExpression } from './expression';
+import {
+  cheapHash,
+  collectDirectiveSignatureFromAttrs,
+  HYDRATION_HASH_ATTR,
+} from './hash';
 import { cloneNode, parseTemplate, serializeTree, type SSRElement, type SSRNode } from './html-parser';
 
 const isUnsafeUrlAttribute = (name: string): boolean => {
@@ -54,19 +59,9 @@ interface RenderOpts {
 }
 
 /**
- * Computes a stable, very small hash for a string. Used to attach a hydration
- * annotation that the client can compare against during dev-time hydration.
- *
- * Collisions are acceptable here: the goal is mismatch *warning*, not security.
+ * Re-export `cheapHash` and `HYDRATION_HASH_ATTR` are imported from `./hash`
+ * so the server-side annotation and client-side verifier stay in lock-step.
  */
-const cheapHash = (input: string): string => {
-  let h = 5381;
-  for (let i = 0; i < input.length; i++) {
-    h = ((h << 5) + h + input.charCodeAt(i)) | 0;
-  }
-  // Encode as base36, unsigned.
-  return (h >>> 0).toString(36);
-};
 
 const setClass = (el: SSRElement, cls: string): void => {
   if (!cls) return;
@@ -101,15 +96,8 @@ const setAttr = (el: SSRElement, name: string, value: string): void => {
   el.attributes[name] = value;
 };
 
-const collectDirectiveSignature = (el: SSRElement, prefix: string): string => {
-  const parts: string[] = [];
-  for (const name of el.attributeOrder) {
-    if (name.startsWith(`${prefix}-`) || name.startsWith(':')) {
-      parts.push(`${name}=${el.attributes[name] ?? ''}`);
-    }
-  }
-  return parts.join('|');
-};
+const collectDirectiveSignature = (el: SSRElement, prefix: string): string =>
+  collectDirectiveSignatureFromAttrs(el.attributeOrder, el.attributes, prefix);
 
 const parseForExpression = (
   expression: string
@@ -319,7 +307,7 @@ const evaluateElement = (
   evaluateChildren(el, context, opts);
 
   if (signature) {
-    setAttr(el, 'data-bq-h', cheapHash(signature));
+    setAttr(el, HYDRATION_HASH_ATTR, cheapHash(signature));
   }
 
   return el;
