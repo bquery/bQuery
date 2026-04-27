@@ -54,6 +54,11 @@ const sanitizeSlotPrefix = (prefix: string, fallback: string): string => {
   return prefix;
 };
 
+/**
+ * Derives a template ID prefix that cannot collide with placeholder slot IDs.
+ * The default `bq-s` becomes `bq-r`; custom prefixes without that suffix get
+ * `-r` appended, so `slot` produces `slot-r` instead of a duplicate `slot`.
+ */
 const getResolvedIdPrefix = (slotIdPrefix: string): string => {
   const candidate = slotIdPrefix.replace(/-s$/, '-r');
   return candidate === slotIdPrefix ? `${slotIdPrefix}-r` : candidate;
@@ -223,12 +228,72 @@ const replaceSlotsInShell = (
 
 const escapeRegExp = (input: string): string => input.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-const protectDeferMarkers = (template: string): string =>
-  template.replace(
-    /(\s)bq-defer\s*=\s*(["'])(.*?)\2/g,
-    (_match, leading: string, quote: string, value: string) =>
-      `${leading}data-bq-defer=${quote}${value}${quote}`
-  );
+const isAttributeBoundary = (ch: string | undefined): boolean =>
+  ch === undefined || ch === '<' || ch === '/' || /\s/.test(ch);
+
+const isAttributeNameEnd = (ch: string | undefined): boolean =>
+  ch === undefined || ch === '=' || ch === '>' || ch === '/' || /\s/.test(ch);
+
+/**
+ * Converts author-facing `bq-defer` markers to an internal data attribute
+ * before rendering so `stripDirectives` can remove regular `bq-*` directives
+ * without losing Suspense slot placement. This is a linear scanner instead of
+ * a regex because templates are caller-provided strings.
+ */
+const protectDeferMarkers = (template: string): string => {
+  let out = '';
+  let i = 0;
+  let inTag = false;
+  let quote: '"' | "'" | '' = '';
+  const marker = 'bq-defer';
+
+  while (i < template.length) {
+    const ch = template[i];
+
+    if (!inTag) {
+      inTag = ch === '<';
+      out += ch;
+      i++;
+      continue;
+    }
+
+    if (quote) {
+      out += ch;
+      if (ch === quote) quote = '';
+      i++;
+      continue;
+    }
+
+    if (ch === '"' || ch === "'") {
+      quote = ch;
+      out += ch;
+      i++;
+      continue;
+    }
+
+    if (ch === '>') {
+      inTag = false;
+      out += ch;
+      i++;
+      continue;
+    }
+
+    if (
+      template.startsWith(marker, i) &&
+      isAttributeBoundary(template[i - 1]) &&
+      isAttributeNameEnd(template[i + marker.length])
+    ) {
+      out += 'data-bq-defer';
+      i += marker.length;
+      continue;
+    }
+
+    out += ch;
+    i++;
+  }
+
+  return out;
+};
 
 const getEncoder = (): TextEncoder => {
   if (typeof TextEncoder === 'undefined') {
