@@ -159,7 +159,7 @@ const renderResolvedFragment = (
   options: SuspenseStreamOptions
 ): string => {
   // Re-render only the wrapping placeholder content. We use the original
-  // template if the user provided a slot template via context (`__slot_<key>`)
+  // template if the user provided a slot template via context (`__suspense_<key>`)
   // or fall back to a stringification of the resolved value.
   const slotTemplateKey = `__suspense_${key}`;
   const slotTemplate = (fullContext as Record<string, unknown>)[slotTemplateKey];
@@ -200,16 +200,17 @@ const replaceSlotsInShell = (
   const slotTag = options.slotTag ?? 'bq-slot';
   let out = html;
   for (const slot of slots) {
-    const marker = `data-bq-defer="${escapeAttr(slot.key)}"`;
+    const markerValue = escapeRegExp(escapeAttr(slot.key));
+    const markerPattern = `\\s+data-bq-defer\\s*=\\s*(?:"${markerValue}"|'${markerValue}'|${markerValue}(?=[\\s/>]))`;
     // Preserve `<tag ... data-bq-defer="key" ...>...</tag>` and wrap only its
     // children in the slot wrapper. We do a tolerant match: any element whose
-    // attributes contain the protected defer marker.
+    // attributes contain the protected defer marker, regardless of quote style.
     const re = new RegExp(
-      `<([a-zA-Z][\\w-]*)([^>]*${escapeRegExp(marker)}[^>]*)>([\\s\\S]*?)<\\/\\1>`,
+      `<([a-zA-Z][\\w-]*)([^>]*${markerPattern}[^>]*)>([\\s\\S]*?)<\\/\\1>`,
       'g'
     );
     out = out.replace(re, (_match, tag: string, attrs: string, inner: string) => {
-      const markerAttr = new RegExp(`\\s+${escapeRegExp(marker)}`, 'g');
+      const markerAttr = new RegExp(markerPattern, 'g');
       const cleanAttrs = attrs.replace(markerAttr, '');
       return `<${tag}${cleanAttrs}><${slotTag} id="${escapeAttr(slot.id)}">${inner}</${slotTag}></${tag}>`;
     });

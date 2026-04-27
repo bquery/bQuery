@@ -162,6 +162,20 @@ describe('renderToStreamSuspense', () => {
     expect(out).not.toContain('data-bq-defer');
   });
 
+  it('accepts single-quoted and unquoted defer markers', async () => {
+    const stream = renderToStreamSuspense(
+      "<main><section bq-defer='user'><span bq-text='user'></span></section><aside bq-defer=post><span bq-text='post'></span></aside></main>",
+      {
+        user: defer(Promise.resolve('ada'), 'loading user'),
+        post: defer(Promise.resolve('news'), 'loading post'),
+      }
+    );
+    const out = await collectStream(stream);
+    expect(out).toContain('<section><bq-slot id="bq-s-0">');
+    expect(out).toContain('<aside><bq-slot id="bq-s-1">');
+    expect(out).not.toContain('data-bq-defer');
+  });
+
   it('places markers before directive stripping removes bq-* attributes', async () => {
     const stream = renderToStreamSuspense(
       '<main><section class="card" bq-defer="user"><span bq-text="user"></span></section></main>',

@@ -13,8 +13,9 @@ import { handle } from '../shared/app.ts';
 const handler = createNodeHandler((request: Request) => handle(request, 'Node'));
 
 const server = http.createServer((req, res) => {
-  // The adapter copies the `Request` body lazily; `node:http` requests are
-  // small here so the default 1 MiB max-body limit is fine.
+  // The current adapter reads the `node:http` request body eagerly into
+  // memory before creating the Web `Request`; this example does not rely on
+  // or configure a built-in body-size limit.
   void handler(req, res);
 });
 
