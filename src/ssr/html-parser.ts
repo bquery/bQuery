@@ -188,8 +188,13 @@ const parseAttributes = (
 
     const name = readAttrName(s);
     if (!name) {
-      // Defensive: prevent infinite loops on malformed input.
-      s.pos++;
+      // Defensive: skip ahead to the next whitespace, '/' or '>' to avoid
+      // pathological 1-char-per-iteration advancement on malformed input.
+      while (s.pos < s.src.length) {
+        const c = s.src[s.pos];
+        if (isWs(c) || c === '>' || c === '/') break;
+        s.pos++;
+      }
       continue;
     }
     skipWs(s);

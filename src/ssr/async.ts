@@ -16,9 +16,18 @@ import type { SSRContext } from './context';
 export type SSRLoader<T = unknown> = (ctx: SSRContext) => T | Promise<T>;
 
 /**
- * Wraps a loader so it can be invoked or stored uniformly. Pure typing helper.
+ * Wraps a loader so it can be invoked or stored uniformly. The wrapper is
+ * tagged with the internal defer brand so `resolveContext()` recognises it
+ * and calls the loader with the active `SSRContext`.
  */
-export const defineLoader = <T>(loader: SSRLoader<T>): SSRLoader<T> => loader;
+export const defineLoader = <T>(loader: SSRLoader<T>): SSRLoader<T> => {
+  Object.defineProperty(loader, DEFER_BRAND, {
+    value: true,
+    enumerable: false,
+    configurable: true,
+  });
+  return loader;
+};
 
 const DEFER_BRAND = Symbol.for('bquery.ssr.defer');
 

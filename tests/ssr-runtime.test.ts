@@ -315,8 +315,6 @@ describe('renderToStringAsync', () => {
 
   it('runs defineLoader-tagged functions', async () => {
     const loader = defineLoader(async () => 'loaded');
-    // Tag the function so resolveContext picks it up.
-    Object.defineProperty(loader, Symbol.for('bquery.ssr.defer'), { value: true });
     const result = await renderToStringAsync('<p bq-text="msg"></p>', { msg: loader });
     expect(result.html).toContain('loaded');
   });

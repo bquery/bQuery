@@ -124,6 +124,11 @@ const safeNonce = (): string => {
  * ```
  */
 export const createSSRContext = (options: CreateSSRContextOptions = {}): SSRContext => {
+  // SSRContext relies on Web `Request`/`Headers`/`AbortSignal`. All target
+  // runtimes (Node ≥ 24, Deno, Bun, browsers) provide these natively. The
+  // structural fallback below only exists so the helper does not throw in
+  // exotic embedded runtimes; downstream code that expects real `Request`
+  // methods should ensure the runtime ships them.
   const request =
     options.request ??
     (typeof Request === 'function' ? new Request(String(options.url ?? 'http://localhost/')) : ({

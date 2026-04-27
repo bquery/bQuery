@@ -75,10 +75,15 @@ export interface NodeServerResponse {
 }
 
 const buildRequestFromNode = (req: NodeIncomingMessage): Request => {
-  const protocol =
+  // Only honour `x-forwarded-proto` when it advertises a known protocol.
+  // This adapter assumes deployment behind a trusted reverse proxy; callers
+  // exposing `node:http` directly to the public internet should strip
+  // `x-forwarded-*` headers in their proxy layer.
+  const forwardedProto =
     typeof req.headers['x-forwarded-proto'] === 'string'
-      ? (req.headers['x-forwarded-proto'] as string).split(',')[0].trim()
-      : 'http';
+      ? (req.headers['x-forwarded-proto'] as string).split(',')[0].trim().toLowerCase()
+      : '';
+  const protocol = forwardedProto === 'http' || forwardedProto === 'https' ? forwardedProto : 'http';
   const host =
     (typeof req.headers.host === 'string' && req.headers.host) ||
     'localhost';

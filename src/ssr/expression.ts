@@ -265,9 +265,13 @@ const applyBinary = (op: string, l: unknown, r: unknown): unknown => {
     case '??':
       return l ?? r;
     case '==':
+      // Intentional loose equality: the SSR expression grammar mirrors the
+      // JavaScript operators users write in templates. `===` and `!==` are
+      // available for strict comparisons.
        
       return l == r;
     case '!=':
+      // Intentional loose inequality (see `==` note above).
        
       return l != r;
     case '===':
