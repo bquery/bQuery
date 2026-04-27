@@ -13,6 +13,7 @@ import {
   hydrateStoreSnapshot,
   renderToStreamSuspense,
   renderToString,
+  renderToStringAsync,
   resolveSSRRoute,
   resumeState,
   runRouteLoaders,
@@ -145,8 +146,34 @@ describe('renderToStreamSuspense', () => {
     const all = (await chunks).join('');
     expect(all).toContain('loading…');
     expect(all).toContain('<bq-slot');
+    expect(all).toContain('<span bq-text="user"><bq-slot');
     expect(all).toContain('<template');
     expect(all).toContain('ada');
+  });
+
+  it('preserves marker element attributes while wrapping its children', async () => {
+    const stream = renderToStreamSuspense(
+      '<section class="card" bq-defer="user"><p bq-text="user"></p></section>',
+      { user: defer(Promise.resolve('ada'), 'loading') }
+    );
+    const out = await collectStream(stream);
+    expect(out).toContain('<section class="card"><bq-slot id="bq-s-0">');
+    expect(out).toContain('<p bq-text="user">loading</p>');
+    expect(out).not.toContain('data-bq-defer');
+  });
+
+  it('places markers before directive stripping removes bq-* attributes', async () => {
+    const stream = renderToStreamSuspense(
+      '<main><section class="card" bq-defer="user"><span bq-text="user"></span></section></main>',
+      { user: defer(Promise.resolve('ada'), 'loading') },
+      { stripDirectives: true }
+    );
+    const out = await collectStream(stream);
+    expect(out).toContain(
+      '<section class="card"><bq-slot id="bq-s-0"><span>loading</span></bq-slot></section>'
+    );
+    expect(out).not.toContain('bq-text');
+    expect(out).not.toContain('data-bq-defer');
   });
 
   it('appends a placeholder when no bq-defer marker is present', async () => {
@@ -156,6 +183,18 @@ describe('renderToStreamSuspense', () => {
     const out = await collectStream(stream);
     expect(out).toContain('<bq-slot id="bq-s-0">');
     expect(out).toContain('<template id="bq-r-0">boom</template>');
+  });
+
+  it('keeps resolved template IDs distinct for custom slot prefixes', async () => {
+    const stream = renderToStreamSuspense(
+      '<main><h1>Hello</h1></main>',
+      { later: defer(Promise.resolve('boom'), undefined) },
+      { slotIdPrefix: 'slot' }
+    );
+    const out = await collectStream(stream);
+    expect(out).toContain('<bq-slot id="slot-0">');
+    expect(out).toContain('<template id="slot-r-0">boom</template>');
+    expect(out).toContain('data-bq-slot="slot-0" data-bq-template="slot-r-0"');
   });
 
   it('honours the SSRContext nonce on patch scripts', async () => {
@@ -341,11 +380,23 @@ describe('versioned store snapshots', () => {
     try {
       const snap: SSRStoreSnapshot = { version: '1', state: { ghost: { x: 1 } } };
       const r = hydrateStoreSnapshot(snap, { strict: true });
+      expect(r.applied).toBe(false);
       expect(r.unknownIds).toEqual(['ghost']);
       expect(calls.some((l) => l.includes('ghost'))).toBe(true);
     } finally {
       console.warn = original;
     }
+  });
+
+  it('renderToStringAsync injects CSP nonces into store-state scripts', async () => {
+    createStore({ id: 'counter', state: () => ({ count: 1 }) });
+    const context = createSSRContext({ nonce: 'ASYNC_NONCE' });
+    const { html } = await renderToStringAsync(
+      '<html><head></head><body><main></main></body></html>',
+      {},
+      { context, includeStoreState: true }
+    );
+    expect(html).toContain('<script nonce="ASYNC_NONCE" id="__BQUERY_STORE_STATE__">');
   });
 
   it('hydrateStoreSnapshot rejects invalid shapes', () => {

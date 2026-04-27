@@ -205,6 +205,19 @@ describe('safe expression evaluator', () => {
     expect(result.html).toContain('default');
   });
 
+  it('preserves this binding for member calls', () => {
+    configureSSR({ backend: 'pure' });
+    const result = renderToString('<p bq-text="user.label(\'Ada\')"></p>', {
+      user: {
+        prefix: 'Dr.',
+        label(this: { prefix: string }, name: string) {
+          return `${this.prefix} ${name}`;
+        },
+      },
+    });
+    expect(result.html).toContain('Dr. Ada');
+  });
+
   it('blocks prototype access via member expressions', () => {
     configureSSR({ backend: 'pure' });
     const result = renderToString('<p bq-text="x.__proto__"></p>', { x: { y: 1 } });

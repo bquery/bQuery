@@ -314,6 +314,7 @@ const parseUnary = (s: ParserState): unknown => {
 
 const parsePostfix = (s: ParserState): unknown => {
   let value = parsePrimary(s);
+  let thisArg: unknown = undefined;
 
   while (true) {
     const t = peek(s);
@@ -325,6 +326,7 @@ const parsePostfix = (s: ParserState): unknown => {
       if (id.kind !== 'ident') {
         throw new Error('Expected identifier after "."');
       }
+      thisArg = value;
       value = safeMember(value, id.value);
       continue;
     }
@@ -352,18 +354,23 @@ const parsePostfix = (s: ParserState): unknown => {
           s.pos++;
         }
         value = undefined;
+        thisArg = undefined;
         continue;
       }
       const next = peek(s);
       if (next.kind === 'punct' && next.value === '[') {
         s.pos++;
+        const receiver = value;
         const key = parseExpression(s, 0);
         expectPunct(s, ']');
+        thisArg = receiver;
         value = safeMember(value, key as PropertyKey);
       } else if (next.kind === 'punct' && next.value === '(') {
-        value = parseCall(s, value, undefined);
+        value = parseCall(s, value, thisArg);
+        thisArg = undefined;
       } else if (next.kind === 'ident') {
         s.pos++;
+        thisArg = value;
         value = safeMember(value, next.value);
       } else {
         throw new Error('Invalid optional chain in SSR expression');
@@ -373,15 +380,18 @@ const parsePostfix = (s: ParserState): unknown => {
 
     if (t.value === '[') {
       s.pos++;
+      const receiver = value;
       const key = parseExpression(s, 0);
       expectPunct(s, ']');
+      thisArg = receiver;
       value = safeMember(value, key as PropertyKey);
       continue;
     }
 
     if (t.value === '(') {
       // Function call
-      value = parseCall(s, value, undefined);
+      value = parseCall(s, value, thisArg);
+      thisArg = undefined;
       continue;
     }
 

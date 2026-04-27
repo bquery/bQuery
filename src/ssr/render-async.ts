@@ -113,7 +113,7 @@ export const renderToStringAsync = async (
     storeScriptTag = result.scriptTag;
     if (context.nonce) {
       // Inject nonce into the script tag.
-      storeScriptTag = storeScriptTag.replace(/^<script /, `<script nonce="${context.nonce}" `);
+      storeScriptTag = storeScriptTag.replace(/^<script\b/, `<script nonce="${context.nonce}"`);
     }
   }
 

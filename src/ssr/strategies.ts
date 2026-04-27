@@ -43,7 +43,7 @@ const defer = (cb: () => void): (() => void) => {
 export interface HydrationHandle {
   /** Cancels pending hydration (no-op if it has already run). */
   cancel(): void;
-  /** Resolves with the View once hydration runs (rejects if cancelled). */
+  /** Resolves with the View once hydration runs, or `null` if cancelled. */
   ready: Promise<View | null>;
 }
 

@@ -190,7 +190,7 @@ export const hydrateStoreSnapshot = (
     store.$patch(sanitize(state));
     appliedIds.push(id);
   }
-  return { applied: true, appliedIds, unknownIds };
+  return { applied: appliedIds.length > 0, appliedIds, unknownIds };
 };
 
 /**

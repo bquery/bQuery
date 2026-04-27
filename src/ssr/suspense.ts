@@ -54,6 +54,11 @@ const sanitizeSlotPrefix = (prefix: string, fallback: string): string => {
   return prefix;
 };
 
+const getResolvedIdPrefix = (slotIdPrefix: string): string => {
+  const candidate = slotIdPrefix.replace(/-s$/, '-r');
+  return candidate === slotIdPrefix ? `${slotIdPrefix}-r` : candidate;
+};
+
 /**
  * Build a synchronous rendering context where every `defer(...)` value is
  * replaced by a placeholder string and every other Promise/loader is
@@ -186,16 +191,18 @@ const replaceSlotsInShell = (
   const slotTag = options.slotTag ?? 'bq-slot';
   let out = html;
   for (const slot of slots) {
-    const marker = `bq-defer="${slot.key}"`;
-    // Replace `<tag ... bq-defer="key" ...>...</tag>` element by wrapping its
-    // outerHTML inside the slot wrapper. We do a tolerant match: any element
-    // whose attributes contain `bq-defer="<key>"`.
+    const marker = `data-bq-defer="${escapeAttr(slot.key)}"`;
+    // Preserve `<tag ... data-bq-defer="key" ...>...</tag>` and wrap only its
+    // children in the slot wrapper. We do a tolerant match: any element whose
+    // attributes contain the protected defer marker.
     const re = new RegExp(
       `<([a-zA-Z][\\w-]*)([^>]*${escapeRegExp(marker)}[^>]*)>([\\s\\S]*?)<\\/\\1>`,
       'g'
     );
-    out = out.replace(re, (_match, _tag: string, _attrs: string, inner: string) => {
-      return `<${slotTag} id="${escapeAttr(slot.id)}">${inner}</${slotTag}>`;
+    out = out.replace(re, (_match, tag: string, attrs: string, inner: string) => {
+      const markerAttr = new RegExp(`\\s+${escapeRegExp(marker)}`, 'g');
+      const cleanAttrs = attrs.replace(markerAttr, '');
+      return `<${tag}${cleanAttrs}><${slotTag} id="${escapeAttr(slot.id)}">${inner}</${slotTag}></${tag}>`;
     });
   }
   // If we didn't find any markers but slots exist, append placeholders at the
@@ -215,6 +222,13 @@ const replaceSlotsInShell = (
 };
 
 const escapeRegExp = (input: string): string => input.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+const protectDeferMarkers = (template: string): string =>
+  template.replace(
+    /(\s)bq-defer\s*=\s*(["'])(.*?)\2/g,
+    (_match, leading: string, quote: string, value: string) =>
+      `${leading}data-bq-defer=${quote}${value}${quote}`
+  );
 
 const getEncoder = (): TextEncoder => {
   if (typeof TextEncoder === 'undefined') {
@@ -243,7 +257,7 @@ export const renderToStreamSuspense = (
   const encoder = getEncoder();
   const ctx: SSRContext = options.context ?? createSSRContext({ ...options, mode: 'stream' });
   const slotIdPrefix = sanitizeSlotPrefix(options.slotIdPrefix ?? 'bq-s', 'bq-s');
-  const resolvedIdPrefix = sanitizeSlotPrefix(slotIdPrefix.replace(/-s$/, '-r') || 'bq-r', 'bq-r');
+  const resolvedIdPrefix = sanitizeSlotPrefix(getResolvedIdPrefix(slotIdPrefix), 'bq-r');
 
   return new ReadableStream<Uint8Array>({
     async start(controller) {
@@ -262,8 +276,9 @@ export const renderToStreamSuspense = (
 
       try {
         const { syncContext, slots } = splitDeferred(data, slotIdPrefix);
+        const shellTemplate = protectDeferMarkers(template);
         // Render the synchronous shell with fallbacks.
-        const shell = renderToString(template, syncContext, {
+        const shell = renderToString(shellTemplate, syncContext, {
           prefix: options.prefix,
           stripDirectives: options.stripDirectives,
           annotateHydration: options.annotateHydration,
