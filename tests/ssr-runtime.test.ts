@@ -37,6 +37,11 @@ import {
   type NodeIncomingMessage,
 } from '../src/ssr/index';
 
+type LegacyMediaQueryList = MediaQueryList & {
+  addListener?: (listener: (event: MediaQueryListEvent | MediaQueryList) => void) => void;
+  removeListener?: (listener: (event: MediaQueryListEvent | MediaQueryList) => void) => void;
+};
+
 afterEach(() => {
   // Reset SSR config so individual tests don't bleed.
   configureSSR({ backend: 'auto', documentImpl: null });
@@ -85,6 +90,23 @@ describe('configureSSR', () => {
     expect(getSSRConfig().documentImpl).not.toBeNull();
     const result = renderToString('<div bq-text="msg"></div>', { msg: 'custom' });
     expect(result.html).toContain('custom');
+  });
+
+  it('renders with a custom DOMParser even when the global Node constructor is unavailable', () => {
+    const originalNodeDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'Node');
+    configureSSR({
+      backend: 'dom',
+      documentImpl: { DOMParser: globalThis.DOMParser },
+    });
+    delete (globalThis as { Node?: typeof Node }).Node;
+    try {
+      const result = renderToString('<div bq-text="msg"></div>', { msg: 'custom-node-less' });
+      expect(result.html).toContain('custom-node-less');
+    } finally {
+      if (originalNodeDescriptor) {
+        Object.defineProperty(globalThis, 'Node', originalNodeDescriptor);
+      }
+    }
   });
 
   it('skips DOM-backend bq-for clones when clone directives remove them', () => {
@@ -897,6 +919,48 @@ describe('hydration strategies', () => {
     expect(typeof handle.cancel).toBe('function');
     handle.cancel();
     document.body.removeChild(div);
+  });
+
+  it('hydrateOnMedia falls back to legacy addListener/removeListener', () => {
+    const div = document.createElement('div');
+    div.id = 'media-legacy-island';
+    document.body.appendChild(div);
+    const originalMatchMedia = window.matchMedia;
+    let registered:
+      | ((event: MediaQueryListEvent | MediaQueryList) => void)
+      | undefined;
+    let removed:
+      | ((event: MediaQueryListEvent | MediaQueryList) => void)
+      | undefined;
+    Object.defineProperty(window, 'matchMedia', {
+      value: (() =>
+        ({
+          matches: false,
+          media: '(min-width: 1px)',
+          onchange: null,
+          addListener(handler: (event: MediaQueryListEvent | MediaQueryList) => void) {
+            registered = handler;
+          },
+          removeListener(handler: (event: MediaQueryListEvent | MediaQueryList) => void) {
+            removed = handler;
+          },
+        }) as LegacyMediaQueryList) as unknown as typeof window.matchMedia,
+      configurable: true,
+      writable: true,
+    });
+    try {
+      const handle = hydrateOnMedia('#media-legacy-island', { title: signal('x') }, '(min-width: 1px)');
+      expect(typeof registered).toBe('function');
+      handle.cancel();
+      expect(removed).toBe(registered);
+    } finally {
+      Object.defineProperty(window, 'matchMedia', {
+        value: originalMatchMedia,
+        configurable: true,
+        writable: true,
+      });
+      document.body.removeChild(div);
+    }
   });
 
   it('hydrateIsland resolves null for missing targets', () => {

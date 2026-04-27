@@ -30,6 +30,11 @@ const hydrateResolved = (
 
 const noop = (): void => {};
 
+type LegacyMediaQueryList = MediaQueryList & {
+  addListener?: (listener: (event: MediaQueryListEvent | MediaQueryList) => void) => void;
+  removeListener?: (listener: (event: MediaQueryListEvent | MediaQueryList) => void) => void;
+};
+
 const defer = (cb: () => void): (() => void) => {
   if (typeof window === 'undefined') {
     cb();
@@ -196,14 +201,29 @@ export const hydrateOnMedia = (
       resolve();
       return noop;
     }
-    const listener = (event: MediaQueryListEvent): void => {
+    let cleanup: () => void;
+    const listener = (event: MediaQueryListEvent | MediaQueryList): void => {
       if (event.matches) {
-        mql.removeEventListener('change', listener);
+        cleanup();
         resolve();
       }
     };
-    mql.addEventListener('change', listener);
-    return () => mql.removeEventListener('change', listener);
+    if (typeof mql.addEventListener === 'function') {
+      mql.addEventListener('change', listener);
+      cleanup = () => mql.removeEventListener('change', listener);
+      return cleanup;
+    }
+    const legacyMql = mql as LegacyMediaQueryList;
+    if (
+      typeof legacyMql.addListener === 'function' &&
+      typeof legacyMql.removeListener === 'function'
+    ) {
+      legacyMql.addListener(listener);
+      cleanup = () => legacyMql.removeListener(listener);
+      return cleanup;
+    }
+    resolve();
+    return noop;
   });
   arm(() => hydrateResolved(selector, context, options));
   return handle;

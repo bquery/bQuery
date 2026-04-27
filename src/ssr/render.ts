@@ -35,6 +35,9 @@ const VOID_ELEMENTS = new Set([
   'wbr',
 ]);
 
+const TEXT_NODE_TYPE = 3;
+const ELEMENT_NODE_TYPE = 1;
+
 const escapeHtmlText = (value: string): string =>
   value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
@@ -71,11 +74,11 @@ const isUnsafeUrlValue = (value: string): boolean => {
 };
 
 const serializeSSRNode = (node: Node): string => {
-  if (node.nodeType === Node.TEXT_NODE) {
+  if (node.nodeType === TEXT_NODE_TYPE) {
     return escapeHtmlText(node.textContent ?? '');
   }
 
-  if (node.nodeType !== Node.ELEMENT_NODE) {
+  if (node.nodeType !== ELEMENT_NODE_TYPE) {
     return '';
   }
 
