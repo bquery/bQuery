@@ -254,6 +254,51 @@ describe('SSRContext', () => {
     const ctx = createSSRContext();
     expect(typeof ctx.nonce).toBe('string');
   });
+
+  it('falls back structurally when Request-adjacent globals are unavailable', () => {
+    const originalRequest = globalThis.Request;
+    const originalHeaders = globalThis.Headers;
+    const originalAbortController = globalThis.AbortController;
+    Object.defineProperty(globalThis, 'Request', {
+      value: undefined,
+      configurable: true,
+      writable: true,
+    });
+    Object.defineProperty(globalThis, 'Headers', {
+      value: undefined,
+      configurable: true,
+      writable: true,
+    });
+    Object.defineProperty(globalThis, 'AbortController', {
+      value: undefined,
+      configurable: true,
+      writable: true,
+    });
+    try {
+      const ctx = createSSRContext({ url: '/fallback' });
+      expect(ctx.request.url).toBe('http://localhost/fallback');
+      expect(ctx.url.href).toBe('http://localhost/fallback');
+      expect(ctx.headers.get('cookie')).toBeNull();
+      expect(ctx.signal.aborted).toBe(false);
+      expect(Array.from(ctx.responseHeaders)).toEqual([]);
+    } finally {
+      Object.defineProperty(globalThis, 'Request', {
+        value: originalRequest,
+        configurable: true,
+        writable: true,
+      });
+      Object.defineProperty(globalThis, 'Headers', {
+        value: originalHeaders,
+        configurable: true,
+        writable: true,
+      });
+      Object.defineProperty(globalThis, 'AbortController', {
+        value: originalAbortController,
+        configurable: true,
+        writable: true,
+      });
+    }
+  });
 });
 
 describe('head manager', () => {
@@ -604,6 +649,79 @@ describe('runtime adapters', () => {
     await wrapped(req, res);
     expect(res.statusCode).toBe(413);
     expect(body).toContain('Request body exceeds 10 bytes.');
+  });
+
+  it('createNodeHandler stops buffering once request bodies exceed the configured limit', async () => {
+    let body = '';
+    let destroyedWith: Error | undefined;
+    let onData: ((chunk: Uint8Array | string) => void) | undefined;
+    let onEnd: (() => void) | undefined;
+    const allocatedSizes: number[] = [];
+    const OriginalArrayBuffer = globalThis.ArrayBuffer;
+    Object.defineProperty(globalThis, 'ArrayBuffer', {
+      value: new Proxy(OriginalArrayBuffer, {
+        construct(target, args, newTarget) {
+          allocatedSizes.push(Number(args[0] ?? 0));
+          return Reflect.construct(target, args, newTarget);
+        },
+      }),
+      configurable: true,
+    });
+    const res = {
+      statusCode: 0,
+      setHeader(_name: string, _value: string | number | readonly string[]) {
+        /* no-op */
+      },
+      write(chunk: string | Uint8Array) {
+        body += typeof chunk === 'string' ? chunk : new TextDecoder().decode(chunk);
+        return true;
+      },
+      end(chunk?: string | Uint8Array) {
+        if (chunk) body += typeof chunk === 'string' ? chunk : new TextDecoder().decode(chunk);
+      },
+    };
+    const req: NodeIncomingMessage = {
+      url: '/upload',
+      method: 'POST',
+      headers: { host: 'example.com' },
+      destroy(error?: Error) {
+        destroyedWith = error;
+      },
+      on(
+        event: 'data' | 'end' | 'error',
+        listener:
+          | ((chunk: Uint8Array | string) => void)
+          | (() => void)
+          | ((err: unknown) => void)
+      ): NodeIncomingMessage {
+        if (event === 'data') onData = listener as (chunk: Uint8Array | string) => void;
+        if (event === 'end') onEnd = listener as () => void;
+        return this as NodeIncomingMessage;
+      },
+    };
+    try {
+      const wrapped = createNodeHandler(
+        async () => {
+          throw new Error('handler should not run');
+        },
+        { maxBodyBytes: 10 }
+      );
+      const pending = wrapped(req, res);
+      onData?.(new Uint8Array(11));
+      onData?.(new Uint8Array(1024));
+      onEnd?.();
+      await pending;
+      expect(res.statusCode).toBe(413);
+      expect(body).toContain('Request body exceeds 10 bytes.');
+      expect(destroyedWith?.name).toBe('NodeRequestLimitError');
+      expect(allocatedSizes).not.toContain(1035);
+    } finally {
+      Object.defineProperty(globalThis, 'ArrayBuffer', {
+        value: OriginalArrayBuffer,
+        configurable: true,
+        writable: true,
+      });
+    }
   });
 
   it('createSSRHandler returns a runtime-appropriate adapter', () => {

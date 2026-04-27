@@ -67,6 +67,7 @@ export interface NodeIncomingMessage {
   on(event: 'data', listener: (chunk: Uint8Array | string) => void): void;
   on(event: 'end', listener: () => void): void;
   on(event: 'error', listener: (err: unknown) => void): void;
+  destroy?(error?: Error): void;
 }
 
 /** Minimal subset of `node:http` ServerResponse we rely on. */
@@ -110,24 +111,37 @@ const getContentLength = (req: NodeIncomingMessage): number | null => {
 
 const readNodeBody = (req: NodeIncomingMessage, maxBodyBytes?: number): Promise<ArrayBuffer> =>
   new Promise((resolve, reject) => {
+    const chunks: Uint8Array[] = [];
+    let total = 0;
+    let done = false;
+    const fail = (error: unknown): void => {
+      if (done) return;
+      done = true;
+      chunks.length = 0;
+      total = 0;
+      req.destroy?.(error instanceof Error ? error : undefined);
+      reject(error);
+    };
+
     const declaredLength = getContentLength(req);
     if (maxBodyBytes !== undefined && declaredLength !== null && declaredLength > maxBodyBytes) {
-      reject(new NodeRequestLimitError(`Request body exceeds ${maxBodyBytes} bytes.`));
+      fail(new NodeRequestLimitError(`Request body exceeds ${maxBodyBytes} bytes.`));
       return;
     }
 
-    const chunks: Uint8Array[] = [];
-    let total = 0;
     req.on('data', (chunk) => {
+      if (done) return;
       const bytes = typeof chunk === 'string' ? new TextEncoder().encode(chunk) : chunk;
       total += bytes.byteLength;
       if (maxBodyBytes !== undefined && total > maxBodyBytes) {
-        reject(new NodeRequestLimitError(`Request body exceeds ${maxBodyBytes} bytes.`));
+        fail(new NodeRequestLimitError(`Request body exceeds ${maxBodyBytes} bytes.`));
         return;
       }
       chunks.push(bytes);
     });
     req.on('end', () => {
+      if (done) return;
+      done = true;
       const buffer = new ArrayBuffer(total);
       const body = new Uint8Array(buffer);
       let offset = 0;
@@ -137,7 +151,7 @@ const readNodeBody = (req: NodeIncomingMessage, maxBodyBytes?: number): Promise<
       }
       resolve(buffer);
     });
-    req.on('error', reject);
+    req.on('error', fail);
   });
 
 const buildNodeUrl = (req: NodeIncomingMessage, protocol: string): URL => {

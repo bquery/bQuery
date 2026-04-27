@@ -109,6 +109,73 @@ const safeNonce = (): string => {
   }
 };
 
+const createHeadersFallback = (): Headers => {
+  const store = new Map<string, string[]>();
+  const api = {
+    append(name: string, value: string): void {
+      const key = String(name).toLowerCase();
+      const existing = store.get(key);
+      if (existing) existing.push(String(value));
+      else store.set(key, [String(value)]);
+    },
+    delete(name: string): void {
+      store.delete(String(name).toLowerCase());
+    },
+    get(name: string): string | null {
+      const values = store.get(String(name).toLowerCase());
+      return values ? values.join(', ') : null;
+    },
+    has(name: string): boolean {
+      return store.has(String(name).toLowerCase());
+    },
+    set(name: string, value: string): void {
+      store.set(String(name).toLowerCase(), [String(value)]);
+    },
+    forEach(
+      callback: (value: string, key: string, parent: Headers) => void,
+      thisArg?: unknown
+    ): void {
+      for (const [key, values] of store) {
+        callback.call(thisArg, values.join(', '), key, api as unknown as Headers);
+      }
+    },
+    *entries(): IterableIterator<[string, string]> {
+      for (const [key, values] of store) {
+        yield [key, values.join(', ')];
+      }
+    },
+    [Symbol.iterator](): IterableIterator<[string, string]> {
+      return api.entries();
+    },
+  };
+  return api as unknown as Headers;
+};
+
+const createAbortSignalFallback = (): AbortSignal =>
+  ({
+    aborted: false,
+    onabort: null,
+    reason: undefined,
+    addEventListener() {
+      /* no-op */
+    },
+    removeEventListener() {
+      /* no-op */
+    },
+    dispatchEvent() {
+      return false;
+    },
+    throwIfAborted() {
+      /* no-op */
+    },
+  }) as unknown as AbortSignal;
+
+const hasHeadersApi = (value: unknown): value is Headers =>
+  typeof value === 'object' && value !== null && typeof (value as Headers).get === 'function';
+
+const hasAbortSignalApi = (value: unknown): value is AbortSignal =>
+  typeof value === 'object' && value !== null && typeof (value as AbortSignal).aborted === 'boolean';
+
 /**
  * Creates a fully populated SSR context.
  *
@@ -124,25 +191,31 @@ export const createSSRContext = (options: CreateSSRContextOptions = {}): SSRCont
   // structural fallback below only exists so the helper does not throw in
   // exotic embedded runtimes; downstream code that expects real `Request`
   // methods should ensure the runtime ships them.
+  const fallbackRequestUrl =
+    options.url instanceof URL
+      ? options.url.toString()
+      : typeof options.url === 'string'
+        ? new URL(options.url, 'http://localhost/').toString()
+        : 'http://localhost/';
   const request =
     options.request ??
     (typeof Request === 'function'
-      ? new Request(String(options.url ?? 'http://localhost/'))
+      ? new Request(fallbackRequestUrl)
       : ({
-          url: 'http://localhost/',
-          headers: new Headers(),
-          signal: new AbortController().signal,
+          url: fallbackRequestUrl,
+          headers: createHeadersFallback(),
+          signal: createAbortSignalFallback(),
         } as unknown as Request));
 
   const urlSource = options.url ?? request.url;
   const url =
     urlSource instanceof URL ? urlSource : new URL(String(urlSource), 'http://localhost/');
 
-  const headers = request.headers ?? new Headers();
+  const headers = hasHeadersApi(request.headers) ? request.headers : createHeadersFallback();
   const cookies = parseCookies(headers.get('cookie') ?? '');
   const userAgent = options.userAgent ?? headers.get('user-agent') ?? '';
   const locale = options.locale ?? parseLocale(headers.get('accept-language'));
-  const signal = options.signal ?? request.signal ?? new AbortController().signal;
+  const signal = options.signal ?? (hasAbortSignalApi(request.signal) ? request.signal : createAbortSignalFallback());
   const nonce = options.nonce ?? safeNonce();
 
   const ctx: SSRContext = {
@@ -158,7 +231,7 @@ export const createSSRContext = (options: CreateSSRContextOptions = {}): SSRCont
     head: createHeadManager(),
     assets: createAssetManager(),
     status: 200,
-    responseHeaders: new Headers(),
+    responseHeaders: createHeadersFallback(),
     reportError(error) {
       options.onError?.(error);
     },
