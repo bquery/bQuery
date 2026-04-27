@@ -1,0 +1,474 @@
+/**
+ * CSP-safe expression evaluator for SSR templates.
+ *
+ * Evaluates a tightly scoped subset of JavaScript expressions against a
+ * binding context without using `eval` or `new Function()`. Runs in any
+ * runtime (Bun, Deno, Node, browsers) and is safe under strict CSP without
+ * `'unsafe-eval'`.
+ *
+ * Supported grammar (operator-precedence Pratt parser):
+ *
+ * - Literals: numbers, single/double-quoted strings, `true`, `false`, `null`,
+ *   `undefined`.
+ * - Identifiers and member access (`a.b`, `a['b']`, `a[0]`).
+ * - Optional chaining (`a?.b`, `a?.[b]`).
+ * - Unary `!`, `+`, `-`, `typeof`.
+ * - Binary `+`, `-`, `*`, `/`, `%`, `==`, `===`, `!=`, `!==`, `<`, `<=`,
+ *   `>`, `>=`, `&&`, `||`, `??`.
+ * - Ternary `cond ? a : b`.
+ * - Parentheses for grouping.
+ * - Function calls `fn(arg1, arg2, ...)` (only on identifiers / member chains
+ *   resolved against the context — no arbitrary expression invocation).
+ *
+ * Anything outside this grammar throws a parse error which the caller
+ * converts into the standard SSR fallback (`undefined`).
+ *
+ * @module bquery/ssr
+ * @internal
+ */
+
+import { isComputed, isSignal, type Signal } from '../reactive/index';
+import { isPrototypePollutionKey } from '../core/utils/object';
+import type { BindingContext } from '../view/types';
+
+const unwrap = (value: unknown): unknown => {
+  if (isSignal(value) || isComputed(value)) {
+    return (value as Signal<unknown>).value;
+  }
+  return value;
+};
+
+/* ---------------------------------------------------------------------------
+ * Tokenizer
+ * ------------------------------------------------------------------------- */
+
+type TokenKind =
+  | 'number'
+  | 'string'
+  | 'ident'
+  | 'punct'
+  | 'eof';
+
+interface Token {
+  kind: TokenKind;
+  value: string;
+  start: number;
+}
+
+const PUNCT_MULTI = [
+  '===',
+  '!==',
+  '==',
+  '!=',
+  '<=',
+  '>=',
+  '&&',
+  '||',
+  '??',
+  '?.',
+];
+
+const PUNCT_SINGLE = '+-*/%<>!?:,.()[]';
+
+const isIdentStart = (ch: string): boolean =>
+  (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || ch === '_' || ch === '$';
+
+const isIdentCont = (ch: string): boolean => isIdentStart(ch) || (ch >= '0' && ch <= '9');
+
+const isDigit = (ch: string): boolean => ch >= '0' && ch <= '9';
+
+const tokenize = (input: string): Token[] => {
+  const tokens: Token[] = [];
+  const len = input.length;
+  let i = 0;
+
+  while (i < len) {
+    const ch = input[i];
+
+    if (ch === ' ' || ch === '\t' || ch === '\n' || ch === '\r') {
+      i++;
+      continue;
+    }
+
+    // Strings
+    if (ch === '"' || ch === "'") {
+      const quote = ch;
+      const start = i;
+      i++;
+      let value = '';
+      while (i < len && input[i] !== quote) {
+        if (input[i] === '\\' && i + 1 < len) {
+          const next = input[i + 1];
+          if (next === 'n') value += '\n';
+          else if (next === 't') value += '\t';
+          else if (next === 'r') value += '\r';
+          else if (next === '\\') value += '\\';
+          else if (next === quote) value += quote;
+          else value += next;
+          i += 2;
+          continue;
+        }
+        value += input[i];
+        i++;
+      }
+      if (i >= len) {
+        throw new Error('Unterminated string literal in SSR expression');
+      }
+      i++; // closing quote
+      tokens.push({ kind: 'string', value, start });
+      continue;
+    }
+
+    // Numbers
+    if (isDigit(ch) || (ch === '.' && i + 1 < len && isDigit(input[i + 1]))) {
+      const start = i;
+      while (i < len && (isDigit(input[i]) || input[i] === '.')) {
+        i++;
+      }
+      tokens.push({ kind: 'number', value: input.slice(start, i), start });
+      continue;
+    }
+
+    // Identifiers / keywords
+    if (isIdentStart(ch)) {
+      const start = i;
+      while (i < len && isIdentCont(input[i])) {
+        i++;
+      }
+      tokens.push({ kind: 'ident', value: input.slice(start, i), start });
+      continue;
+    }
+
+    // Multi-char punctuation
+    let matched = false;
+    for (const p of PUNCT_MULTI) {
+      if (input.startsWith(p, i)) {
+        tokens.push({ kind: 'punct', value: p, start: i });
+        i += p.length;
+        matched = true;
+        break;
+      }
+    }
+    if (matched) continue;
+
+    if (PUNCT_SINGLE.includes(ch)) {
+      tokens.push({ kind: 'punct', value: ch, start: i });
+      i++;
+      continue;
+    }
+
+    throw new Error(`Unexpected character "${ch}" in SSR expression`);
+  }
+
+  tokens.push({ kind: 'eof', value: '', start: len });
+  return tokens;
+};
+
+/* ---------------------------------------------------------------------------
+ * Parser → directly evaluated AST
+ * ------------------------------------------------------------------------- */
+
+interface ParserState {
+  tokens: Token[];
+  pos: number;
+  context: BindingContext;
+}
+
+const peek = (s: ParserState): Token => s.tokens[s.pos];
+const advance = (s: ParserState): Token => s.tokens[s.pos++];
+
+const expectPunct = (s: ParserState, value: string): void => {
+  const t = peek(s);
+  if (t.kind !== 'punct' || t.value !== value) {
+    throw new Error(`Expected "${value}" in SSR expression, got "${t.value}"`);
+  }
+  s.pos++;
+};
+
+const matchPunct = (s: ParserState, value: string): boolean => {
+  const t = peek(s);
+  if (t.kind === 'punct' && t.value === value) {
+    s.pos++;
+    return true;
+  }
+  return false;
+};
+
+const lookupIdent = (s: ParserState, name: string): unknown => {
+  if (name === 'true') return true;
+  if (name === 'false') return false;
+  if (name === 'null') return null;
+  if (name === 'undefined') return undefined;
+  if (isPrototypePollutionKey(name)) return undefined;
+  return unwrap((s.context as Record<string, unknown>)[name]);
+};
+
+const safeMember = (obj: unknown, key: PropertyKey): unknown => {
+  if (obj == null) return undefined;
+  if (typeof key === 'string' && isPrototypePollutionKey(key)) return undefined;
+  return (obj as Record<PropertyKey, unknown>)[key];
+};
+
+// Pratt-parser precedence table for binary operators.
+const BIN_PRECEDENCE: Record<string, number> = {
+  '||': 1,
+  '??': 1,
+  '&&': 2,
+  '==': 3,
+  '!=': 3,
+  '===': 3,
+  '!==': 3,
+  '<': 4,
+  '<=': 4,
+  '>': 4,
+  '>=': 4,
+  '+': 5,
+  '-': 5,
+  '*': 6,
+  '/': 6,
+  '%': 6,
+};
+
+const parseExpression = (s: ParserState, minPrec = 0): unknown => {
+  let left = parseUnary(s);
+
+  while (true) {
+    const t = peek(s);
+    if (t.kind !== 'punct') break;
+
+    // Ternary
+    if (t.value === '?' && minPrec <= 0) {
+      s.pos++;
+      const consequent = parseExpression(s, 0);
+      expectPunct(s, ':');
+      const alternate = parseExpression(s, 0);
+      left = left ? consequent : alternate;
+      continue;
+    }
+
+    const prec = BIN_PRECEDENCE[t.value];
+    if (prec === undefined || prec < minPrec) break;
+    s.pos++;
+    const right = parseExpression(s, prec + 1);
+    left = applyBinary(t.value, left, right);
+  }
+
+  return left;
+};
+
+const applyBinary = (op: string, l: unknown, r: unknown): unknown => {
+  switch (op) {
+    case '||':
+      return l || r;
+    case '&&':
+      return l && r;
+    case '??':
+      return l ?? r;
+    case '==':
+       
+      return l == r;
+    case '!=':
+       
+      return l != r;
+    case '===':
+      return l === r;
+    case '!==':
+      return l !== r;
+    case '<':
+      return (l as number) < (r as number);
+    case '<=':
+      return (l as number) <= (r as number);
+    case '>':
+      return (l as number) > (r as number);
+    case '>=':
+      return (l as number) >= (r as number);
+    case '+':
+      // String concat for either operand is a string
+      if (typeof l === 'string' || typeof r === 'string') {
+        return String(l ?? '') + String(r ?? '');
+      }
+      return (l as number) + (r as number);
+    case '-':
+      return (l as number) - (r as number);
+    case '*':
+      return (l as number) * (r as number);
+    case '/':
+      return (l as number) / (r as number);
+    case '%':
+      return (l as number) % (r as number);
+    default:
+      throw new Error(`Unsupported binary operator "${op}"`);
+  }
+};
+
+const parseUnary = (s: ParserState): unknown => {
+  const t = peek(s);
+  if (t.kind === 'punct') {
+    if (t.value === '!') {
+      s.pos++;
+      return !parseUnary(s);
+    }
+    if (t.value === '-') {
+      s.pos++;
+      return -(parseUnary(s) as number);
+    }
+    if (t.value === '+') {
+      s.pos++;
+      return +(parseUnary(s) as number);
+    }
+  }
+  if (t.kind === 'ident' && t.value === 'typeof') {
+    s.pos++;
+    return typeof parseUnary(s);
+  }
+  return parsePostfix(s);
+};
+
+const parsePostfix = (s: ParserState): unknown => {
+  let value = parsePrimary(s);
+
+  while (true) {
+    const t = peek(s);
+    if (t.kind !== 'punct') break;
+
+    if (t.value === '.') {
+      s.pos++;
+      const id = advance(s);
+      if (id.kind !== 'ident') {
+        throw new Error('Expected identifier after "."');
+      }
+      value = safeMember(value, id.value);
+      continue;
+    }
+
+    if (t.value === '?.') {
+      s.pos++;
+      if (value == null) {
+        // Skip the rest of this chain step but still consume tokens.
+        const next = peek(s);
+        if (next.kind === 'punct' && next.value === '[') {
+          // Skip [...]
+          s.pos++;
+          parseExpression(s, 0);
+          expectPunct(s, ']');
+        } else if (next.kind === 'punct' && next.value === '(') {
+          s.pos++;
+          while (!matchPunct(s, ')')) {
+            parseExpression(s, 0);
+            if (!matchPunct(s, ',')) {
+              expectPunct(s, ')');
+              break;
+            }
+          }
+        } else if (next.kind === 'ident') {
+          s.pos++;
+        }
+        value = undefined;
+        continue;
+      }
+      const next = peek(s);
+      if (next.kind === 'punct' && next.value === '[') {
+        s.pos++;
+        const key = parseExpression(s, 0);
+        expectPunct(s, ']');
+        value = safeMember(value, key as PropertyKey);
+      } else if (next.kind === 'punct' && next.value === '(') {
+        value = parseCall(s, value, undefined);
+      } else if (next.kind === 'ident') {
+        s.pos++;
+        value = safeMember(value, next.value);
+      } else {
+        throw new Error('Invalid optional chain in SSR expression');
+      }
+      continue;
+    }
+
+    if (t.value === '[') {
+      s.pos++;
+      const key = parseExpression(s, 0);
+      expectPunct(s, ']');
+      value = safeMember(value, key as PropertyKey);
+      continue;
+    }
+
+    if (t.value === '(') {
+      // Function call
+      value = parseCall(s, value, undefined);
+      continue;
+    }
+
+    break;
+  }
+
+  return value;
+};
+
+const parseCall = (s: ParserState, callee: unknown, thisArg: unknown): unknown => {
+  expectPunct(s, '(');
+  const args: unknown[] = [];
+  if (!matchPunct(s, ')')) {
+    while (true) {
+      args.push(parseExpression(s, 0));
+      if (matchPunct(s, ',')) continue;
+      expectPunct(s, ')');
+      break;
+    }
+  }
+  if (typeof callee !== 'function') {
+    return undefined;
+  }
+  return (callee as (...a: unknown[]) => unknown).apply(thisArg, args);
+};
+
+const parsePrimary = (s: ParserState): unknown => {
+  const t = advance(s);
+  if (t.kind === 'number') {
+    return Number(t.value);
+  }
+  if (t.kind === 'string') {
+    return t.value;
+  }
+  if (t.kind === 'ident') {
+    return lookupIdent(s, t.value);
+  }
+  if (t.kind === 'punct' && t.value === '(') {
+    const value = parseExpression(s, 0);
+    expectPunct(s, ')');
+    return value;
+  }
+  throw new Error(`Unexpected token "${t.value}" in SSR expression`);
+};
+
+/**
+ * Evaluates a tightly scoped expression against a binding context.
+ *
+ * Returns `undefined` when the expression cannot be parsed or evaluated.
+ * This matches the behaviour of the previous `new Function()`-based fallback
+ * but never invokes dynamic code generation.
+ *
+ * @param expression - Expression source.
+ * @param context - Binding context whose top-level signal/computed values are
+ *   automatically unwrapped.
+ *
+ * @internal
+ */
+export const evaluateExpression = <T = unknown>(
+  expression: string,
+  context: BindingContext
+): T => {
+  const trimmed = expression.trim();
+  if (trimmed === '') return undefined as T;
+
+  try {
+    const tokens = tokenize(trimmed);
+    const state: ParserState = { tokens, pos: 0, context };
+    const value = parseExpression(state, 0);
+    if (peek(state).kind !== 'eof') {
+      // Unexpected trailing tokens — fall back to undefined.
+      return undefined as T;
+    }
+    return value as T;
+  } catch {
+    return undefined as T;
+  }
+};

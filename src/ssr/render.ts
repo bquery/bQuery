@@ -12,6 +12,8 @@ import { isComputed, isSignal, type Signal } from '../reactive/index';
 import { DANGEROUS_PROTOCOLS } from '../security/constants';
 import { sanitizeHtml } from '../security/sanitize';
 import type { BindingContext } from '../view/types';
+import { getDOMParserImpl, resolveBackend } from './config';
+import { renderTemplatePure } from './renderer';
 import type { RenderOptions, SSRResult } from './types';
 import { serializeStoreState } from './serialize';
 
@@ -467,14 +469,34 @@ export const renderToString = (
     throw new Error('bQuery SSR: template must be a non-empty string.');
   }
 
-  if (typeof DOMParser === 'undefined') {
+  // Resolve the renderer backend. Defaults to the legacy DOM-based path when
+  // a `DOMParser` is available (browser/happy-dom in tests); otherwise the
+  // pure DOM-free renderer kicks in automatically — this is what makes
+  // `renderToString()` work seamlessly on Bun, Deno and Node ≥ 24.
+  const backend = resolveBackend();
+
+  if (backend === 'pure') {
+    const html = renderTemplatePure(template, data, {
+      prefix,
+      stripDirectives,
+    });
+    let storeState: string | undefined;
+    if (includeStoreState) {
+      const storeIds = Array.isArray(includeStoreState) ? includeStoreState : undefined;
+      storeState = serializeStoreState({ storeIds }).stateJson;
+    }
+    return { html, storeState };
+  }
+
+  const DOMParserImpl = getDOMParserImpl();
+  if (!DOMParserImpl) {
     throw new Error(
       'bQuery SSR: DOMParser is not available in this environment. Provide a DOMParser-compatible implementation before calling renderToString().'
     );
   }
 
   // Create a DOM document for processing
-  const parser = new DOMParser();
+  const parser = new DOMParserImpl();
   const doc = parser.parseFromString(template.trim(), 'text/html');
   const body = doc.body || doc.documentElement;
 
