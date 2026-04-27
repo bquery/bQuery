@@ -11,6 +11,7 @@
 import { isComputed, isSignal, type Signal } from '../reactive/index';
 import type { BindingContext } from '../view/types';
 import type { SSRContext } from './context';
+import { DEFER_BRAND } from './defer-brand';
 
 /** A loader function executed before render. */
 export type SSRLoader<T = unknown> = (ctx: SSRContext) => T | Promise<T>;
@@ -28,8 +29,6 @@ export const defineLoader = <T>(loader: SSRLoader<T>): SSRLoader<T> => {
   });
   return loader;
 };
-
-const DEFER_BRAND = Symbol.for('bquery.ssr.defer');
 
 interface DeferredValue<T> {
   [DEFER_BRAND]: true;
@@ -94,7 +93,10 @@ export const resolveContext = async (
         }
         return;
       }
-      if (typeof value === 'function' && (value as { [DEFER_BRAND]?: unknown })[DEFER_BRAND]) {
+      if (
+        typeof value === 'function' &&
+        (value as unknown as { [DEFER_BRAND]?: unknown })[DEFER_BRAND]
+      ) {
         // Allow loader-style functions tagged via defineLoader to opt in.
         out[key] = await Promise.resolve((value as SSRLoader)(ctx));
         return;

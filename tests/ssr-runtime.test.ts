@@ -255,6 +255,12 @@ describe('SSRContext', () => {
     expect(typeof ctx.nonce).toBe('string');
   });
 
+  it('uses native Headers for responseHeaders when available', () => {
+    const ctx = createSSRContext();
+    ctx.responseHeaders.append('x-test', '1');
+    expect(Array.from(ctx.responseHeaders.keys())).toEqual(['x-test']);
+  });
+
   it('falls back structurally when Request-adjacent globals are unavailable', () => {
     const originalRequest = globalThis.Request;
     const originalHeaders = globalThis.Headers;
@@ -281,6 +287,9 @@ describe('SSRContext', () => {
       expect(ctx.headers.get('cookie')).toBeNull();
       expect(ctx.signal.aborted).toBe(false);
       expect(Array.from(ctx.responseHeaders)).toEqual([]);
+      expect(typeof ctx.responseHeaders.keys).toBe('undefined');
+      ctx.responseHeaders.append('x-fallback', 'test');
+      expect(ctx.responseHeaders.get('x-fallback')).toBe('test');
     } finally {
       Object.defineProperty(globalThis, 'Request', {
         value: originalRequest,

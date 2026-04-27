@@ -176,6 +176,9 @@ const hasHeadersApi = (value: unknown): value is Headers =>
 const hasAbortSignalApi = (value: unknown): value is AbortSignal =>
   typeof value === 'object' && value !== null && typeof (value as AbortSignal).aborted === 'boolean';
 
+const createHeadersLike = (): Headers =>
+  typeof Headers === 'function' ? new Headers() : createHeadersFallback();
+
 /**
  * Creates a fully populated SSR context.
  *
@@ -211,7 +214,7 @@ export const createSSRContext = (options: CreateSSRContextOptions = {}): SSRCont
   const url =
     urlSource instanceof URL ? urlSource : new URL(String(urlSource), 'http://localhost/');
 
-  const headers = hasHeadersApi(request.headers) ? request.headers : createHeadersFallback();
+  const headers = hasHeadersApi(request.headers) ? request.headers : createHeadersLike();
   const cookies = parseCookies(headers.get('cookie') ?? '');
   const userAgent = options.userAgent ?? headers.get('user-agent') ?? '';
   const locale = options.locale ?? parseLocale(headers.get('accept-language'));
@@ -231,7 +234,7 @@ export const createSSRContext = (options: CreateSSRContextOptions = {}): SSRCont
     head: createHeadManager(),
     assets: createAssetManager(),
     status: 200,
-    responseHeaders: createHeadersFallback(),
+    responseHeaders: createHeadersLike(),
     reportError(error) {
       options.onError?.(error);
     },

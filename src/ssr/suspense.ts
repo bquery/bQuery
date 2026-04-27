@@ -16,11 +16,10 @@
 import { isComputed, isSignal, type Signal } from '../reactive/index';
 import type { BindingContext } from '../view/types';
 import { createSSRContext, type SSRContext } from './context';
+import { DEFER_BRAND } from './defer-brand';
 import { parseTemplate, serializeTree, type SSRElement, type SSRNode } from './html-parser';
 import { renderToString } from './render';
 import type { AsyncRenderOptions } from './render-async';
-
-const DEFER_BRAND = Symbol.for('bquery.ssr.defer');
 
 interface DeferredLike<T = unknown> {
   [DEFER_BRAND]: true;
@@ -252,9 +251,9 @@ const replaceSlotsInShell = (
   visitElements(root.children, (element) => {
     const marker = element.attributes['data-bq-defer'];
     if (!marker) return;
+    removeAttr(element, 'data-bq-defer');
     const slot = slotsByKey.get(marker);
     if (!slot || placed.has(slot.id)) return;
-    removeAttr(element, 'data-bq-defer');
     const wrappedChildren = element.children;
     element.children = [createSlotWrapper(slotTag, slot.id, wrappedChildren)];
     placed.add(slot.id);

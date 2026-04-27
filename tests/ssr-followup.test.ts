@@ -190,6 +190,17 @@ describe('renderToStreamSuspense', () => {
     expect(out).not.toContain('data-bq-defer');
   });
 
+  it('removes internal defer markers even when no deferred slot matches', async () => {
+    const stream = renderToStreamSuspense(
+      '<main><section class="card" bq-defer="user"><span>ready</span></section></main>',
+      { user: 'ada' }
+    );
+    const out = await collectStream(stream);
+    expect(out).toContain('<section class="card"><span>ready</span></section>');
+    expect(out).not.toContain('data-bq-defer');
+    expect(out).not.toContain('<bq-slot');
+  });
+
   it('appends a placeholder when no bq-defer marker is present', async () => {
     const stream = renderToStreamSuspense('<main><h1>Hello</h1></main>', {
       later: defer(Promise.resolve('boom'), undefined),
