@@ -669,6 +669,7 @@ export type {
   HydrationHandle,
   HydrationMismatch,
   HydrationOptions,
+  NodeHandlerOptions,
   NodeIncomingMessage,
   NodeServerResponse,
   RenderOptions,

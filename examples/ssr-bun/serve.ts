@@ -7,9 +7,24 @@
  */
 import { handle } from '../shared/app.ts';
 
+interface BunServer {
+  hostname: string;
+  port: number;
+}
+
+interface BunRuntime {
+  serve(options: {
+    port: number;
+    fetch(request: Request): Response | Promise<Response>;
+  }): BunServer;
+}
+
+interface RuntimeGlobals {
+  Bun?: BunRuntime;
+}
+
 // `Bun.serve` is part of the global Bun API.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const Bun = (globalThis as any).Bun;
+const Bun = (globalThis as RuntimeGlobals).Bun;
 if (!Bun?.serve) {
   console.error('This example must be run with Bun.');
   process.exit(1);
