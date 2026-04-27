@@ -118,6 +118,15 @@ export interface SuspenseStreamOptions extends AsyncRenderOptions {
   slotTag?: string;
 }
 
+/**
+ * Static patch script for streamed Suspense fragments.
+ *
+ * The server passes the variable slot/template IDs through escaped
+ * `data-bq-slot` / `data-bq-template` attributes on the `<script>` tag, and
+ * the script reads them from `document.currentScript`. This keeps the emitted
+ * code body constant while still letting each streamed patch target a
+ * different placeholder/template pair.
+ */
 const PATCH_SCRIPT_BODY = escapeScriptBody(
   '(()=>{var c=document.currentScript;if(!c)return;var slotId=c.getAttribute("data-bq-slot");var templateId=c.getAttribute("data-bq-template");if(!slotId||!templateId)return;var s=document.getElementById(slotId);var t=document.getElementById(templateId);if(!s||!t)return;var f=t.content?t.content.cloneNode(true):t;while(s.firstChild)s.removeChild(s.firstChild);s.appendChild(f);t.parentNode&&t.parentNode.removeChild(t);s.parentNode&&s.replaceWith(...s.childNodes);})();'
 );

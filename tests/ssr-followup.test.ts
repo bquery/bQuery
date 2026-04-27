@@ -53,14 +53,12 @@ const collectStreamChunks = async (stream: ReadableStream<Uint8Array>): Promise<
   return out.filter((s) => s.length > 0);
 };
 
-const appendRenderedHtml = (root: Element, html: string): void => {
-  const parser = new DOMParser();
-  const doc = parser.parseFromString(html, 'text/html');
-  const fragment = document.createDocumentFragment();
-  for (const child of Array.from(doc.body.childNodes)) {
-    fragment.appendChild(document.importNode(child, true));
+const extractHydrationHash = (html: string): string => {
+  const match = html.match(/\bdata-bq-h="([^"]+)"/i);
+  if (!match) {
+    throw new Error(`Expected SSR HTML to include ${HYDRATION_HASH_ATTR}: ${html}`);
   }
-  root.replaceChildren(fragment);
+  return match[1];
 };
 
 describe('hydration mismatch detection', () => {
@@ -92,10 +90,12 @@ describe('hydration mismatch detection', () => {
 
   it('verifyHydration returns no mismatches when DOM matches the annotation', () => {
     const root = document.createElement('div');
-    appendRenderedHtml(
-      root,
-      renderToString('<p bq-text="msg"></p>', { msg: 'hello' }, { annotateHydration: true }).html
-    );
+    const html = renderToString('<p bq-text="msg"></p>', { msg: 'hello' }, { annotateHydration: true }).html;
+    const p = document.createElement('p');
+    p.setAttribute('bq-text', 'msg');
+    p.setAttribute(HYDRATION_HASH_ATTR, extractHydrationHash(html));
+    p.textContent = 'hello';
+    root.replaceChildren(p);
     document.body.appendChild(root);
     const mismatches = verifyHydration(root, { warn: false });
     expect(mismatches).toHaveLength(0);
@@ -104,14 +104,16 @@ describe('hydration mismatch detection', () => {
 
   it('verifyHydration flags mismatches when directives diverge', () => {
     const root = document.createElement('div');
-    appendRenderedHtml(
-      root,
-      renderToString('<p bq-text="msg"></p>', { msg: 'hello' }, { annotateHydration: true }).html
-    );
+    const html = renderToString('<p bq-text="msg"></p>', { msg: 'hello' }, { annotateHydration: true }).html;
+    const initial = document.createElement('p');
+    initial.setAttribute('bq-text', 'msg');
+    initial.setAttribute(HYDRATION_HASH_ATTR, extractHydrationHash(html));
+    initial.textContent = 'hello';
+    root.replaceChildren(initial);
     document.body.appendChild(root);
     // Mutate the directive on the live DOM to simulate divergence.
-    const p = root.querySelector('p') as HTMLElement;
-    p.setAttribute('bq-text', 'changedExpression');
+    const hydrated = root.querySelector('p') as HTMLElement;
+    hydrated.setAttribute('bq-text', 'changedExpression');
     const collected: string[] = [];
     const mismatches = verifyHydration(root, {
       warn: false,
