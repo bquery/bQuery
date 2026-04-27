@@ -342,7 +342,7 @@ hydrateMount('#app', { title: 'Welcome' }, { hydrate: true });
 
 ## Runtime-Agnostic SSR (Bun, Deno, Node ≥ 24)
 
-Starting with v1.11, the SSR module ships a **DOM-free renderer** that activates automatically when no `DOMParser` is available in the runtime. That makes the same `renderToString()`/`renderToStringAsync()`/`renderToStream()`/`renderToResponse()` calls work seamlessly on Node.js ≥ 24, Deno and Bun ≥ 1.3.11 — without any external dependency, polyfill or build-time branching.
+The SSR module ships a **DOM-free renderer** that activates automatically when no `DOMParser` is available in the runtime. That makes the same `renderToString()`/`renderToStringAsync()`/`renderToStream()`/`renderToResponse()` calls work seamlessly on Node.js ≥ 24, Deno and Bun ≥ 1.3.11 — without any external dependency, polyfill or build-time branching.
 
 ### Backend selection
 

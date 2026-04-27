@@ -23,6 +23,7 @@ import {
   detectRuntime,
   getSSRConfig,
   getSSRRuntimeFeatures,
+  hydrateIsland,
   hydrateOnIdle,
   hydrateOnInteraction,
   hydrateOnMedia,
@@ -564,7 +565,7 @@ describe('hydration strategies', () => {
     div.id = 'interaction-island';
     document.body.appendChild(div);
     const handle = hydrateOnInteraction('#interaction-island', { title: signal('x') });
-    expect(handle.cancel).toBeFunction();
+    expect(typeof handle.cancel).toBe('function');
     handle.cancel();
     document.body.removeChild(div);
   });
@@ -574,9 +575,13 @@ describe('hydration strategies', () => {
     div.id = 'media-island';
     document.body.appendChild(div);
     const handle = hydrateOnMedia('#media-island', { title: signal('x') }, '(min-width: 9999px)');
-    expect(handle.cancel).toBeFunction();
+    expect(typeof handle.cancel).toBe('function');
     handle.cancel();
     document.body.removeChild(div);
+  });
+
+  it('hydrateIsland resolves null for missing targets', () => {
+    expect(hydrateIsland('#missing-island', { title: signal('x') })).toBeNull();
   });
 
   it('hydration strategies resolve null for missing targets', async () => {

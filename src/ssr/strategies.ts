@@ -210,11 +210,12 @@ export const hydrateOnMedia = (
 };
 
 /**
- * Hydrates a single SSR island. Equivalent to `hydrateMount` but explicitly
- * named for the island-architecture flow (`bq-island` markers in SSR output).
+ * Hydrates a single SSR island using the same runtime-safe target resolution
+ * as the other progressive hydration helpers. Returns `null` when the DOM is
+ * unavailable or the target cannot be resolved.
  */
 export const hydrateIsland = (
   selector: string | Element,
   context: BindingContext,
   options: HydrateMountOptions = {}
-): View => hydrateMount(selector, context, options);
+): View | null => hydrateResolved(selector, context, options);

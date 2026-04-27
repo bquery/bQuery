@@ -222,6 +222,28 @@ describe('renderToStreamSuspense', () => {
     expect(out).toContain('<template id="slot-r-template-0">boom</template>');
   });
 
+  it('falls back to bq-slot when slotTag is invalid', async () => {
+    const stream = renderToStreamSuspense(
+      '<main><section bq-defer="user"><span bq-text="user"></span></section></main>',
+      { user: defer(Promise.resolve('ada'), 'loading') },
+      { slotTag: 'script type="text/javascript"' }
+    );
+    const out = await collectStream(stream);
+    expect(out).toContain('<bq-slot id="bq-s-0">');
+    expect(out).not.toContain('<script type="text/javascript"');
+  });
+
+  it('accepts valid custom-element slot tags', async () => {
+    const stream = renderToStreamSuspense(
+      '<main><section bq-defer="user"><span bq-text="user"></span></section></main>',
+      { user: defer(Promise.resolve('ada'), 'loading') },
+      { slotTag: 'x-slot' }
+    );
+    const out = await collectStream(stream);
+    expect(out).toContain('<x-slot id="bq-s-0">');
+    expect(out).toContain('</x-slot>');
+  });
+
   it('honours the SSRContext nonce on patch scripts', async () => {
     const ctx = createSSRContext({ nonce: 'NONCE123' });
     const stream = renderToStreamSuspense(

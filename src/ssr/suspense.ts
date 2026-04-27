@@ -58,10 +58,16 @@ interface PendingSuspenseEntry {
  * depth. Allows ASCII letters, digits, `-` and `_`.
  */
 const SAFE_ID_RE = /^[A-Za-z][\w-]*$/;
+const SAFE_SLOT_TAG_RE = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)+$/;
 
 const sanitizeSlotPrefix = (prefix: string, fallback: string): string => {
   if (typeof prefix !== 'string' || !SAFE_ID_RE.test(prefix)) return fallback;
   return prefix;
+};
+
+const sanitizeSlotTag = (tag: string | undefined, fallback: string): string => {
+  if (typeof tag !== 'string' || !SAFE_SLOT_TAG_RE.test(tag)) return fallback;
+  return tag;
 };
 
 /**
@@ -207,7 +213,7 @@ const replaceSlotsInShell = (
   // user (`bq-defer="key"`) to mark where the slot wrapper goes.
   // Without such a marker, the slot fallback is already inlined and we
   // append the resolved templates at the end of <body>.
-  const slotTag = options.slotTag ?? 'bq-slot';
+  const slotTag = sanitizeSlotTag(options.slotTag, 'bq-slot');
   let out = html;
   for (const slot of slots) {
     const markerValue = escapeRegExp(escapeAttr(slot.key));
