@@ -367,15 +367,16 @@ export const renderToStreamSuspense = (
           if (ctx.signal.aborted) {
             return;
           }
-          const racers = pending.map((entry, index) =>
+          const racers = pending.map((entry) =>
             entry.promise.then(
-              (value) => ({ index, value, error: undefined as unknown }),
-              (error) => ({ index, value: undefined, error })
+              (value) => ({ entry, value, error: undefined as unknown }),
+              (error) => ({ entry, value: undefined, error })
             )
           );
           const settled = await Promise.race(racers);
-          const removed = pending.splice(settled.index, 1);
-          const { slot } = removed[0];
+          const settledIndex = pending.indexOf(settled.entry);
+          if (settledIndex === -1) continue;
+          const { slot } = pending.splice(settledIndex, 1)[0];
           const resolvedId = `${resolvedIdPrefix}-${slot.id.split('-').pop()}`;
           let resolvedHtml: string;
           if (settled.error !== undefined) {

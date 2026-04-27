@@ -584,16 +584,17 @@ describe('hydration strategies', () => {
     const idle = hydrateOnIdle('#missing-idle', { title: signal('i') });
     const interaction = hydrateOnInteraction('#missing-interaction', { title: signal('x') });
     const originalMatchMedia = window.matchMedia;
+    const matchingMediaQuery = {
+      matches: true,
+      addEventListener() {
+        /* no-op */
+      },
+      removeEventListener() {
+        /* no-op */
+      },
+    };
     Object.defineProperty(window, 'matchMedia', {
-      value: (() => ({
-        matches: true,
-        addEventListener() {
-          /* no-op */
-        },
-        removeEventListener() {
-          /* no-op */
-        },
-      })) as unknown as typeof window.matchMedia,
+      value: (() => matchingMediaQuery) as unknown as typeof window.matchMedia,
       configurable: true,
       writable: true,
     });
