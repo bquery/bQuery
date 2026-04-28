@@ -130,6 +130,61 @@ describe('hydration mismatch detection', () => {
     expect(verifyHydration(null as unknown as Element, { warn: false })).toEqual([]);
     expect(verifyHydration({} as Element, { warn: false })).toEqual([]);
   });
+
+  it('verifyHydration respects the shared __BQUERY_DEV__ override for default warnings', () => {
+    const root = document.createElement('div');
+    const html = renderToString('<p bq-text="msg"></p>', { msg: 'hello' }, { annotateHydration: true }).html;
+    const p = document.createElement('p');
+    p.setAttribute('bq-text', 'changedExpression');
+    p.setAttribute(HYDRATION_HASH_ATTR, extractHydrationHash(html));
+    p.textContent = 'hello';
+    root.replaceChildren(p);
+    document.body.appendChild(root);
+
+    const globalWithDev = globalThis as typeof globalThis & { __BQUERY_DEV__?: boolean };
+    const hadOwnDevOverride = Object.prototype.hasOwnProperty.call(globalWithDev, '__BQUERY_DEV__');
+    const originalDev = globalWithDev.__BQUERY_DEV__;
+    const originalWarn = console.warn;
+    const warnings: unknown[][] = [];
+    console.warn = (...args: unknown[]) => warnings.push(args);
+    globalWithDev.__BQUERY_DEV__ = false;
+
+    try {
+      const mismatches = verifyHydration(root);
+      expect(mismatches).toHaveLength(1);
+      expect(warnings).toHaveLength(0);
+    } finally {
+      console.warn = originalWarn;
+      if (hadOwnDevOverride) {
+        globalWithDev.__BQUERY_DEV__ = originalDev;
+      } else {
+        delete globalWithDev.__BQUERY_DEV__;
+      }
+      root.remove();
+    }
+  });
+
+  it('verifyHydration mismatches stripped annotations because directives are no longer available', () => {
+    const root = document.createElement('div');
+    const html = renderToString('<p bq-text="msg"></p>', { msg: 'hello' }, {
+      annotateHydration: true,
+      stripDirectives: true,
+    }).html;
+    const p = document.createElement('p');
+    p.setAttribute(HYDRATION_HASH_ATTR, extractHydrationHash(html));
+    p.textContent = 'hello';
+    root.replaceChildren(p);
+    document.body.appendChild(root);
+
+    try {
+      const mismatches = verifyHydration(root, { warn: false });
+      expect(mismatches).toHaveLength(1);
+      expect(mismatches[0].signature).toBe('');
+      expect(mismatches[0].expected).not.toBe(mismatches[0].actual);
+    } finally {
+      root.remove();
+    }
+  });
 });
 
 describe('renderToStreamSuspense', () => {

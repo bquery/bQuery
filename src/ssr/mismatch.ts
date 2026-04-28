@@ -14,6 +14,7 @@
  */
 
 import { cheapHash, collectDirectiveSignatureFromElement, HYDRATION_HASH_ATTR } from './hash';
+import { detectDevEnvironment } from '../core/env';
 
 /** A single hydration mismatch entry returned by `verifyHydration()`. */
 export interface HydrationMismatch {
@@ -41,11 +42,6 @@ export interface VerifyHydrationOptions {
   onMismatch?: (mismatch: HydrationMismatch) => void;
 }
 
-const isProductionLike = (): boolean => {
-  const env = (globalThis as { process?: { env?: { NODE_ENV?: string } } }).process?.env?.NODE_ENV;
-  return env === 'production';
-};
-
 /**
  * Walks `[data-bq-h]` elements within `root`, recomputes the directive hash
  * and reports mismatches. Returns the list of mismatches; callers can react
@@ -57,10 +53,11 @@ const isProductionLike = (): boolean => {
  *
  * @example
  * ```ts
+ * import { detectDevEnvironment } from '@bquery/bquery';
  * import { hydrateMount, verifyHydration } from '@bquery/bquery/ssr';
  *
  * const view = hydrateMount('#app', context);
- * if (process.env.NODE_ENV !== 'production') {
+ * if (detectDevEnvironment()) {
  *   verifyHydration(document.getElementById('app')!);
  * }
  * ```
@@ -70,7 +67,7 @@ export const verifyHydration = (
   options: VerifyHydrationOptions = {}
 ): HydrationMismatch[] => {
   const prefix = options.prefix ?? 'bq';
-  const warn = options.warn ?? !isProductionLike();
+  const warn = options.warn ?? detectDevEnvironment();
   const onMismatch = options.onMismatch;
 
   const mismatches: HydrationMismatch[] = [];
