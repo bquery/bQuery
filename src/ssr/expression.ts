@@ -248,6 +248,109 @@ const skipShortCircuitedChainRemainder = (s: ParserState): void => {
   }
 };
 
+const skipPrimary = (s: ParserState): void => {
+  const t = advance(s);
+  if (!t || t.kind === 'eof') {
+    throw new Error('Unexpected end of SSR expression');
+  }
+  if (t.kind === 'number' || t.kind === 'string' || t.kind === 'ident') {
+    return;
+  }
+  if (t.kind === 'punct' && t.value === '(') {
+    skipExpression(s, 0);
+    expectPunct(s, ')');
+    return;
+  }
+  throw new Error(`Unexpected token "${t.value}" in SSR expression`);
+};
+
+const skipCall = (s: ParserState): void => {
+  expectPunct(s, '(');
+  if (!matchPunct(s, ')')) {
+    while (true) {
+      skipExpression(s, 0);
+      if (matchPunct(s, ',')) continue;
+      expectPunct(s, ')');
+      break;
+    }
+  }
+};
+
+const skipPostfix = (s: ParserState): void => {
+  skipPrimary(s);
+
+  while (true) {
+    const t = peek(s);
+    if (t.kind !== 'punct') break;
+
+    if (t.value === '.') {
+      s.pos++;
+      const id = advance(s);
+      if (id.kind !== 'ident') {
+        throw new Error('Expected identifier after "."');
+      }
+      continue;
+    }
+
+    if (t.value === '?.') {
+      s.pos++;
+      skipShortCircuitedChainTarget(s);
+      continue;
+    }
+
+    if (t.value === '[') {
+      s.pos++;
+      skipExpression(s, 0);
+      expectPunct(s, ']');
+      continue;
+    }
+
+    if (t.value === '(') {
+      skipCall(s);
+      continue;
+    }
+
+    break;
+  }
+};
+
+const skipUnary = (s: ParserState): void => {
+  const t = peek(s);
+  if (t.kind === 'punct' && (t.value === '!' || t.value === '-' || t.value === '+')) {
+    s.pos++;
+    skipUnary(s);
+    return;
+  }
+  if (t.kind === 'ident' && t.value === 'typeof') {
+    s.pos++;
+    skipUnary(s);
+    return;
+  }
+  skipPostfix(s);
+};
+
+const skipExpression = (s: ParserState, minPrec = 0): void => {
+  skipUnary(s);
+
+  while (true) {
+    const t = peek(s);
+    if (t.kind !== 'punct') break;
+
+    if (t.value === '?' && minPrec <= 0) {
+      s.pos++;
+      skipExpression(s, 0);
+      expectPunct(s, ':');
+      skipExpression(s, 0);
+      continue;
+    }
+
+    const prec = BIN_PRECEDENCE[t.value];
+    if (prec === undefined || prec < minPrec) break;
+    s.pos++;
+    skipExpression(s, prec + 1);
+  }
+};
+
 const lookupIdent = (s: ParserState, name: string): unknown => {
   if (name === 'true') return true;
   if (name === 'false') return false;
@@ -293,16 +396,46 @@ const parseExpression = (s: ParserState, minPrec = 0): unknown => {
     // Ternary
     if (t.value === '?' && minPrec <= 0) {
       s.pos++;
-      const consequent = parseExpression(s, 0);
-      expectPunct(s, ':');
-      const alternate = parseExpression(s, 0);
-      left = left ? consequent : alternate;
+      if (left) {
+        const consequent = parseExpression(s, 0);
+        expectPunct(s, ':');
+        skipExpression(s, 0);
+        left = consequent;
+      } else {
+        skipExpression(s, 0);
+        expectPunct(s, ':');
+        left = parseExpression(s, 0);
+      }
       continue;
     }
 
     const prec = BIN_PRECEDENCE[t.value];
     if (prec === undefined || prec < minPrec) break;
     s.pos++;
+    if (t.value === '&&') {
+      if (!left) {
+        skipExpression(s, prec + 1);
+      } else {
+        left = parseExpression(s, prec + 1);
+      }
+      continue;
+    }
+    if (t.value === '||') {
+      if (left) {
+        skipExpression(s, prec + 1);
+      } else {
+        left = parseExpression(s, prec + 1);
+      }
+      continue;
+    }
+    if (t.value === '??') {
+      if (left !== null && left !== undefined) {
+        skipExpression(s, prec + 1);
+      } else {
+        left = parseExpression(s, prec + 1);
+      }
+      continue;
+    }
     const right = parseExpression(s, prec + 1);
     left = applyBinary(t.value, left, right);
   }

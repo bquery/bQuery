@@ -175,27 +175,27 @@ const evaluateElement = (
     const parsed = parseForExpression(forExpr);
     if (!parsed) {
       removeAttr(el, `${prefix}-for`);
-      return el;
+    } else {
+      const list = evaluateExpression<unknown>(parsed.listExpr, context);
+      if (!Array.isArray(list)) return null;
+      const out: SSRNode[] = [];
+      for (let i = 0; i < list.length; i++) {
+        const clone = cloneNode(el) as SSRElement;
+        removeAttr(clone, `${prefix}-for`);
+        removeAttr(clone, `${prefix}-key`);
+        removeAttr(clone, ':key');
+        const childCtx: BindingContext = {
+          ...context,
+          [parsed.itemName]: list[i],
+        };
+        if (parsed.indexName) childCtx[parsed.indexName] = i;
+        const result = evaluateElement(clone, childCtx, opts);
+        if (result === null) continue;
+        if (Array.isArray(result)) out.push(...result);
+        else out.push(result);
+      }
+      return out;
     }
-    const list = evaluateExpression<unknown>(parsed.listExpr, context);
-    if (!Array.isArray(list)) return null;
-    const out: SSRNode[] = [];
-    for (let i = 0; i < list.length; i++) {
-      const clone = cloneNode(el) as SSRElement;
-      removeAttr(clone, `${prefix}-for`);
-      removeAttr(clone, `${prefix}-key`);
-      removeAttr(clone, ':key');
-      const childCtx: BindingContext = {
-        ...context,
-        [parsed.itemName]: list[i],
-      };
-      if (parsed.indexName) childCtx[parsed.indexName] = i;
-      const result = evaluateElement(clone, childCtx, opts);
-      if (result === null) continue;
-      if (Array.isArray(result)) out.push(...result);
-      else out.push(result);
-    }
-    return out;
   }
 
   // Capture directive signature for hydration mismatch detection (before stripping).

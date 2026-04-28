@@ -214,6 +214,25 @@ describe('pure renderer (DOM-free)', () => {
     expect(result.html).toContain('C');
   });
 
+  it('continues evaluating invalid pure-renderer bq-for elements normally', () => {
+    configureSSR({ backend: 'pure' });
+    const invalid = renderToString(
+      '<ul><li bq-for="item items" bq-class="{ active: on }"><span bq-text="label"></span></li></ul>',
+      { on: true, label: 'nested-template' },
+      { annotateHydration: true }
+    );
+    const normalized = renderToString(
+      '<ul><li bq-class="{ active: on }"><span bq-text="label"></span></li></ul>',
+      { on: true, label: 'nested-template' },
+      { annotateHydration: true }
+    );
+
+    expect(invalid.html).toBe(normalized.html);
+    expect(invalid.html).toContain('active');
+    expect(invalid.html).toContain('nested-template');
+    expect(invalid.html).not.toContain('bq-for');
+  });
+
   it('renders bq-class object syntax', () => {
     configureSSR({ backend: 'pure' });
     const result = renderToString(
@@ -315,6 +334,27 @@ describe('safe expression evaluator', () => {
     expect(result.html).toContain('yes');
   });
 
+  it('does not evaluate the non-taken ternary branch', () => {
+    configureSSR({ backend: 'pure' });
+    let yesCalls = 0;
+    let noCalls = 0;
+    const result = renderToString('<p bq-text="ok ? yes() : no()"></p>', {
+      ok: true,
+      yes() {
+        yesCalls++;
+        return 'yes';
+      },
+      no() {
+        noCalls++;
+        return 'no';
+      },
+    });
+
+    expect(result.html).toContain('yes');
+    expect(yesCalls).toBe(1);
+    expect(noCalls).toBe(0);
+  });
+
   it('supports optional chaining', () => {
     configureSSR({ backend: 'pure' });
     const result = renderToString('<p bq-text="user?.name"></p>', { user: undefined });
@@ -355,6 +395,52 @@ describe('safe expression evaluator', () => {
     configureSSR({ backend: 'pure' });
     const result = renderToString('<p bq-text="value ?? \'default\'"></p>', { value: null });
     expect(result.html).toContain('default');
+  });
+
+  it('does not evaluate a short-circuited && right-hand side', () => {
+    configureSSR({ backend: 'pure' });
+    let calls = 0;
+    const result = renderToString('<p bq-text="ok && track()"></p>', {
+      ok: false,
+      track() {
+        calls++;
+        return 'unexpected';
+      },
+    });
+
+    expect(result.html).toContain('<p');
+    expect(result.html).not.toContain('unexpected');
+    expect(calls).toBe(0);
+  });
+
+  it('does not evaluate a short-circuited || right-hand side', () => {
+    configureSSR({ backend: 'pure' });
+    let calls = 0;
+    const result = renderToString('<p bq-text="value || track()"></p>', {
+      value: 'ready',
+      track() {
+        calls++;
+        return 'unexpected';
+      },
+    });
+
+    expect(result.html).toContain('ready');
+    expect(calls).toBe(0);
+  });
+
+  it('does not evaluate a short-circuited ?? right-hand side', () => {
+    configureSSR({ backend: 'pure' });
+    let calls = 0;
+    const result = renderToString('<p bq-text="value ?? track()"></p>', {
+      value: 0,
+      track() {
+        calls++;
+        return 1;
+      },
+    });
+
+    expect(result.html).toContain('0');
+    expect(calls).toBe(0);
   });
 
   it('preserves this binding for member calls', () => {
