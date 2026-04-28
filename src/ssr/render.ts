@@ -403,20 +403,31 @@ const processSSRChildren = (
   // Process children in reverse to handle removals safely
   const children = Array.from(parent.children);
   for (const child of children) {
-    // Skip bq-for elements — they're handled by parent
+    let processedForDirective = false;
+
+    // Handle elements that start with bq-for before the normal per-element pass.
     if (child.hasAttribute(`${prefix}-for`)) {
-      // Process the for directive on this element
+      const keep = processSSRElement(child, context, prefix, doc, annotateHydration);
+      processedForDirective = true;
+      if (!keep) {
+        child.remove();
+        continue;
+      }
+
+      // Valid bq-for handling removes/replaces the original template node. If the
+      // original child is no longer attached here, recursion has already been
+      // handled by the bq-for expansion path.
+      if (child.parentNode !== parent) {
+        continue;
+      }
+    }
+
+    if (!processedForDirective) {
       const keep = processSSRElement(child, context, prefix, doc, annotateHydration);
       if (!keep) {
         child.remove();
+        continue;
       }
-      continue;
-    }
-
-    const keep = processSSRElement(child, context, prefix, doc, annotateHydration);
-    if (!keep) {
-      child.remove();
-      continue;
     }
 
     // Recurse into children

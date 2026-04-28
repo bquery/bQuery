@@ -154,6 +154,19 @@ describe('configureSSR', () => {
     expect(result.html).not.toContain('bq-for');
   });
 
+  it('still processes nested directives after invalid DOM-backend bq-for normalization', () => {
+    configureSSR({ backend: 'dom' });
+    const result = renderToString(
+      '<ul><li bq-for="item items"><span bq-text="label"></span></li></ul>',
+      { items: ['A', 'B'], label: 'nested-template' },
+      { stripDirectives: true }
+    );
+
+    expect(result.html).toContain('<ul><li><span>nested-template</span></li></ul>');
+    expect(result.html).not.toContain('bq-for');
+    expect(result.html).not.toContain('bq-text');
+  });
+
   it('normalizes invalid DOM-backend bq-for before hydration signature capture', () => {
     configureSSR({ backend: 'dom' });
     const invalid = renderToString(
