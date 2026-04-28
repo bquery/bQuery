@@ -138,6 +138,19 @@ describe('server/createServer', () => {
     expect(await response.json()).toEqual({ message: 'boom' });
   });
 
+  it('returns thrown Response instances from the default error handler', async () => {
+    const app = createServer();
+
+    app.get('/teapot', () => {
+      throw new Response('teapot', { status: 418 });
+    });
+
+    const response = await app.handle('/teapot');
+
+    expect(response.status).toBe(418);
+    expect(await response.text()).toBe('teapot');
+  });
+
   it('escapes unsafe characters in json responses', async () => {
     const app = createServer();
     app.get('/json', (ctx) => ctx.json({ html: '<script>alert(1)</script>' }));

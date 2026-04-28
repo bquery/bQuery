@@ -285,7 +285,9 @@ export const createServer = (options: CreateServerOptions = {}): ServerApp => {
   const onError =
     options.onError ??
     ((error: unknown, context: ServerContext) => {
-      void error;
+      if (error instanceof Response) {
+        return error;
+      }
       return context.text('Internal Server Error', { status: 500 });
     });
 
