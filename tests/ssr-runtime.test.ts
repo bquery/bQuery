@@ -230,6 +230,19 @@ describe('pure renderer (DOM-free)', () => {
     expect(result.html).toContain('href="/about"');
   });
 
+  it('trims pure-renderer templates like the DOM backend', () => {
+    const template = '  <p bq-text="msg"></p>  ';
+
+    configureSSR({ backend: 'pure' });
+    const pure = renderToString(template, { msg: 'aligned' }, { stripDirectives: true });
+
+    configureSSR({ backend: 'dom' });
+    const dom = renderToString(template, { msg: 'aligned' }, { stripDirectives: true });
+
+    expect(pure.html).toBe(dom.html);
+    expect(pure.html).toBe('<p>aligned</p>');
+  });
+
   it('parses unquoted attributes before self-closing custom elements', () => {
     configureSSR({ backend: 'pure' });
     const result = renderToString('<main><my-el a=b/><span>after</span></main>', {});
@@ -607,6 +620,20 @@ describe('renderToResponse', () => {
     const response = await renderToResponse('<p>etag</p>', {}, { etag: true });
     const etag = response.headers.get('etag');
     expect(etag).toMatch(/^W\//);
+  });
+
+  it('skips weak ETag generation when TextEncoder is unavailable', async () => {
+    const originalTextEncoderDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'TextEncoder');
+    delete (globalThis as { TextEncoder?: typeof TextEncoder }).TextEncoder;
+
+    try {
+      const response = await renderToResponse('<p>etag</p>', {}, { etag: true });
+      expect(response.headers.get('etag')).toBeNull();
+    } finally {
+      if (originalTextEncoderDescriptor) {
+        Object.defineProperty(globalThis, 'TextEncoder', originalTextEncoderDescriptor);
+      }
+    }
   });
 
   it('returns 304 Not Modified when If-None-Match matches', async () => {

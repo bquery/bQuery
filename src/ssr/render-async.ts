@@ -223,7 +223,7 @@ const computeWeakEtag = async (text: string): Promise<string | null> => {
   const subtle = (globalThis as { crypto?: { subtle?: SubtleCrypto } }).crypto?.subtle;
   if (!subtle) return null;
   try {
-    const digest = await subtle.digest('SHA-1', new TextEncoder().encode(text));
+    const digest = await subtle.digest('SHA-1', getEncoder().encode(text));
     const bytes = new Uint8Array(digest);
     let hex = '';
     for (const b of bytes) hex += b.toString(16).padStart(2, '0');

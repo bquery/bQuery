@@ -519,6 +519,8 @@ export const renderToString = (
     throw new Error('bQuery SSR: template must be a non-empty string.');
   }
 
+  const normalizedTemplate = template.trim();
+
   // Resolve the renderer backend. Defaults to the legacy DOM-based path when
   // a `DOMParser` is available (browser/happy-dom in tests); otherwise the
   // pure DOM-free renderer kicks in automatically — this is what makes
@@ -526,7 +528,7 @@ export const renderToString = (
   const backend = resolveBackend();
 
   if (backend === 'pure') {
-    const html = renderTemplatePure(template, data, {
+    const html = renderTemplatePure(normalizedTemplate, data, {
       prefix,
       stripDirectives,
       annotateHydration,
@@ -548,7 +550,7 @@ export const renderToString = (
 
   // Create a DOM document for processing
   const parser = new DOMParserImpl();
-  const doc = parser.parseFromString(template.trim(), 'text/html');
+  const doc = parser.parseFromString(normalizedTemplate, 'text/html');
   const body = doc.body || doc.documentElement;
 
   if (!body) {
