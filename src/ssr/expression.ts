@@ -248,6 +248,15 @@ const skipShortCircuitedChainRemainder = (s: ParserState): void => {
   }
 };
 
+/**
+ * Advances through expression tokens without evaluating them.
+ *
+ * Mirrors the supported SSR expression grammar so `parseExpression()` can
+ * preserve JavaScript short-circuit semantics for `&&`, `||`, `??`, and
+ * ternaries while still leaving the parser in the correct token position.
+ *
+ * @internal
+ */
 const skipPrimary = (s: ParserState): void => {
   const t = advance(s);
   if (!t || t.kind === 'eof') {
