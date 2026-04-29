@@ -61,8 +61,8 @@ interface RenderOpts {
 }
 
 /**
- * Re-export `cheapHash` and `HYDRATION_HASH_ATTR` are imported from `./hash`
- * so the server-side annotation and client-side verifier stay in lock-step.
+ * `cheapHash` and `HYDRATION_HASH_ATTR` are imported from `./hash` so the
+ * server-side annotation and client-side verifier stay in lock-step.
  */
 
 const setClass = (el: SSRElement, cls: string): void => {

@@ -249,6 +249,20 @@ describe('pure renderer (DOM-free)', () => {
     expect(result.html).toContain('href="/about"');
   });
 
+  it('escapes bound attribute values consistently across SSR backends', () => {
+    const template = '<a bq-bind:title="tooltip">link</a>';
+    const context = { tooltip: '1 < 2 > 0 & "quoted"' };
+
+    configureSSR({ backend: 'pure' });
+    const pure = renderToString(template, context, { stripDirectives: true });
+
+    configureSSR({ backend: 'dom' });
+    const dom = renderToString(template, context, { stripDirectives: true });
+
+    expect(pure.html).toBe(dom.html);
+    expect(pure.html).toBe('<a title="1 &lt; 2 &gt; 0 &amp; &quot;quoted&quot;">link</a>');
+  });
+
   it('trims pure-renderer templates like the DOM backend', () => {
     const template = '  <p bq-text="msg"></p>  ';
 

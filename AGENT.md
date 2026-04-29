@@ -74,11 +74,11 @@ src/
 ├── devtools/           # runtime inspection and timeline helpers
 ├── testing/            # renderComponent(), mockSignal(), waitFor()
 ├── ssr/                # Runtime-agnostic rendering, streaming, hydration, adapters, snapshots
-├── server/             # Backend helpers, SSR-aware responses, and WebSocket sessions
-└── scripts/            # Repo maintenance helpers (including AI guidance sync checks)
+└── server/             # Backend helpers, SSR-aware responses, and WebSocket sessions
 
+scripts/                # Repo maintenance helpers (including AI guidance sync checks)
 tests/                  # Bun test suites (one file per module)
-.storybook/            # Storybook config
+.storybook/             # Storybook config
 stories/                # Component stories
 docs/                   # VitePress documentation site
 ```

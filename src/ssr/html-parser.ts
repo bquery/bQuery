@@ -324,7 +324,8 @@ export const parseTemplate = (template: string): SSRDocumentFragment => {
 const escapeText = (value: string): string =>
   value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
-const escapeAttr = (value: string): string => value.replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+const escapeAttr = (value: string): string =>
+  value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
 /** Serialises a virtual node tree to an HTML string. */
 export const serializeTree = (node: SSRNode): string => {
