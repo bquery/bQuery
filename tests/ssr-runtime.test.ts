@@ -283,6 +283,7 @@ describe('pure renderer (DOM-free)', () => {
     expect(Object.getPrototypeOf(root.attributes)).toBeNull();
     expect(root.attributes.__proto__).toBe('polluted');
     expect(root.attributes.constructor).toBe('ctor');
+    expect(root.attributes.hasOwnProperty).toBeUndefined();
     expect(root.attributes.toString).toBeUndefined();
     expect(serializeTree(tree)).toBe('<div __proto__="polluted" constructor="ctor" data-safe="ok"></div>');
   });
