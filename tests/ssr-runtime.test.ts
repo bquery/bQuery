@@ -812,6 +812,116 @@ describe('runtime adapters', () => {
     expect(ended).toBe(true);
   });
 
+  it('createNodeHandler preserves repeated set-cookie headers for Node responses', async () => {
+    const headerStore: Record<string, string | number | readonly string[]> = {};
+    const res = {
+      statusCode: 0,
+      setHeader(name: string, value: string | number | readonly string[]) {
+        headerStore[name.toLowerCase()] = value;
+      },
+      write(_chunk: string | Uint8Array) {
+        return true;
+      },
+      end(_chunk?: string | Uint8Array) {
+        /* no-op */
+      },
+    };
+    const req: NodeIncomingMessage = {
+      url: '/cookies',
+      method: 'GET',
+      headers: { host: 'example.com' },
+      on(
+        _event: 'data' | 'end' | 'error',
+        _listener:
+          | ((chunk: Uint8Array | string) => void)
+          | (() => void)
+          | ((err: unknown) => void)
+      ): NodeIncomingMessage {
+        return this as NodeIncomingMessage;
+      },
+    };
+    const wrapped = createNodeHandler(async () => {
+      const headers = new Headers();
+      headers.append('set-cookie', 'session=abc; Path=/; HttpOnly');
+      headers.append('set-cookie', 'theme=dark; Expires=Wed, 01 Jan 2025 00:00:00 GMT; Path=/');
+      return new Response('ok', { headers });
+    });
+    await wrapped(req, res);
+    expect(headerStore['set-cookie']).toEqual([
+      'session=abc; Path=/; HttpOnly',
+      'theme=dark; Expires=Wed, 01 Jan 2025 00:00:00 GMT; Path=/',
+    ]);
+  });
+
+  it('createNodeHandler waits for drain before continuing streamed writes', async () => {
+    const writes: string[] = [];
+    let ended = false;
+    let onDrain: (() => void) | undefined;
+    let onError: ((error?: unknown) => void) | undefined;
+    let resolveFirstWrite: (() => void) | undefined;
+    const firstWriteSeen = new Promise<void>((resolve) => {
+      resolveFirstWrite = resolve;
+    });
+    const res = {
+      statusCode: 0,
+      setHeader(_name: string, _value: string | number | readonly string[]) {
+        /* no-op */
+      },
+      write(chunk: string | Uint8Array) {
+        writes.push(typeof chunk === 'string' ? chunk : new TextDecoder().decode(chunk));
+        if (writes.length === 1) resolveFirstWrite?.();
+        return writes.length > 1;
+      },
+      end(_chunk?: string | Uint8Array) {
+        ended = true;
+      },
+      once(event: 'drain' | 'error', listener: (error?: unknown) => void) {
+        if (event === 'drain') onDrain = listener as () => void;
+        if (event === 'error') onError = listener;
+      },
+    };
+    const req: NodeIncomingMessage = {
+      url: '/stream',
+      method: 'GET',
+      headers: { host: 'example.com' },
+      on(
+        _event: 'data' | 'end' | 'error',
+        _listener:
+          | ((chunk: Uint8Array | string) => void)
+          | (() => void)
+          | ((err: unknown) => void)
+      ): NodeIncomingMessage {
+        return this as NodeIncomingMessage;
+      },
+    };
+    const wrapped = createNodeHandler(async () => {
+      const encoder = new TextEncoder();
+      return new Response(
+        new ReadableStream({
+          start(controller) {
+            controller.enqueue(encoder.encode('first'));
+            controller.enqueue(encoder.encode('second'));
+            controller.close();
+          },
+        })
+      );
+    });
+
+    const pending = wrapped(req, res);
+    await firstWriteSeen;
+
+    expect(writes).toEqual(['first']);
+    expect(ended).toBe(false);
+    expect(onDrain).toBeDefined();
+    expect(onError).toBeDefined();
+
+    onDrain?.();
+    await pending;
+
+    expect(writes).toEqual(['first', 'second']);
+    expect(ended).toBe(true);
+  });
+
   it('createNodeHandler preserves Node request bodies', async () => {
     const res = {
       statusCode: 0,

@@ -76,6 +76,8 @@ export interface NodeServerResponse {
   setHeader(name: string, value: string | number | readonly string[]): void;
   write(chunk: Uint8Array | string): boolean;
   end(chunk?: Uint8Array | string): void;
+  once?(event: 'drain' | 'error', listener: (error?: unknown) => void): void;
+  on?(event: 'drain' | 'error', listener: (error?: unknown) => void): void;
 }
 
 /** Optional hardening settings for the `node:http` adapter. */
@@ -210,9 +212,44 @@ const buildRequestFromNode = async (
   return new Request(url.toString(), init);
 };
 
+type HeadersWithSetCookie = Headers & {
+  getSetCookie?: () => string[];
+};
+
+const getSetCookieHeaderValues = (headers: Headers): string[] => {
+  const setCookies = (headers as HeadersWithSetCookie).getSetCookie?.();
+  if (Array.isArray(setCookies) && setCookies.length > 0) {
+    return setCookies;
+  }
+  const fallback = headers.get('set-cookie');
+  return fallback ? [fallback] : [];
+};
+
+const waitForNodeDrain = (res: NodeServerResponse): Promise<void> =>
+  new Promise((resolve, reject) => {
+    const once = typeof res.once === 'function' ? res.once.bind(res) : undefined;
+    const on = typeof res.on === 'function' ? res.on.bind(res) : undefined;
+    const subscribe = once ?? on;
+    if (!subscribe) {
+      resolve();
+      return;
+    }
+    subscribe('drain', () => resolve());
+    subscribe('error', (error?: unknown) => {
+      reject(
+        error instanceof Error ? error : new Error('Node response stream errored while draining.')
+      );
+    });
+  });
+
 const writeResponseToNode = async (response: Response, res: NodeServerResponse): Promise<void> => {
   res.statusCode = response.status;
+  const setCookies = getSetCookieHeaderValues(response.headers);
+  if (setCookies.length > 0) {
+    res.setHeader('set-cookie', setCookies.length === 1 ? setCookies[0] : setCookies);
+  }
   response.headers.forEach((value, name) => {
+    if (name.toLowerCase() === 'set-cookie') return;
     res.setHeader(name, value);
   });
 
@@ -225,7 +262,9 @@ const writeResponseToNode = async (response: Response, res: NodeServerResponse):
   while (true) {
     const { value, done } = await reader.read();
     if (done) break;
-    if (value) res.write(value);
+    if (value && !res.write(value)) {
+      await waitForNodeDrain(res);
+    }
   }
   res.end();
 };
