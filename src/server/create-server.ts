@@ -247,13 +247,13 @@ const html = (body: string, init: ServerHtmlResponseInit = {}): Response => {
 
 const json = (data: unknown, init: ServerResponseInit = {}): Response => {
   const headers = withContentType(createHeaders(init.headers), 'application/json; charset=utf-8');
-  let serialized: string | undefined;
+  let serialized: string;
   try {
-    serialized = JSON.stringify(data);
+    serialized = JSON.stringify(data) ?? 'null';
   } catch {
-    serialized = undefined;
+    serialized = 'null';
   }
-  return response(escapeJsonString(serialized === undefined ? 'null' : serialized), { ...init, headers });
+  return response(escapeJsonString(serialized), { ...init, headers });
 };
 
 const redirect = (location: string | URL, status = 302): Response => {
