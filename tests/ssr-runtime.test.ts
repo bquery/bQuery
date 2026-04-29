@@ -43,7 +43,7 @@ type LegacyMediaQueryList = MediaQueryList & {
   removeListener?: (listener: (event: MediaQueryListEvent | MediaQueryList) => void) => void;
 };
 
-type GlobalWithOptionalDOM = typeof globalThis & {
+type TestGlobalThisWithOptionalDOM = typeof globalThis & {
   document?: Document;
   DOMParser?: typeof DOMParser;
   NodeFilter?: typeof NodeFilter;
@@ -116,7 +116,7 @@ describe('configureSSR', () => {
     }
   });
 
-  it('sanitizes DOM-backend bq-html with a configured DOMParser even when DOM globals are unavailable', () => {
+  it('sanitizes bq-html with a configured DOMParser when DOM globals are absent', () => {
     const originalDocumentDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'document');
     const originalDOMParserDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'DOMParser');
     const originalNodeFilterDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'NodeFilter');
@@ -126,7 +126,7 @@ describe('configureSSR', () => {
       documentImpl: { DOMParser: globalThis.DOMParser },
     });
 
-    const runtimeGlobals = globalThis as GlobalWithOptionalDOM;
+    const runtimeGlobals = globalThis as TestGlobalThisWithOptionalDOM;
     delete runtimeGlobals.document;
     delete runtimeGlobals.DOMParser;
     delete runtimeGlobals.NodeFilter;
