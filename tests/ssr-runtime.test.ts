@@ -127,9 +127,9 @@ describe('configureSSR', () => {
     });
 
     const runtimeGlobals = globalThis as TestGlobalThisWithOptionalDOM;
-    delete runtimeGlobals.document;
-    delete runtimeGlobals.DOMParser;
-    delete runtimeGlobals.NodeFilter;
+    Reflect.deleteProperty(runtimeGlobals, 'document');
+    Reflect.deleteProperty(runtimeGlobals, 'DOMParser');
+    Reflect.deleteProperty(runtimeGlobals, 'NodeFilter');
 
     try {
       const result = renderToString('<div><span bq-html="content"></span></div>', {

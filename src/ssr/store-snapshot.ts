@@ -16,6 +16,7 @@
 
 import { getStore, listStores } from '../store/index';
 import { isPrototypePollutionKey } from '../core/utils/object';
+import { escapeForHtmlAttribute, escapeForScript } from './escape';
 
 const isStateObject = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -28,17 +29,6 @@ const sanitize = (value: Record<string, unknown>): Record<string, unknown> => {
   }
   return out;
 };
-
-const escapeForScript = (str: string): string =>
-  str
-    .replace(/</g, '\\u003c')
-    .replace(/>/g, '\\u003e')
-    .replace(/\//g, '\\u002f')
-    .replace(/\u2028/g, '\\u2028')
-    .replace(/\u2029/g, '\\u2029');
-
-const escapeForHtmlAttribute = (str: string): string =>
-  str.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
 /** Versioned store snapshot. */
 export interface SSRStoreSnapshot {

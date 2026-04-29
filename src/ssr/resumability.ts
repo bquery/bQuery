@@ -16,17 +16,7 @@
  */
 
 import { isPrototypePollutionKey } from '../core/utils/object';
-
-const escapeForScript = (str: string): string =>
-  str
-    .replace(/</g, '\\u003c')
-    .replace(/>/g, '\\u003e')
-    .replace(/\//g, '\\u002f')
-    .replace(/\u2028/g, '\\u2028')
-    .replace(/\u2029/g, '\\u2029');
-
-const escapeForHtmlAttribute = (str: string): string =>
-  str.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+import { escapeForHtmlAttribute, escapeForScript } from './escape';
 
 /** Server-side resumable state collector. */
 export interface ResumableState {
