@@ -35,6 +35,10 @@ bun run storybook     # Storybook dev server
 bun run dev           # VitePress docs server
 ```
 
+## Workspace Prompt Pack
+
+Project-specific starter prompts live in [`.github/prompts/`](.github/prompts/) for common workflows such as starting a task, fixing a bug, extending a public API, adding a module, working on SSR/server features, and refreshing AI guidance.
+
 ## Version 1.11.0 Highlights
 
 - `@bquery/bquery/server` is now a first-class public entry point for dependency-free backend routing, SSR-aware `render()` responses, repeated-query parsing, and runtime-agnostic WebSocket session handling through `createServer()`.
@@ -559,6 +563,7 @@ it('should add class', () => {
 ## Related Files for AI Agents
 
 - [.github/copilot-instructions.md](.github/copilot-instructions.md) — GitHub Copilot context
+- [.github/prompts/](.github/prompts/) — Workspace starter prompts for common bQuery workflows
 - [llms.txt](llms.txt) — LLM-optimized project summary
 - [.cursorrules](.cursorrules) — Cursor-specific derived rules snapshot
 - [.clinerules](.clinerules) — Cline-specific derived rules snapshot

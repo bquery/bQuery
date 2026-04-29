@@ -24,6 +24,7 @@ Start here before making assumptions:
 - `llms.txt` — compact project summary for fast orientation
 - `package.json` — authoritative scripts, exports, version, supported runtime
 - `docs/guide/` — feature-specific guides for modules and workflows
+- `.github/prompts/` — workspace starter prompts for common bQuery tasks
 
 Prefer pointing back to those files instead of duplicating large architecture sections into new instructions or docs.
 

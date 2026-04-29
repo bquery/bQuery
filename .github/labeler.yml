@@ -117,6 +117,7 @@ ci/cd:
 github:
   - changed-files:
       - any-glob-to-any-file:
+          - '.github/skills/**'
           - '.github/labeler.yml'
           - '.github/ISSUE_TEMPLATE/**'
           - '.github/FUNDING.yml'
