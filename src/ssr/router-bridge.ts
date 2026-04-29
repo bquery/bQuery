@@ -37,7 +37,7 @@ const getLoader = (route: RouteDefinition | null): SSRRouteLoader | undefined =>
 
 /** Result of `resolveSSRRoute()`. */
 export interface ResolvedSSRRoute {
-  /** Matched route or `null` if no route matched. */
+  /** Route-like snapshot for the requested URL, with `matched` set when found. */
   route: Route;
   /** Whether a route definition was actually matched. */
   matched: boolean;

@@ -400,7 +400,7 @@ const processSSRChildren = (
   doc: Document,
   annotateHydration = false
 ): void => {
-  // Process children in reverse to handle removals safely
+  // Process a snapshotted child list so removals do not affect iteration
   const children = Array.from(parent.children);
   for (const child of children) {
     let processedForDirective = false;
