@@ -27,7 +27,9 @@ describe('server/createServer', () => {
     app.get('/users/:id', (ctx) =>
       ctx.json({
         filter: ctx.query.filter,
+        hasNullPrototype: Object.getPrototypeOf(ctx.query) === null,
         id: ctx.params.id,
+        paramsHaveNullPrototype: Object.getPrototypeOf(ctx.params) === null,
         tags: ctx.query.tag,
       })
     );
@@ -36,8 +38,31 @@ describe('server/createServer', () => {
 
     expect(await response.json()).toEqual({
       filter: 'active',
+      hasNullPrototype: true,
       id: '42',
+      paramsHaveNullPrototype: true,
       tags: ['admin', 'beta'],
+    });
+  });
+
+  it('ignores prototype-pollution query keys', async () => {
+    const app = createServer();
+    app.get('/search', (ctx) =>
+      ctx.json({
+        constructorType: typeof ctx.query.constructor,
+        protoType: typeof ctx.query.__proto__,
+        prototypeType: typeof ctx.query.prototype,
+        tag: ctx.query.tag,
+      })
+    );
+
+    const response = await app.handle('/search?__proto__=polluted&constructor=oops&prototype=bad&tag=safe');
+
+    expect(await response.json()).toEqual({
+      constructorType: 'undefined',
+      protoType: 'undefined',
+      prototypeType: 'undefined',
+      tag: 'safe',
     });
   });
 
@@ -164,6 +189,14 @@ describe('server/createServer', () => {
 
     expect(() => app.get('/a/*/b', (ctx) => ctx.text('bad'))).toThrow(
       'invalid route path: "*" must be the final segment'
+    );
+  });
+
+  it('rejects prototype-pollution route param names', () => {
+    const app = createServer();
+
+    expect(() => app.get('/users/:__proto__', (ctx) => ctx.text('bad'))).toThrow(
+      'invalid route param name: __proto__ - reserved for object safety'
     );
   });
 

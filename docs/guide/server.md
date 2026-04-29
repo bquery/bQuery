@@ -86,3 +86,5 @@ app.get('/dashboard', (ctx) =>
 - `ctx.render()` trusts `renderToString()` output, preserving SSR HTML and optional serialized store-state script tags.
 
 If you already have trusted HTML and need to skip sanitization, pass `{ trusted: true }` to `ctx.html()`.
+
+Like SSR rendering, `ctx.html()` sanitization relies on DOM-compatible globals. If your Node runtime does not provide `document` / `DOMParser`, install and register a compatible implementation before returning sanitized HTML, or pass `{ trusted: true }` only when the HTML is already known to be safe.

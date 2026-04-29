@@ -1,3 +1,4 @@
+import { isPrototypePollutionKey } from '../core/utils/object';
 import { sanitizeHtml } from '../security/index';
 import { renderToString, serializeStoreState } from '../ssr/index';
 import type {
@@ -38,6 +39,7 @@ const JSON_ESCAPE_PATTERN = /[<>&\u2028\u2029]/g;
 const METHOD_ALL = null;
 
 const escapeRegex = (value: string): string => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const createDictionary = <T>(): Record<string, T> => Object.create(null) as Record<string, T>;
 
 const normalizePath = (path: string): string => {
   if (!path) {
@@ -88,6 +90,9 @@ const compileRoutePath = (path: string): Pick<CompiledRoute, 'paramNames' | 'pat
           `invalid route param name: ${paramName} - must start with a letter, $, or _ and contain only word characters`
         );
       }
+      if (isPrototypePollutionKey(paramName)) {
+        throw new Error(`invalid route param name: ${paramName} - reserved for object safety`);
+      }
       paramNames.push(paramName);
       source += '([^/]+)';
       continue;
@@ -123,9 +128,12 @@ const normalizeMethods = (method?: string | string[]): Set<string> | null => {
 };
 
 const parseQuery = (url: URL): ServerQuery => {
-  const query: ServerQuery = {};
+  const query = createDictionary<string | string[] | undefined>() as ServerQuery;
 
   for (const [key, value] of url.searchParams.entries()) {
+    if (isPrototypePollutionKey(key)) {
+      continue;
+    }
     const current = query[key];
     if (typeof current === 'undefined') {
       query[key] = value;
@@ -223,7 +231,7 @@ const matchRoute = (route: CompiledRoute, method: string, path: string): Record<
     return null;
   }
 
-  const params: Record<string, string> = {};
+  const params = createDictionary<string>();
   for (const [index, paramName] of route.paramNames.entries()) {
     try {
       params[paramName] = decodeURIComponent(match[index + 1] ?? '');
@@ -374,7 +382,7 @@ export const createServer = (options: CreateServerOptions = {}): ServerApp => {
         url,
         method,
         path,
-        params: {},
+        params: createDictionary<string>(),
         query,
         state: {},
         response,
