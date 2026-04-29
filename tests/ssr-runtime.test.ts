@@ -281,11 +281,22 @@ describe('pure renderer (DOM-free)', () => {
     }
 
     expect(Object.getPrototypeOf(root.attributes)).toBeNull();
-    expect(root.attributes.__proto__).toBe('polluted');
-    expect(root.attributes.constructor).toBe('ctor');
-    expect(root.attributes.hasOwnProperty).toBeUndefined();
-    expect(root.attributes.toString).toBeUndefined();
+    expect(root.attributes['__proto__']).toBe('polluted');
+    expect(root.attributes['constructor']).toBe('ctor');
+    expect(root.attributes['hasOwnProperty']).toBeUndefined();
+    expect(root.attributes['toString']).toBeUndefined();
     expect(serializeTree(tree)).toBe('<div __proto__="polluted" constructor="ctor" data-safe="ok"></div>');
+  });
+
+  it('sanitizes bq-html without relying on DOM globals', () => {
+    configureSSR({ backend: 'pure' });
+    const result = renderToString('<div><span bq-html="content"></span></div>', {
+      content: '<a href="https://bquery.dev" target="_blank" onclick="alert(1)">safe</a><script>alert(1)</script>',
+    });
+
+    expect(result.html).toContain('<a href="https://bquery.dev" target="_blank" rel="noopener noreferrer">safe</a>');
+    expect(result.html).not.toContain('onclick=');
+    expect(result.html).not.toContain('<script');
   });
 
   it('trims pure-renderer templates like the DOM backend', () => {

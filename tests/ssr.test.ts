@@ -223,10 +223,17 @@ describe('renderToString', () => {
         writable: true,
       });
 
-      const result = renderToString('<div><span bq-text="title"></span></div>', {
-        title: 'Pure',
-      });
+      const result = renderToString(
+        '<div><span bq-text="title"></span><span bq-html="content"></span></div>',
+        {
+          title: 'Pure',
+          content: '<strong onclick="alert(1)">Bold</strong><script>alert(1)</script>',
+        }
+      );
       expect(result.html).toContain('Pure');
+      expect(result.html).toContain('<strong>Bold</strong>');
+      expect(result.html).not.toContain('onclick=');
+      expect(result.html).not.toContain('<script');
     } finally {
       configureSSR(previousConfig);
       Object.defineProperty(globalThis, 'DOMParser', {

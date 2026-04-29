@@ -11,8 +11,14 @@
  * @internal
  */
 
-import { DANGEROUS_PROTOCOLS } from '../security/constants';
-import { sanitizeHtml } from '../security/sanitize';
+import {
+  DANGEROUS_ATTR_PREFIXES,
+  DANGEROUS_PROTOCOLS,
+  DANGEROUS_TAGS,
+  DEFAULT_ALLOWED_ATTRIBUTES,
+  DEFAULT_ALLOWED_TAGS,
+  RESERVED_IDS,
+} from '../security/constants';
 import type { BindingContext } from '../view/types';
 import { evaluateExpression } from './expression';
 import { cheapHash, collectDirectiveSignatureFromAttrs, HYDRATION_HASH_ATTR } from './hash';
@@ -51,6 +57,56 @@ const sanitizeUrlForProtocolCheck = (value: string): string =>
 const isUnsafeUrlValue = (value: string): boolean => {
   const normalized = sanitizeUrlForProtocolCheck(value);
   return DANGEROUS_PROTOCOLS.some((protocol) => normalized.startsWith(protocol));
+};
+
+const isAllowedHtmlAttribute = (name: string): boolean => {
+  const lowerName = name.toLowerCase();
+
+  for (const prefix of DANGEROUS_ATTR_PREFIXES) {
+    if (lowerName.startsWith(prefix)) return false;
+  }
+
+  if (lowerName.startsWith('data-')) return true;
+  if (lowerName.startsWith('aria-')) return true;
+
+  return DEFAULT_ALLOWED_ATTRIBUTES.has(lowerName);
+};
+
+const isSafeHtmlIdOrName = (value: string): boolean => !RESERVED_IDS.has(value.toLowerCase().trim());
+
+const isSafeHtmlSrcset = (value: string): boolean => {
+  const entries = value.split(',');
+  for (const entry of entries) {
+    const url = entry.trim().split(/\s+/)[0];
+    if (url && isUnsafeUrlValue(url)) return false;
+  }
+  return true;
+};
+
+const isExternalHtmlUrl = (url: string): boolean => {
+  try {
+    const trimmedUrl = url.trim();
+    if (trimmedUrl.startsWith('//')) return true;
+
+    const lowerUrl = trimmedUrl.toLowerCase();
+    const hasProtocol = /^[a-z][a-z0-9+.-]*:/i.test(trimmedUrl);
+    if (hasProtocol && !lowerUrl.startsWith('http://') && !lowerUrl.startsWith('https://')) {
+      return true;
+    }
+
+    if (!lowerUrl.startsWith('http://') && !lowerUrl.startsWith('https://')) {
+      return false;
+    }
+
+    if (typeof window === 'undefined' || !window.location) {
+      return true;
+    }
+
+    const urlObj = new URL(trimmedUrl, window.location.href);
+    return urlObj.origin !== window.location.origin;
+  } catch {
+    return true;
+  }
 };
 
 interface RenderOpts {
@@ -136,6 +192,73 @@ const setHtml = (el: SSRElement, raw: string): void => {
   // Parse the sanitized HTML and replace children with the resulting tree.
   const fragment = parseTemplate(raw);
   el.children = fragment.children;
+};
+
+const sanitizeHtmlForSSR = (raw: string): string => {
+  const sanitizeNode = (node: SSRNode): SSRNode | null => {
+    if (node.type === 'fragment') {
+      node.children = node.children.flatMap((child) => {
+        const sanitized = sanitizeNode(child);
+        return sanitized ? [sanitized] : [];
+      });
+      return node;
+    }
+
+    if (node.type !== 'element') {
+      return node;
+    }
+
+    if (DANGEROUS_TAGS.has(node.tag) || !DEFAULT_ALLOWED_TAGS.has(node.tag)) {
+      return null;
+    }
+
+    for (const name of [...node.attributeOrder]) {
+      const value = node.attributes[name];
+      const attrName = name.toLowerCase();
+
+      if (!isAllowedHtmlAttribute(attrName)) {
+        removeAttr(node, name);
+        continue;
+      }
+
+      if ((attrName === 'id' || attrName === 'name') && !isSafeHtmlIdOrName(value)) {
+        removeAttr(node, name);
+        continue;
+      }
+
+      if ((attrName === 'href' || attrName === 'src' || attrName === 'action') && isUnsafeUrlValue(value)) {
+        removeAttr(node, name);
+        continue;
+      }
+
+      if (attrName === 'srcset' && !isSafeHtmlSrcset(value)) {
+        removeAttr(node, name);
+      }
+    }
+
+    if (node.tag === 'a') {
+      const href = node.attributes.href;
+      const target = node.attributes.target;
+      const hasTargetBlank = target?.toLowerCase() === '_blank';
+      const isExternal = href ? isExternalHtmlUrl(href) : false;
+
+      if (hasTargetBlank || isExternal) {
+        const relValues = new Set((node.attributes.rel ?? '').split(/\s+/).filter(Boolean));
+        relValues.add('noopener');
+        relValues.add('noreferrer');
+        setAttr(node, 'rel', Array.from(relValues).join(' '));
+      }
+    }
+
+    node.children = node.children.flatMap((child) => {
+      const sanitized = sanitizeNode(child);
+      return sanitized ? [sanitized] : [];
+    });
+
+    return node;
+  };
+
+  return serializeTree(sanitizeNode(parseTemplate(raw)) ?? { type: 'fragment', children: [] });
 };
 
 const evaluateChildren = (parent: SSRElement, context: BindingContext, opts: RenderOpts): void => {
@@ -229,7 +352,7 @@ const evaluateElement = (
   const htmlExpr = el.attributes[`${prefix}-html`];
   if (htmlExpr !== undefined) {
     const value = evaluateExpression<unknown>(htmlExpr, context);
-    setHtml(el, String(sanitizeHtml(String(value ?? ''))));
+    setHtml(el, sanitizeHtmlForSSR(String(value ?? '')));
   }
 
   // bq-class
