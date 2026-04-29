@@ -59,6 +59,9 @@ const isUnsafeUrlValue = (value: string): boolean => {
   return DANGEROUS_PROTOCOLS.some((protocol) => normalized.startsWith(protocol));
 };
 
+const URL_PROTOCOL_PATTERN = /^[a-z][a-z0-9+.-]*:/i;
+const REL_SPLIT_PATTERN = /\s+/;
+
 const isAllowedHtmlAttribute = (name: string): boolean => {
   const lowerName = name.toLowerCase();
 
@@ -80,7 +83,7 @@ const isExternalHtmlUrl = (url: string): boolean => {
     if (trimmedUrl.startsWith('//')) return true;
 
     const lowerUrl = trimmedUrl.toLowerCase();
-    const hasProtocol = /^[a-z][a-z0-9+.-]*:/i.test(trimmedUrl);
+    const hasProtocol = URL_PROTOCOL_PATTERN.test(trimmedUrl);
     if (hasProtocol && !lowerUrl.startsWith('http://') && !lowerUrl.startsWith('https://')) {
       return true;
     }
@@ -230,7 +233,7 @@ const sanitizeHtmlForSSR = (raw: string): string => {
       const isExternal = href ? isExternalHtmlUrl(href) : false;
 
       if (hasTargetBlank || isExternal) {
-        const relValues = new Set((node.attributes.rel ?? '').split(/\s+/).filter(Boolean));
+        const relValues = new Set((node.attributes.rel ?? '').split(REL_SPLIT_PATTERN).filter(Boolean));
         relValues.add('noopener');
         relValues.add('noreferrer');
         setAttr(node, 'rel', Array.from(relValues).join(' '));
