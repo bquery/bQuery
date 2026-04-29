@@ -88,3 +88,12 @@ app.get('/dashboard', (ctx) =>
 If you already have trusted HTML and need to skip sanitization, pass `{ trusted: true }` to `ctx.html()`.
 
 Like SSR rendering, `ctx.html()` sanitization relies on DOM-compatible globals. If your Node runtime does not provide `document` / `DOMParser`, install and register a compatible implementation before returning sanitized HTML, or pass `{ trusted: true }` only when the HTML is already known to be safe.
+
+```ts
+import { Window } from 'happy-dom';
+
+const window = new Window();
+globalThis.window = window;
+globalThis.document = window.document;
+globalThis.DOMParser = window.DOMParser;
+```

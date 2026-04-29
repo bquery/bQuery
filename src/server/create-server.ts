@@ -39,6 +39,10 @@ const JSON_ESCAPE_PATTERN = /[<>&\u2028\u2029]/g;
 const METHOD_ALL = null;
 
 const escapeRegex = (value: string): string => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+/**
+ * Creates a null-prototype dictionary for request-derived data so user-controlled
+ * keys cannot mutate the default object prototype.
+ */
 const createDictionary = <T>(): Record<string, T> => Object.create(null) as Record<string, T>;
 
 const normalizePath = (path: string): string => {

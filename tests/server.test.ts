@@ -27,7 +27,7 @@ describe('server/createServer', () => {
     app.get('/users/:id', (ctx) =>
       ctx.json({
         filter: ctx.query.filter,
-        hasNullPrototype: Object.getPrototypeOf(ctx.query) === null,
+        queryHasNullPrototype: Object.getPrototypeOf(ctx.query) === null,
         id: ctx.params.id,
         paramsHaveNullPrototype: Object.getPrototypeOf(ctx.params) === null,
         tags: ctx.query.tag,
@@ -38,7 +38,7 @@ describe('server/createServer', () => {
 
     expect(await response.json()).toEqual({
       filter: 'active',
-      hasNullPrototype: true,
+      queryHasNullPrototype: true,
       id: '42',
       paramsHaveNullPrototype: true,
       tags: ['admin', 'beta'],
