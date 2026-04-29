@@ -11,9 +11,17 @@ import type {
   ServerNext,
   ServerQuery,
   ServerRenderResponseOptions,
+  ServerResult,
   ServerRequestInit,
   ServerResponseInit,
   ServerRoute,
+  ServerWebSocketConnection,
+  ServerWebSocketHandlerSet,
+  ServerWebSocketMiddleware,
+  ServerWebSocketNext,
+  ServerWebSocketPeer,
+  ServerWebSocketRouteHandler,
+  ServerWebSocketSession,
 } from './types';
 
 interface CompiledRoute {
@@ -25,7 +33,16 @@ interface CompiledRoute {
   pattern: RegExp;
 }
 
+type CompiledWebSocketRoute = Omit<CompiledRoute, 'handler' | 'middlewares'> & {
+  handler: ServerWebSocketRouteHandler<unknown>;
+  middlewares: ServerWebSocketMiddleware[];
+};
+
 type PipelineHandler = (context: ServerContext, next: ServerNext) => Response | Promise<Response>;
+type WebSocketPipelineHandler = (
+  context: ServerContext,
+  next: ServerWebSocketNext
+) => ServerResult | Promise<ServerResult>;
 
 const DEFAULT_BASE_URL = 'http://localhost';
 const JSON_ESCAPE_LOOKUP: Record<string, string> = {
@@ -37,6 +54,7 @@ const JSON_ESCAPE_LOOKUP: Record<string, string> = {
 };
 const JSON_ESCAPE_PATTERN = /[<>&\u2028\u2029]/g;
 const METHOD_ALL = null;
+const WEBSOCKET_PASSTHROUGH_HEADER = 'x-bquery-websocket-passthrough';
 
 const escapeRegex = (value: string): string => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 /**
@@ -175,6 +193,30 @@ const normalizeRequest = (
   return new Request(normalizeUrl(url, baseUrl).toString(), { method, headers, body });
 };
 
+const normalizeWebSocketProtocols = (protocols?: string | string[]): string[] => {
+  if (typeof protocols === 'undefined') {
+    return [];
+  }
+
+  const values = Array.isArray(protocols) ? protocols : [protocols];
+  return [...new Set(values.map((value) => value.trim()).filter(Boolean))];
+};
+
+const defaultDeserialize = <TReceive>(event: MessageEvent): TReceive => {
+  const raw = event.data;
+  if (typeof raw === 'string') {
+    try {
+      return JSON.parse(raw) as TReceive;
+    } catch {
+      // Match `useWebSocket()` in `src/reactive/websocket.ts`: malformed JSON
+      // payloads fall back to the original string instead of throwing.
+      return raw as TReceive;
+    }
+  }
+
+  return raw as TReceive;
+};
+
 const escapeJsonString = (value: string): string =>
   value.replace(JSON_ESCAPE_PATTERN, (match) => JSON_ESCAPE_LOOKUP[match]);
 
@@ -229,7 +271,143 @@ const render = (
   return html(body, { headers, status, trusted: true });
 };
 
-const matchRoute = (route: CompiledRoute, method: string, path: string): Record<string, string> | null => {
+/**
+ * Returns `true` when the request is a WebSocket upgrade handshake.
+ */
+export const isWebSocketRequest = (request: Request): boolean => {
+  if (request.method.toUpperCase() !== 'GET') {
+    return false;
+  }
+
+  const upgrade = request.headers.get('upgrade');
+  if (typeof upgrade !== 'string' || upgrade.trim().toLowerCase() !== 'websocket') {
+    return false;
+  }
+
+  const connection = request.headers.get('connection');
+  if (typeof connection !== 'string') {
+    return false;
+  }
+
+  if (!connection.split(',').some((part) => part.trim().toLowerCase() === 'upgrade')) {
+    return false;
+  }
+
+  const version = request.headers.get('sec-websocket-version');
+  if (version?.trim() !== '13') {
+    return false;
+  }
+
+  const key = request.headers.get('sec-websocket-key')?.trim();
+  return typeof key === 'string' && /^[A-Za-z0-9+/]{22}==$/.test(key);
+};
+
+/**
+ * Type guard for values returned by `handleWebSocket()`.
+ */
+export const isServerWebSocketSession = (value: unknown): value is ServerWebSocketSession => {
+  if (typeof value !== 'object' || value === null || value instanceof Response) {
+    return false;
+  }
+
+  const candidate = value as Record<string, unknown>;
+  return (
+    typeof candidate.open === 'function' &&
+    typeof candidate.message === 'function' &&
+    typeof candidate.close === 'function' &&
+    typeof candidate.error === 'function'
+  );
+};
+
+const createWebSocketConnectionFactory = () => {
+  const cache = new WeakMap<object, ServerWebSocketConnection>();
+
+  return (socket: ServerWebSocketPeer): ServerWebSocketConnection => {
+    const existing = cache.get(socket);
+    if (existing) {
+      return existing;
+    }
+
+    const connection: ServerWebSocketConnection = {
+      get protocol() {
+        return socket.protocol;
+      },
+      get readyState() {
+        return socket.readyState;
+      },
+      get url() {
+        return socket.url;
+      },
+      send(data) {
+        socket.send(data);
+      },
+      sendJson(data) {
+        const payload = JSON.stringify(data);
+        if (typeof payload !== 'string') {
+          throw new TypeError('socket.sendJson() does not support undefined values');
+        }
+        socket.send(payload);
+      },
+      close(code, reason) {
+        socket.close(code, reason);
+      },
+    };
+
+    cache.set(socket, connection);
+    return connection;
+  };
+};
+
+const createWebSocketSession = <TReceive>(
+  context: ServerContext,
+  handlers: ServerWebSocketHandlerSet<TReceive>
+): ServerWebSocketSession => {
+  const toConnection = createWebSocketConnectionFactory();
+  const deserialize = handlers.deserialize ?? defaultDeserialize<TReceive>;
+
+  return {
+    context,
+    protocols: normalizeWebSocketProtocols(handlers.protocols),
+    headers: handlers.headers,
+    async open(socket) {
+      if (handlers.onOpen) {
+        await handlers.onOpen(toConnection(socket), context);
+      }
+    },
+    async message(socket, event) {
+      if (handlers.onMessage) {
+        await handlers.onMessage(deserialize(event), toConnection(socket), context, event);
+      }
+    },
+    async close(socket, event) {
+      if (handlers.onClose) {
+        await handlers.onClose(event, toConnection(socket), context);
+      }
+    },
+    async error(socket, event) {
+      if (handlers.onError) {
+        await handlers.onError(event, toConnection(socket), context);
+      }
+    },
+  };
+};
+
+const createWebSocketPassthroughResponse = (): Response => {
+  const headers = createHeaders({
+    [WEBSOCKET_PASSTHROUGH_HEADER]: '1',
+  });
+  return response(null, { headers, status: 204 });
+};
+
+const isWebSocketPassthroughResponse = (value: Response): boolean => {
+  return value.headers.get(WEBSOCKET_PASSTHROUGH_HEADER) === '1';
+};
+
+const matchRoute = (
+  route: Pick<CompiledRoute, 'methods' | 'paramNames' | 'pattern'>,
+  method: string,
+  path: string
+): Record<string, string> | null => {
   if (route.methods && !route.methods.has(method)) {
     return null;
   }
@@ -252,6 +430,24 @@ const matchRoute = (route: CompiledRoute, method: string, path: string): Record<
   }
 
   return params;
+};
+
+const resolveMatchingRoute = <TRoute extends CompiledRoute | CompiledWebSocketRoute>(
+  routes: TRoute[],
+  method: string,
+  path: string,
+  context: ServerContext
+): TRoute | null => {
+  for (const candidate of routes) {
+    const params = matchRoute(candidate, method, path);
+    if (!params) {
+      continue;
+    }
+    context.params = params;
+    return candidate;
+  }
+
+  return null;
 };
 
 const runPipeline = async (
@@ -278,6 +474,57 @@ const runPipeline = async (
   };
 
   return await dispatch(0);
+};
+
+const runWebSocketPipeline = async (
+  context: ServerContext,
+  handlers: WebSocketPipelineHandler[],
+  terminal: ServerWebSocketNext
+): Promise<ServerResult> => {
+  const dispatch = async (index: number): Promise<ServerResult> => {
+    const current = handlers[index];
+    if (!current) {
+      return terminal();
+    }
+
+    let advanced = false;
+    return await current(context, async () => {
+      if (advanced) {
+        throw new Error(
+          'middleware next() called multiple times - if a middleware calls next(), it may only do so once'
+        );
+      }
+      advanced = true;
+      return await dispatch(index + 1);
+    });
+  };
+
+  return await dispatch(0);
+};
+
+const adaptHttpMiddlewareToWebSocket = (middleware: ServerMiddleware): WebSocketPipelineHandler => {
+  return async (context, next) => {
+    let downstream: ServerResult = null;
+    let downstreamResponse: Response | null = null;
+    const middlewareResponse = await middleware(context, async () => {
+      downstream = await next();
+      if (downstream instanceof Response) {
+        downstreamResponse = downstream;
+        return downstream;
+      }
+      return createWebSocketPassthroughResponse();
+    });
+
+    if (downstreamResponse) {
+      return middlewareResponse;
+    }
+
+    if (middlewareResponse instanceof Response && isWebSocketPassthroughResponse(middlewareResponse)) {
+      return downstream;
+    }
+
+    return middlewareResponse;
+  };
 };
 
 const compileRoute = (route: ServerRoute): CompiledRoute => {
@@ -310,6 +557,7 @@ export const createServer = (options: CreateServerOptions = {}): ServerApp => {
   const baseUrl = options.baseUrl ?? DEFAULT_BASE_URL;
   const middlewares = [...(options.middlewares ?? [])];
   const routes: CompiledRoute[] = [];
+  const webSocketRoutes: CompiledWebSocketRoute[] = [];
 
   const notFound =
     options.notFound ??
@@ -340,6 +588,23 @@ export const createServer = (options: CreateServerOptions = {}): ServerApp => {
         path,
       })
     );
+    return app;
+  };
+
+  const addWebSocketRoute = (
+    path: string,
+    handler: ServerWebSocketRouteHandler<unknown>,
+    routeMiddlewares?: ServerWebSocketMiddleware[]
+  ): ServerApp => {
+    const compiledPath = compileRoutePath(path);
+    webSocketRoutes.push({
+      handler,
+      methods: new Set(['GET']),
+      middlewares: routeMiddlewares ?? [],
+      paramNames: compiledPath.paramNames,
+      path: compiledPath.path,
+      pattern: compiledPath.pattern,
+    });
     return app;
   };
 
@@ -378,6 +643,10 @@ export const createServer = (options: CreateServerOptions = {}): ServerApp => {
       return addRoute(undefined, path, handler, routeMiddlewares);
     },
 
+    ws(path, handler, routeMiddlewares) {
+      return addWebSocketRoute(path, handler as ServerWebSocketRouteHandler<unknown>, routeMiddlewares);
+    },
+
     async handle(input) {
       const request = normalizeRequest(input, baseUrl);
       const url = new URL(request.url);
@@ -399,17 +668,11 @@ export const createServer = (options: CreateServerOptions = {}): ServerApp => {
         json,
         redirect,
         render,
+        isWebSocketRequest: isWebSocketRequest(request),
       };
 
       try {
-        const route = routes.find((candidate) => {
-          const params = matchRoute(candidate, method, path);
-          if (!params) {
-            return false;
-          }
-          context.params = params;
-          return true;
-        });
+        const route = resolveMatchingRoute(routes, method, path, context);
 
         if (!route) {
           return await notFound(context);
@@ -421,8 +684,59 @@ export const createServer = (options: CreateServerOptions = {}): ServerApp => {
           async (ctx) => await route.handler(ctx),
         ];
 
-        return await runPipeline(context, stack, async () => {
+        const result = await runPipeline(context, stack, async () => {
           return await notFound(context);
+        });
+        return result;
+      } catch (error) {
+        return await onError(error, context);
+      }
+    },
+
+    async handleWebSocket(input) {
+      const request = normalizeRequest(input, baseUrl);
+      const url = new URL(request.url);
+      const method = request.method.toUpperCase();
+      const path = normalizePath(url.pathname || '/');
+      const query = parseQuery(url);
+
+      const context: ServerContext = {
+        request,
+        url,
+        method,
+        path,
+        params: createDictionary<string>(),
+        query,
+        state: {},
+        response,
+        text,
+        html,
+        json,
+        redirect,
+        render,
+        isWebSocketRequest: isWebSocketRequest(request),
+      };
+
+      if (!context.isWebSocketRequest) {
+        return null;
+      }
+
+      try {
+        const route = resolveMatchingRoute(webSocketRoutes, method, path, context);
+        if (!route) {
+          return null;
+        }
+
+        const stack: WebSocketPipelineHandler[] = [
+          ...middlewares.map(adaptHttpMiddlewareToWebSocket),
+          ...route.middlewares,
+        ];
+        return await runWebSocketPipeline(context, stack, async () => {
+          const handlers =
+            typeof route.handler === 'function'
+              ? await route.handler(context)
+              : route.handler;
+          return createWebSocketSession(context, handlers as ServerWebSocketHandlerSet<unknown>);
         });
       } catch (error) {
         return await onError(error, context);

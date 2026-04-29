@@ -704,12 +704,13 @@ export type {
 // ---------------------------------------------------------------------------
 // Server module
 // ---------------------------------------------------------------------------
-export { createServer } from './server/index';
+export { createServer, isServerWebSocketSession, isWebSocketRequest } from './server/index';
 export type {
   CreateServerOptions,
   ServerApp,
   ServerContext,
   ServerHandler,
+  ServerResult,
   ServerHtmlResponseInit,
   ServerMiddleware,
   ServerNext,
@@ -718,4 +719,12 @@ export type {
   ServerRequestInit,
   ServerResponseInit,
   ServerRoute,
+  ServerWebSocketConnection,
+  ServerWebSocketData,
+  ServerWebSocketHandlerSet,
+  ServerWebSocketMiddleware,
+  ServerWebSocketNext,
+  ServerWebSocketPeer,
+  ServerWebSocketRouteHandler,
+  ServerWebSocketSession,
 } from './server/index';
