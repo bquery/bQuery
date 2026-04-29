@@ -35,6 +35,17 @@ class MockServerWebSocketPeer implements ServerWebSocketPeer {
   }
 }
 
+const createWebSocketRequest = (url: string): Request =>
+  new Request(url, {
+    headers: {
+      connection: 'keep-alive, Upgrade',
+      upgrade: 'websocket',
+      'sec-websocket-key': 'dGhlIHNhbXBsZSBub25jZQ==',
+      'sec-websocket-version': '13',
+    },
+    method: 'GET',
+  });
+
 describe('server/createServer', () => {
   it('handles static routes via method helpers', async () => {
     const app = createServer();
@@ -248,15 +259,47 @@ describe('server/createServer', () => {
   });
 
   it('detects websocket upgrade requests', () => {
-    const request = new Request('http://localhost/socket', {
-      headers: {
-        connection: 'keep-alive, Upgrade',
-        upgrade: 'websocket',
-      },
-      method: 'GET',
-    });
+    const request = createWebSocketRequest('http://localhost/socket');
 
     expect(isWebSocketRequest(request)).toBe(true);
+    expect(
+      isWebSocketRequest(
+        new Request('http://localhost/socket', {
+          headers: {
+            connection: 'Upgrade',
+            upgrade: 'websocket',
+            'sec-websocket-version': '13',
+          },
+          method: 'GET',
+        })
+      )
+    ).toBe(false);
+    expect(
+      isWebSocketRequest(
+        new Request('http://localhost/socket', {
+          headers: {
+            connection: 'Upgrade',
+            upgrade: 'websocket',
+            'sec-websocket-key': 'not-base64',
+            'sec-websocket-version': '13',
+          },
+          method: 'GET',
+        })
+      )
+    ).toBe(false);
+    expect(
+      isWebSocketRequest(
+        new Request('http://localhost/socket', {
+          headers: {
+            connection: 'Upgrade',
+            upgrade: 'websocket',
+            'sec-websocket-key': 'dGhlIHNhbXBsZSBub25jZQ==',
+            'sec-websocket-version': '12',
+          },
+          method: 'GET',
+        })
+      )
+    ).toBe(false);
     expect(isWebSocketRequest(new Request('http://localhost/socket'))).toBe(false);
   });
 
@@ -301,23 +344,14 @@ describe('server/createServer', () => {
           events.push({ type: 'error', value: innerCtx.query.user });
         },
       }),
-      [
-        async (ctx, next) => {
-          const steps = ctx.state.steps as string[];
-          steps.push('route');
-          return await next();
-        },
-      ]
+      [async (ctx, next) => {
+        const steps = ctx.state.steps as string[];
+        steps.push('route');
+        return await next();
+      }]
     );
 
-    const result = await app.handleWebSocket(
-      new Request('http://localhost/rooms/general?user=alice', {
-        headers: {
-          connection: 'Upgrade',
-          upgrade: 'websocket',
-        },
-      })
-    );
+    const result = await app.handleWebSocket(createWebSocketRequest('http://localhost/rooms/general?user=alice'));
 
     expect(isServerWebSocketSession(result)).toBe(true);
     if (!isServerWebSocketSession(result)) {
@@ -359,14 +393,7 @@ describe('server/createServer', () => {
       },
     });
 
-    const result = await app.handleWebSocket(
-      new Request('http://localhost/secure', {
-        headers: {
-          connection: 'Upgrade',
-          upgrade: 'websocket',
-        },
-      })
-    );
+    const result = await app.handleWebSocket(createWebSocketRequest('http://localhost/secure'));
 
     expect(result instanceof Response).toBe(true);
     if (!(result instanceof Response)) {
@@ -383,12 +410,7 @@ describe('server/createServer', () => {
     expect(await app.handleWebSocket('/chat')).toBeNull();
     expect(
       await app.handleWebSocket(
-        new Request('http://localhost/missing', {
-          headers: {
-            connection: 'Upgrade',
-            upgrade: 'websocket',
-          },
-        })
+        createWebSocketRequest('http://localhost/missing')
       )
     ).toBeNull();
   });
@@ -403,14 +425,7 @@ describe('server/createServer', () => {
       },
     });
 
-    const result = await app.handleWebSocket(
-      new Request('http://localhost/raw', {
-        headers: {
-          connection: 'Upgrade',
-          upgrade: 'websocket',
-        },
-      })
-    );
+    const result = await app.handleWebSocket(createWebSocketRequest('http://localhost/raw'));
 
     expect(isServerWebSocketSession(result)).toBe(true);
     if (!isServerWebSocketSession(result)) {
@@ -430,14 +445,7 @@ describe('server/createServer', () => {
       protocols: ['  ', 'chat', 'chat', '\t'],
     });
 
-    const result = await app.handleWebSocket(
-      new Request('http://localhost/protocols', {
-        headers: {
-          connection: 'Upgrade',
-          upgrade: 'websocket',
-        },
-      })
-    );
+    const result = await app.handleWebSocket(createWebSocketRequest('http://localhost/protocols'));
 
     expect(isServerWebSocketSession(result)).toBe(true);
     if (!isServerWebSocketSession(result)) {
@@ -453,14 +461,7 @@ describe('server/createServer', () => {
       protocols: ['  ', '\t', '\n'],
     });
 
-    const result = await app.handleWebSocket(
-      new Request('http://localhost/empty-protocols', {
-        headers: {
-          connection: 'Upgrade',
-          upgrade: 'websocket',
-        },
-      })
-    );
+    const result = await app.handleWebSocket(createWebSocketRequest('http://localhost/empty-protocols'));
 
     expect(isServerWebSocketSession(result)).toBe(true);
     if (!isServerWebSocketSession(result)) {
@@ -468,5 +469,17 @@ describe('server/createServer', () => {
     }
 
     expect(result.protocols).toEqual([]);
+  });
+
+  it('rejects websocket session lookalikes that do not expose function handlers', () => {
+    expect(isServerWebSocketSession(null)).toBe(false);
+    expect(
+      isServerWebSocketSession({
+        close() {},
+        error() {},
+        message: 'not-a-function',
+        open() {},
+      })
+    ).toBe(false);
   });
 });

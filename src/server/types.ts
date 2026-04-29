@@ -347,14 +347,28 @@ export type ServerResult = Response | ServerWebSocketSession | null;
  * Middleware continuation callback.
  */
 export interface ServerNext {
-  (): Promise<ServerResult>;
+  (): Promise<Response>;
 }
 
 /**
  * Express-inspired middleware for request pipelines.
  */
 export interface ServerMiddleware {
-  (context: ServerContext, next: ServerNext): ServerResult | Promise<ServerResult>;
+  (context: ServerContext, next: ServerNext): Response | Promise<Response>;
+}
+
+/**
+ * WebSocket middleware continuation callback.
+ */
+export interface ServerWebSocketNext {
+  (): Promise<ServerResult>;
+}
+
+/**
+ * Middleware used by WebSocket routes.
+ */
+export interface ServerWebSocketMiddleware {
+  (context: ServerContext, next: ServerWebSocketNext): ServerResult | Promise<ServerResult>;
 }
 
 /**
@@ -458,7 +472,7 @@ export interface ServerApp {
   ws<TReceive = unknown>(
     path: string,
     handler: ServerWebSocketRouteHandler<TReceive>,
-    middlewares?: ServerMiddleware[]
+    middlewares?: ServerWebSocketMiddleware[]
   ): ServerApp;
 
   /**

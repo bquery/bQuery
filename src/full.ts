@@ -722,6 +722,8 @@ export type {
   ServerWebSocketConnection,
   ServerWebSocketData,
   ServerWebSocketHandlerSet,
+  ServerWebSocketMiddleware,
+  ServerWebSocketNext,
   ServerWebSocketPeer,
   ServerWebSocketRouteHandler,
   ServerWebSocketSession,

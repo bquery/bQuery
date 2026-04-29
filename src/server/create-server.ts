@@ -17,6 +17,8 @@ import type {
   ServerRoute,
   ServerWebSocketConnection,
   ServerWebSocketHandlerSet,
+  ServerWebSocketMiddleware,
+  ServerWebSocketNext,
   ServerWebSocketPeer,
   ServerWebSocketRouteHandler,
   ServerWebSocketSession,
@@ -31,11 +33,20 @@ interface CompiledRoute {
   pattern: RegExp;
 }
 
-interface CompiledWebSocketRoute extends Omit<CompiledRoute, 'handler'> {
+interface CompiledWebSocketRoute {
   handler: ServerWebSocketRouteHandler<unknown>;
+  methods: Set<string> | null;
+  middlewares: ServerWebSocketMiddleware[];
+  paramNames: string[];
+  path: string;
+  pattern: RegExp;
 }
 
-type PipelineHandler = (context: ServerContext, next: ServerNext) => ServerResult | Promise<ServerResult>;
+type PipelineHandler = (context: ServerContext, next: ServerNext) => Response | Promise<Response>;
+type WebSocketPipelineHandler = (
+  context: ServerContext,
+  next: ServerWebSocketNext
+) => ServerResult | Promise<ServerResult>;
 
 const DEFAULT_BASE_URL = 'http://localhost';
 const JSON_ESCAPE_LOOKUP: Record<string, string> = {
@@ -47,6 +58,7 @@ const JSON_ESCAPE_LOOKUP: Record<string, string> = {
 };
 const JSON_ESCAPE_PATTERN = /[<>&\u2028\u2029]/g;
 const METHOD_ALL = null;
+const WEBSOCKET_PASSTHROUGH_HEADER = 'x-bquery-websocket-passthrough';
 
 const escapeRegex = (value: string): string => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 /**
@@ -281,23 +293,33 @@ export const isWebSocketRequest = (request: Request): boolean => {
     return false;
   }
 
-  return connection
-    .split(',')
-    .some((part) => part.trim().toLowerCase() === 'upgrade');
+  if (!connection.split(',').some((part) => part.trim().toLowerCase() === 'upgrade')) {
+    return false;
+  }
+
+  const version = request.headers.get('sec-websocket-version');
+  if (version?.trim() !== '13') {
+    return false;
+  }
+
+  const key = request.headers.get('sec-websocket-key')?.trim();
+  return typeof key === 'string' && /^[A-Za-z0-9+/]{22}==$/.test(key);
 };
 
 /**
  * Type guard for values returned by `handleWebSocket()`.
  */
-export const isServerWebSocketSession = (value: ServerResult): value is ServerWebSocketSession => {
+export const isServerWebSocketSession = (value: unknown): value is ServerWebSocketSession => {
+  if (typeof value !== 'object' || value === null || value instanceof Response) {
+    return false;
+  }
+
+  const candidate = value as Record<string, unknown>;
   return (
-    typeof value === 'object' &&
-    value !== null &&
-    !(value instanceof Response) &&
-    'open' in value &&
-    'message' in value &&
-    'close' in value &&
-    'error' in value
+    typeof candidate.open === 'function' &&
+    typeof candidate.message === 'function' &&
+    typeof candidate.close === 'function' &&
+    typeof candidate.error === 'function'
   );
 };
 
@@ -374,6 +396,17 @@ const createWebSocketSession = <TReceive>(
   };
 };
 
+const createWebSocketPassthroughResponse = (): Response => {
+  const headers = createHeaders({
+    [WEBSOCKET_PASSTHROUGH_HEADER]: '1',
+  });
+  return response(null, { headers, status: 204 });
+};
+
+const isWebSocketPassthroughResponse = (value: Response): boolean => {
+  return value.headers.get(WEBSOCKET_PASSTHROUGH_HEADER) === '1';
+};
+
 const matchRoute = (
   route: Pick<CompiledRoute, 'methods' | 'paramNames' | 'pattern'>,
   method: string,
@@ -425,6 +458,32 @@ const runPipeline = async (
   context: ServerContext,
   handlers: PipelineHandler[],
   terminal: ServerNext
+): Promise<Response> => {
+  const dispatch = async (index: number): Promise<Response> => {
+    const current = handlers[index];
+    if (!current) {
+      return terminal();
+    }
+
+    let advanced = false;
+    return await current(context, async () => {
+      if (advanced) {
+        throw new Error(
+          'middleware next() called multiple times - if a middleware calls next(), it may only do so once'
+        );
+      }
+      advanced = true;
+      return await dispatch(index + 1);
+    });
+  };
+
+  return await dispatch(0);
+};
+
+const runWebSocketPipeline = async (
+  context: ServerContext,
+  handlers: WebSocketPipelineHandler[],
+  terminal: ServerWebSocketNext
 ): Promise<ServerResult> => {
   const dispatch = async (index: number): Promise<ServerResult> => {
     const current = handlers[index];
@@ -445,6 +504,31 @@ const runPipeline = async (
   };
 
   return await dispatch(0);
+};
+
+const adaptHttpMiddlewareToWebSocket = (middleware: ServerMiddleware): WebSocketPipelineHandler => {
+  return async (context, next) => {
+    let downstream: ServerResult = null;
+    let downstreamResponse: Response | null = null;
+    const middlewareResponse = await middleware(context, async () => {
+      downstream = await next();
+      if (downstream instanceof Response) {
+        downstreamResponse = downstream;
+        return downstream;
+      }
+      return createWebSocketPassthroughResponse();
+    });
+
+    if (downstreamResponse) {
+      return middlewareResponse;
+    }
+
+    if (middlewareResponse instanceof Response && isWebSocketPassthroughResponse(middlewareResponse)) {
+      return downstream;
+    }
+
+    return middlewareResponse;
+  };
 };
 
 const compileRoute = (route: ServerRoute): CompiledRoute => {
@@ -514,7 +598,7 @@ export const createServer = (options: CreateServerOptions = {}): ServerApp => {
   const addWebSocketRoute = (
     path: string,
     handler: ServerWebSocketRouteHandler<unknown>,
-    routeMiddlewares?: ServerMiddleware[]
+    routeMiddlewares?: ServerWebSocketMiddleware[]
   ): ServerApp => {
     const compiledPath = compileRoutePath(path);
     webSocketRoutes.push({
@@ -607,10 +691,7 @@ export const createServer = (options: CreateServerOptions = {}): ServerApp => {
         const result = await runPipeline(context, stack, async () => {
           return await notFound(context);
         });
-        if (result instanceof Response) {
-          return result;
-        }
-        throw new Error('server middleware must resolve to a Response for standard HTTP requests');
+        return result;
       } catch (error) {
         return await onError(error, context);
       }
@@ -650,8 +731,11 @@ export const createServer = (options: CreateServerOptions = {}): ServerApp => {
           return null;
         }
 
-        const stack: PipelineHandler[] = [...middlewares, ...route.middlewares];
-        return await runPipeline(context, stack, async () => {
+        const stack: WebSocketPipelineHandler[] = [
+          ...middlewares.map(adaptHttpMiddlewareToWebSocket),
+          ...route.middlewares,
+        ];
+        return await runWebSocketPipeline(context, stack, async () => {
           const handlers =
             typeof route.handler === 'function'
               ? await route.handler(context)
