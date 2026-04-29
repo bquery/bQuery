@@ -74,15 +74,6 @@ const isAllowedHtmlAttribute = (name: string): boolean => {
 
 const isSafeHtmlIdOrName = (value: string): boolean => !RESERVED_IDS.has(value.toLowerCase().trim());
 
-const isSafeHtmlSrcset = (value: string): boolean => {
-  const entries = value.split(',');
-  for (const entry of entries) {
-    const url = entry.trim().split(/\s+/)[0];
-    if (url && isUnsafeUrlValue(url)) return false;
-  }
-  return true;
-};
-
 const isExternalHtmlUrl = (url: string): boolean => {
   try {
     const trimmedUrl = url.trim();
@@ -226,13 +217,9 @@ const sanitizeHtmlForSSR = (raw: string): string => {
         continue;
       }
 
-      if ((attrName === 'href' || attrName === 'src' || attrName === 'action') && isUnsafeUrlValue(value)) {
+      if ((attrName === 'href' || attrName === 'src') && isUnsafeUrlValue(value)) {
         removeAttr(node, name);
         continue;
-      }
-
-      if (attrName === 'srcset' && !isSafeHtmlSrcset(value)) {
-        removeAttr(node, name);
       }
     }
 

@@ -299,6 +299,19 @@ describe('pure renderer (DOM-free)', () => {
     expect(result.html).not.toContain('<script');
   });
 
+  it('hardens external bq-html links without changing relative links', () => {
+    configureSSR({ backend: 'pure' });
+    const result = renderToString('<div><span bq-html="content"></span></div>', {
+      content:
+        '<a href="//cdn.example.com/app.js">cdn</a><a href="https://bquery.dev/docs">external</a><a href="/local">local</a><a href="http://[::1">broken</a>',
+    });
+
+    expect(result.html).toContain('<a href="//cdn.example.com/app.js" rel="noopener noreferrer">cdn</a>');
+    expect(result.html).toContain('<a href="https://bquery.dev/docs" rel="noopener noreferrer">external</a>');
+    expect(result.html).toContain('<a href="/local">local</a>');
+    expect(result.html).toContain('<a href="http://[::1" rel="noopener noreferrer">broken</a>');
+  });
+
   it('trims pure-renderer templates like the DOM backend', () => {
     const template = '  <p bq-text="msg"></p>  ';
 
